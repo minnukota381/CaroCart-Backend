@@ -1,12 +1,21 @@
 package com.carocart.address.DTO;
 
 public class AddressResponseDTO {
-    private Long id;
-    private String fullName;
-    private String phoneNumber;
-    private String fullAddress;
-    private String addressType;
-    private Boolean isDefault;
+	    private Long id;
+	    private String fullName;
+	    private String phoneNumber;
+	    private String alternatePhone;
+	    private String pincode;
+	    private String houseNumber;
+	    private String street;
+	    private String landmark;
+	    private String city;
+	    private String state;
+	    private String country;
+	    private String addressType;
+	    private Boolean isDefault;
+	
+
 
     public Long getId() {
         return id;
@@ -29,14 +38,55 @@ public class AddressResponseDTO {
         this.phoneNumber = phoneNumber;
     }
 
-    public String getFullAddress() {
-        return fullAddress;
-    }
-    public void setFullAddress(String fullAddress) {
-        this.fullAddress = fullAddress;
-    }
-
-    public String getAddressType() {
+    public String getAlternatePhone() {
+		return alternatePhone;
+	}
+	public void setAlternatePhone(String alternatePhone) {
+		this.alternatePhone = alternatePhone;
+	}
+	public String getPincode() {
+		return pincode;
+	}
+	public void setPincode(String pincode) {
+		this.pincode = pincode;
+	}
+	public String getHouseNumber() {
+		return houseNumber;
+	}
+	public void setHouseNumber(String houseNumber) {
+		this.houseNumber = houseNumber;
+	}
+	public String getStreet() {
+		return street;
+	}
+	public void setStreet(String street) {
+		this.street = street;
+	}
+	public String getLandmark() {
+		return landmark;
+	}
+	public void setLandmark(String landmark) {
+		this.landmark = landmark;
+	}
+	public String getCity() {
+		return city;
+	}
+	public void setCity(String city) {
+		this.city = city;
+	}
+	public String getState() {
+		return state;
+	}
+	public void setState(String state) {
+		this.state = state;
+	}
+	public String getCountry() {
+		return country;
+	}
+	public void setCountry(String country) {
+		this.country = country;
+	}
+	public String getAddressType() {
         return addressType;
     }
     public void setAddressType(String addressType) {
