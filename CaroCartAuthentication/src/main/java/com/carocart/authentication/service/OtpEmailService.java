@@ -16,53 +16,68 @@ public class OtpEmailService {
     private JavaMailSender mailSender;
 
     // Store OTPs temporarily: email -> OTP
-    private Map<String, String> otpStorage = new ConcurrentHashMap<>();
+    private final Map<String, String> otpStorage = new ConcurrentHashMap<>();
 
-    // Generate 6-digit OTP
+    /* ---------- OTP helpers ---------- */
     public String generateOtp() {
         Random random = new Random();
-        int otp = 100000 + random.nextInt(900000);
+        int otp = 100_000 + random.nextInt(900_000);
         return String.valueOf(otp);
     }
 
-    // Store OTP for an email
     public void storeOtp(String email, String otp) {
         otpStorage.put(email, otp);
     }
 
-    // Validate OTP for an email
     public boolean validateOtp(String email, String otp) {
         String storedOtp = otpStorage.get(email);
         return storedOtp != null && storedOtp.equals(otp);
     }
 
-    // Remove OTP after verification or expiration
     public void removeOtp(String email) {
         otpStorage.remove(email);
     }
 
-    // Send OTP email
+    /* ---------- Email helpers ---------- */
     public void sendOtpEmail(String toEmail, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(toEmail);
-        message.setSubject("Verify Your Email for CaroCart User Signup");
-        message.setText("Dear User,\n\n"
-                + "Your One-Time Password (OTP) for CaroCart signup is: " + otp + "\n\n"
-                + "This OTP is valid for 5 minutes. Please do not share this OTP with anyone.\n\n"
-                + "Thank you,\nCaroCart Team");
-        mailSender.send(message);
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setTo(toEmail);
+        msg.setSubject("Verify Your Email for CaroCart User Signup");
+        msg.setText(
+            "Dear User,\n\n" +
+            "Your One‑Time Password (OTP) for CaroCart signup is: " + otp + "\n\n" +
+            "This OTP is valid for 5 minutes. Please do not share it with anyone.\n\n" +
+            "Thank you,\nCaroCart Team"
+        );
+        mailSender.send(msg);
     }
 
-    // Send approval email
     public void sendApprovalEmail(String toEmail) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(toEmail);
-        message.setSubject("Your Vendor Account is Approved");
-        message.setText("Dear Vendor,\n\n"
-                + "Congratulations! Your vendor account has been approved by CaroCart admin.\n\n"
-                + "You can now log in and start using your account.\n\n"
-                + "Thank you,\nCaroCart Team");
-        mailSender.send(message);
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setTo(toEmail);
+        msg.setSubject("Your Vendor Account is Approved");
+        msg.setText(
+            "Dear Vendor,\n\n" +
+            "Congratulations! Your vendor account has been approved by CaroCart admin.\n\n" +
+            "You can now log in and start using your account.\n\n" +
+            "Thank you,\nCaroCart Team"
+        );
+        mailSender.send(msg);
     }
- 
+
+    
+    
+    /* ---------- NEW: rejection notice ---------- */
+    public void sendRejectionEmail(String toEmail) {
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setTo(toEmail);
+        msg.setSubject("Vendor Registration Rejected");
+        msg.setText(
+            "Dear Vendor,\n\n" +
+            "We regret to inform you that your vendor registration has been rejected by the CaroCart team.\n\n" +
+            "If you believe this is a mistake or you need further information, please contact support at support@carocart.com.\n\n" +
+            "Thank you for your interest in partnering with us.\nCaroCart Team"
+        );
+        mailSender.send(msg);
+    }
 }
