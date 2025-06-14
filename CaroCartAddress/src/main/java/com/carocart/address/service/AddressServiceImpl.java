@@ -23,23 +23,24 @@ public class AddressServiceImpl implements AddressService {
         this.repository = repository;
         this.userClient = userClient;
     }
-
     private AddressResponseDTO mapToDTO(Address address) {
         AddressResponseDTO dto = new AddressResponseDTO();
         dto.setId(address.getId());
         dto.setFullName(address.getFullName());
         dto.setPhoneNumber(address.getPhoneNumber());
+        dto.setAlternatePhone(address.getAlternatePhone());
+        dto.setPincode(address.getPincode());
+        dto.setHouseNumber(address.getHouseNumber());
+        dto.setStreet(address.getStreet());
+        dto.setLandmark(address.getLandmark());
+        dto.setCity(address.getCity());
+        dto.setState(address.getState());
+        dto.setCountry(address.getCountry());
         dto.setAddressType(address.getAddressType());
         dto.setIsDefault(address.getIsDefault());
-        dto.setFullAddress(
-            address.getHouseNumber() + ", " +
-            address.getStreet() + ", " +
-            address.getCity() + ", " +
-            address.getState() + " - " +
-            address.getPincode()
-        );
         return dto;
     }
+
 
     @Override
     public AddressResponseDTO createAddress(AddressRequestDTO dto, String token) {
