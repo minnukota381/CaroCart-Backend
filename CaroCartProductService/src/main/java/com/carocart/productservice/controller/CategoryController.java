@@ -13,7 +13,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/categories")
-@CrossOrigin(origins = "*")
 public class CategoryController {
 
     @Autowired
@@ -42,7 +41,6 @@ public class CategoryController {
         SubCategory savedSubCategory = categoryService.addSubCategory(subCategory, token);
         return ResponseEntity.ok(savedSubCategory);
     }
-
 
     // ✅ User: Get all categories
     @GetMapping
