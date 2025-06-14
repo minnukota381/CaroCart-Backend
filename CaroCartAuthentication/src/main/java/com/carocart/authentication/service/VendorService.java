@@ -102,6 +102,18 @@ public class VendorService {
         }
         return false;
     }
+    
+    public boolean rejectVendor(Long vendorId) {
+        Optional<Vendor> optionalVendor = vendorRepository.findById(vendorId);
+        if (optionalVendor.isPresent()) {
+            Vendor vendor = optionalVendor.get();
+            vendorRepository.delete(vendor);
+            otpEmailService.sendRejectionEmail(vendor.getEmail());
+            return true;
+        }
+        return false;
+    }
+
 
     // Utility method: get vendor by ID
     public Optional<Vendor> getVendorById(Long id) {
