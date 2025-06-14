@@ -95,4 +95,16 @@ public class VendorController {
         return ResponseEntity.ok(pendingVendors);
     }
 
+
+
+@PostMapping("/admin/reject/{vendorId}")
+public ResponseEntity<String> rejectVendor(@PathVariable Long vendorId) {
+    boolean rejected = vendorService.rejectVendor(vendorId);
+    if (rejected) {
+        return ResponseEntity.ok("Vendor rejected and removed from system");
+    } else {
+        return ResponseEntity.badRequest().body("Vendor not found");
+    }
 }
+}
+
