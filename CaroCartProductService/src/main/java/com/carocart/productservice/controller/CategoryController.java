@@ -42,7 +42,6 @@ public class CategoryController {
         return ResponseEntity.ok(savedSubCategory);
     }
 
-
     // ✅ User: Get all categories
     @GetMapping
     public ResponseEntity<List<Category>> getAllCategories() {
