@@ -37,7 +37,10 @@ public class Vendor {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
-
+    
+    @Column(nullable = false)
+    private String role = "VENDOR"; 
+    
     // Constructors, getters, setters
 
     @PrePersist
