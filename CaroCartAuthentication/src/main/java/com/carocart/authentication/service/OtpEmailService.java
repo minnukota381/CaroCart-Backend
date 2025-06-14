@@ -65,6 +65,8 @@ public class OtpEmailService {
         mailSender.send(msg);
     }
 
+    
+    
     /* ---------- NEW: rejection notice ---------- */
     public void sendRejectionEmail(String toEmail) {
         SimpleMailMessage msg = new SimpleMailMessage();
