@@ -2,7 +2,10 @@ package com.carocart.paymentservice.controller;
 
 import com.carocart.paymentservice.dto.PaymentUpdateRequestDTO;
 import com.carocart.paymentservice.dto.PaymentVerificationRequest;
+import com.carocart.paymentservice.entity.Payment;
 import com.carocart.paymentservice.feign.OrderFeignClient;
+import com.carocart.paymentservice.repository.PaymentRepository;
+import com.carocart.paymentservice.service.PaymentService;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import jakarta.annotation.PostConstruct;
@@ -13,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+
+import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -28,9 +33,18 @@ public class PaymentController {
     private RazorpayClient razorpayClient;
     private final OrderFeignClient orderFeignClient;
 
-    public PaymentController(OrderFeignClient orderFeignClient) {
-        this.orderFeignClient = orderFeignClient;
-    }
+	private PaymentRepository paymentRepository;
+
+	// Add this field to your controller
+	private final PaymentService paymentService;
+
+	public PaymentController(OrderFeignClient orderFeignClient, PaymentRepository paymentRepository, PaymentService paymentService) {
+	    this.orderFeignClient = orderFeignClient;
+	    this.paymentRepository = paymentRepository;
+	    this.paymentService = paymentService;
+	}
+
+
 
     @PostConstruct
     public void init() throws Exception {
@@ -72,40 +86,42 @@ public class PaymentController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create Razorpay order: " + e.getMessage());
         }
     }
-
     @PostMapping("/verify-and-update")
     public ResponseEntity<?> verifyPayment(@RequestBody PaymentVerificationRequest request) {
         try {
-            // Validate request fields
-            if (request.getRazorpayOrderId() == null || request.getRazorpayPaymentId() == null || request.getRazorpaySignature() == null) {
-                return ResponseEntity.badRequest().body("Missing required fields for verification.");
-            }
-
-            // Log input for debugging
-            System.out.println("Verifying payment: " + request);
-
-            // Generate expected signature
             String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
             String expectedSignature = hmacSha256(payload, razorpaySecret);
 
-            // Compare signatures (case-insensitive just in case)
-            if (!expectedSignature.equalsIgnoreCase(request.getRazorpaySignature())) {
+            if (!expectedSignature.equals(request.getRazorpaySignature())) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid Razorpay signature.");
             }
 
-            // Update payment status in Order Service
+            // ✅ 1. Save to payment table
+            Payment payment = new Payment();
+            payment.setOrderId(request.getOrderId());
+            payment.setUserId(request.getUserId());
+            payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
+            payment.setRazorpayOrderId(request.getRazorpayOrderId());
+            payment.setRazorpaySignature(request.getRazorpaySignature());
+            payment.setAmount(request.getAmount() / 100.0); // Convert paise to rupees
+            payment.setStatus("PAID");
+            payment.setPaymentMethod(request.getPaymentMethod());
+            payment.setTransactionDate(LocalDateTime.now());
+
+            paymentRepository.save(payment); // ✅ Save payment record
+
+            // ✅ 2. Update order status via Feign
             PaymentUpdateRequestDTO updateRequest = new PaymentUpdateRequestDTO();
             updateRequest.setStatus("PAID");
             updateRequest.setPaymentId(request.getRazorpayPaymentId());
 
             orderFeignClient.updatePaymentStatus(request.getOrderId(), updateRequest);
 
-            return ResponseEntity.ok("✅ Payment verified and order updated successfully.");
+            return ResponseEntity.ok("Payment verified and saved.");
 
         } catch (Exception e) {
-            e.printStackTrace(); // 🔍 log stack trace
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("❌ Payment verification failed: " + e.getMessage());
+                                 .body("Payment verification failed: " + e.getMessage());
         }
     }
 

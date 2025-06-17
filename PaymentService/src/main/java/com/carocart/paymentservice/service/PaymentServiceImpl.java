@@ -14,14 +14,17 @@ import java.time.LocalDateTime;
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private PaymentValidator paymentValidator;
+    private final PaymentRepository paymentRepository;
+    private final PaymentValidator paymentValidator;
 
     @Value("${razorpay.key_secret}")
     private String razorpaySecret;
+
+    @Autowired
+    public PaymentServiceImpl(PaymentRepository paymentRepository, PaymentValidator paymentValidator) {
+        this.paymentRepository = paymentRepository;
+        this.paymentValidator = paymentValidator;
+    }
 
     @Override
     public PaymentResponseDTO processPayment(PaymentVerificationRequest request) {
@@ -30,25 +33,33 @@ public class PaymentServiceImpl implements PaymentService {
 
         // Step 2: Verify Razorpay signature
         if (!verifySignature(request)) {
-            throw new RuntimeException("Invalid payment signature. Possible tampering detected.");
+            throw new RuntimeException("Invalid Razorpay signature. Payment verification failed.");
         }
 
-        // Step 3: Save payment details to DB
+        // Optional: prevent duplicate payment entries
+        if (paymentRepository.existsByRazorpayPaymentId(request.getRazorpayPaymentId())) {
+            throw new RuntimeException("Payment already recorded.");
+        }
+
+        // Step 3: Save payment record in DB
         Payment payment = new Payment();
         payment.setOrderId(request.getOrderId());
         payment.setUserId(request.getUserId());
         payment.setAmount(request.getAmount());
         payment.setPaymentMethod(request.getPaymentMethod());
-        payment.setPaymentStatus("PAID");
-        payment.setPaymentDate(LocalDateTime.now());
+        payment.setRazorpayOrderId(request.getRazorpayOrderId());
+        payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
+        payment.setRazorpaySignature(request.getRazorpaySignature());
+        payment.setStatus("PAID");  // Changed to match typical Payment entity naming
+        payment.setTransactionDate(LocalDateTime.now());  // Changed to match typical field
 
         Payment saved = paymentRepository.save(payment);
 
-        // Step 4: Build response DTO
+        // Step 4: Prepare and return response
         PaymentResponseDTO response = new PaymentResponseDTO();
-        response.setPaymentId(String.valueOf(saved.getId()));
-        response.setStatus(saved.getPaymentStatus());
-        response.setTimestamp(saved.getPaymentDate());
+        response.setPaymentId(saved.getId().toString());
+        response.setStatus(saved.getStatus());
+        response.setTimestamp(saved.getTransactionDate());
 
         return response;
     }
