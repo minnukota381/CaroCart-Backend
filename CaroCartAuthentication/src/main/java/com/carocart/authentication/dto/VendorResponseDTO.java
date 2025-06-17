@@ -6,46 +6,50 @@ public class VendorResponseDTO {
     private String lastName;
     private String email;
     private String role;
+    private String companyName;
+    private String contactNumber;
+    private String gstNumber;
+    private String businessType;
+    private String businessAddress;
+
+    // Use either profileImageUrl or profileImage (byte array)
+    private String profileImageUrl;  // If you're storing image path or URL
+    private byte[] profileImage;     // If you're storing image as byte[] in DB
 
     // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return id;
-    }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
 
-    public String getFirstName() {
-        return firstName;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 
-    public String getLastName() {
-        return lastName;
-    }
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
+    public String getContactNumber() { return contactNumber; }
+    public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
 
-    public String getEmail() {
-        return email;
-    }
+    public String getGstNumber() { return gstNumber; }
+    public void setGstNumber(String gstNumber) { this.gstNumber = gstNumber; }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    public String getBusinessType() { return businessType; }
+    public void setBusinessType(String businessType) { this.businessType = businessType; }
 
-    public String getRole() {
-        return role;
-    }
+    public String getBusinessAddress() { return businessAddress; }
+    public void setBusinessAddress(String businessAddress) { this.businessAddress = businessAddress; }
 
-    public void setRole(String role) {
-        this.role = role;
-    }
+    public String getProfileImageUrl() { return profileImageUrl; }
+    public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
+
+    public byte[] getProfileImage() { return profileImage; }
+    public void setProfileImage(byte[] profileImage) { this.profileImage = profileImage; }
 }
