@@ -1,5 +1,3 @@
-// package: com.carocart.orderservice.dto
-
 package com.carocart.orderservice.dto;
 
 import com.carocart.orderservice.entity.Order;
@@ -14,6 +12,9 @@ public class OrderResponse {
     private Long userId;
     private LocalDateTime orderDate;
     private String status;
+    private Double subtotal;
+    private Double shipping;
+    private Double tax;
     private Double totalAmount;
     private String shippingAddress;
     private List<OrderItemResponseDTO> orderItems;
@@ -25,12 +26,21 @@ public class OrderResponse {
         this.userId = order.getUserId();
         this.orderDate = order.getOrderDate();
         this.status = order.getStatus();
-        this.totalAmount = order.getTotalAmount();
         this.shippingAddress = order.getShippingAddress();
         this.orderItems = order.getOrderItems()
                 .stream()
                 .map(OrderItemResponseDTO::new)
                 .collect(Collectors.toList());
+
+        // Calculate subtotal from items
+        this.subtotal = orderItems.stream()
+                .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                .sum();
+
+        // Example fixed values for demo purposes:
+        this.shipping = 30.0;
+        this.tax = subtotal * 0.05; // e.g. 5% tax
+        this.totalAmount = subtotal + shipping + tax;
     }
 
     // Getters and setters
@@ -65,6 +75,30 @@ public class OrderResponse {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Double getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(Double subtotal) {
+        this.subtotal = subtotal;
+    }
+
+    public Double getShipping() {
+        return shipping;
+    }
+
+    public void setShipping(Double shipping) {
+        this.shipping = shipping;
+    }
+
+    public Double getTax() {
+        return tax;
+    }
+
+    public void setTax(Double tax) {
+        this.tax = tax;
     }
 
     public Double getTotalAmount() {

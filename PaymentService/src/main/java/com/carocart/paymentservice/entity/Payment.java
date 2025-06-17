@@ -10,69 +10,69 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String orderId;
-    private String userId;
+    private Long orderId;
+    private Long userId;  // Changed from String to Long
     private double amount;
     private String paymentStatus;
     private String paymentMethod;
 
     private LocalDateTime paymentDate = LocalDateTime.now();
 
-	public Long getId() {
-		return id;
-	}
+    // Getters and Setters
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public Long getId() {
+        return id;
+    }
 
-	public String getOrderId() {
-		return orderId;
-	}
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	public void setOrderId(String orderId) {
-		this.orderId = orderId;
-	}
+    public Long getOrderId() {  // corrected return type
+        return orderId;
+    }
 
-	public String getUserId() {
-		return userId;
-	}
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
+    }
 
-	public void setUserId(String userId) {
-		this.userId = userId;
-	}
+    public Long getUserId() {  // corrected return type
+        return userId;
+    }
 
-	public double getAmount() {
-		return amount;
-	}
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
 
-	public void setAmount(double amount) {
-		this.amount = amount;
-	}
+    public double getAmount() {
+        return amount;
+    }
 
-	public String getPaymentStatus() {
-		return paymentStatus;
-	}
+    public void setAmount(double amount) {
+        this.amount = amount;
+    }
 
-	public void setPaymentStatus(String paymentStatus) {
-		this.paymentStatus = paymentStatus;
-	}
+    public String getPaymentStatus() {
+        return paymentStatus;
+    }
 
-	public String getPaymentMethod() {
-		return paymentMethod;
-	}
+    public void setPaymentStatus(String paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
 
-	public void setPaymentMethod(String paymentMethod) {
-		this.paymentMethod = paymentMethod;
-	}
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
 
-	public LocalDateTime getPaymentDate() {
-		return paymentDate;
-	}
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
 
-	public void setPaymentDate(LocalDateTime paymentDate) {
-		this.paymentDate = paymentDate;
-	}
+    public LocalDateTime getPaymentDate() {
+        return paymentDate;
+    }
 
-
+    public void setPaymentDate(LocalDateTime paymentDate) {
+        this.paymentDate = paymentDate;
+    }
 }

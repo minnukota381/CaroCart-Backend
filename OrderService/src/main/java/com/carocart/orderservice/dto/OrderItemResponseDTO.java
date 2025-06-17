@@ -1,5 +1,3 @@
-// package: com.carocart.orderservice.dto
-
 package com.carocart.orderservice.dto;
 
 import com.carocart.orderservice.entity.OrderItem;
