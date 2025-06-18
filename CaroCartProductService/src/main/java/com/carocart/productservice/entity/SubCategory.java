@@ -17,8 +17,9 @@ public class SubCategory {
 
     @ManyToOne
     @JoinColumn(name = "category_id")
-    @JsonIgnoreProperties("subCategories")  // Ignore 'subCategories' inside category
+    @JsonIgnoreProperties("subcategories")
     private Category category;
+
 
     @OneToMany(mappedBy = "subCategory", cascade = CascadeType.ALL)
     @JsonIgnoreProperties("subCategory")  // Ignore 'subCategory' inside products
