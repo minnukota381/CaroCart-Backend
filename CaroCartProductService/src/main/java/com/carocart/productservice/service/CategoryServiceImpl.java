@@ -57,5 +57,23 @@ public class CategoryServiceImpl implements CategoryService {
     public Category getCategoryById(Long id) {
         return categoryRepo.findById(id).orElse(null);
     }
+    @Override
+    public void deleteCategoryById(Long categoryId, String token) {
+        validateAdmin(token);
+        if (!categoryRepo.existsById(categoryId)) {
+            throw new RuntimeException("Category not found with ID: " + categoryId);
+        }
+        categoryRepo.deleteById(categoryId);
+    }
+
+    @Override
+    public void deleteSubCategoryById(Long subcategoryId, String token) {
+        validateAdmin(token);
+        if (!subCategoryRepo.existsById(subcategoryId)) {
+            throw new RuntimeException("Subcategory not found with ID: " + subcategoryId);
+        }
+        subCategoryRepo.deleteById(subcategoryId);
+    }
+
 
 }

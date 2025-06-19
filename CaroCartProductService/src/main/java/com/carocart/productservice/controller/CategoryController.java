@@ -53,4 +53,20 @@ public class CategoryController {
     public ResponseEntity<List<SubCategory>> getSubCategories(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getSubCategoriesByCategoryId(id));
     }
+ // ✅ Admin: Delete category
+    @DeleteMapping("/admin/delete/{categoryId}")
+    public ResponseEntity<String> deleteCategory(@PathVariable Long categoryId,
+                                                 @RequestHeader("Authorization") String token) {
+        categoryService.deleteCategoryById(categoryId, token);
+        return ResponseEntity.ok("Category deleted successfully");
+    }
+
+    // ✅ Admin: Delete subcategory
+    @DeleteMapping("/admin/subcategory/delete/{subcategoryId}")
+    public ResponseEntity<String> deleteSubCategory(@PathVariable Long subcategoryId,
+                                                    @RequestHeader("Authorization") String token) {
+        categoryService.deleteSubCategoryById(subcategoryId, token);
+        return ResponseEntity.ok("Subcategory deleted successfully");
+    }
+
 }

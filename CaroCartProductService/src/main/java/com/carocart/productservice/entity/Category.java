@@ -1,6 +1,6 @@
 package com.carocart.productservice.entity;
 
-import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 import java.util.List;
@@ -15,34 +15,31 @@ public class Category {
 
     private String name;
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
-    @JsonIgnoreProperties("category")  // Ignore 'category' inside subCategories
-    private List<SubCategory> subCategories;
-	public Long getId() {
-		return id;
-	}
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("category")
+    private List<SubCategory> subcategories;
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public Long getId() {
+        return id;
+    }
 
-	public String getName() {
-		return name;
-	}
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public String getName() {
+        return name;
+    }
 
-	public List<SubCategory> getSubCategories() {
-		return subCategories;
-	}
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	public void setSubCategories(List<SubCategory> subCategories) {
-		this.subCategories = subCategories;
-	}
+    public List<SubCategory> getSubcategories() {
+        return subcategories;
+    }
 
-    // Getters and setters
-    
-    
+    public void setSubcategories(List<SubCategory> subcategories) {
+        this.subcategories = subcategories;
+    }
 }
