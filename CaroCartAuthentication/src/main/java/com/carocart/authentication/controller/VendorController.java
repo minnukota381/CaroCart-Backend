@@ -158,4 +158,15 @@ public class VendorController {
             return ResponseEntity.badRequest().body("Vendor not found");
         }
     }
+ // --- Admin: Delete vendor ---
+    @DeleteMapping("/admin/vendors/{vendorId}")
+    public ResponseEntity<String> deleteVendor(@PathVariable Long vendorId) {
+        boolean deleted = vendorService.deleteVendorById(vendorId);
+        if (deleted) {
+            return ResponseEntity.ok("Vendor deleted successfully");
+        } else {
+            return ResponseEntity.badRequest().body("Vendor not found or could not be deleted");
+        }
+    }
+
 }

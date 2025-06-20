@@ -164,4 +164,13 @@ public class VendorService {
         Vendor vendor = getVendorByEmail(email);
         return vendor.getProfileImage();
     }
+    public boolean deleteVendorById(Long vendorId) {
+        Optional<Vendor> vendorOptional = vendorRepository.findById(vendorId);
+        if (vendorOptional.isPresent()) {
+            vendorRepository.deleteById(vendorId);
+            return true;
+        }
+        return false;
+    }
+
 }
