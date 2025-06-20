@@ -1,7 +1,6 @@
 package com.carocart.address.controller;
 
 import org.springframework.web.bind.annotation.*;
-
 import com.carocart.address.DTO.AddressRequestDTO;
 import com.carocart.address.DTO.AddressResponseDTO;
 import com.carocart.address.service.AddressService;
@@ -9,7 +8,7 @@ import com.carocart.address.service.AddressService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/addresses")
+@RequestMapping("api/addresses") // Updated to match standard base path
 public class AddressController {
 
     private final AddressService service;
@@ -49,11 +48,10 @@ public class AddressController {
     public AddressResponseDTO getOne(@PathVariable Long id) {
         return service.getAddressById(id);
     }
-    
+
+    // ✅ Get addresses for the currently logged-in user
     @GetMapping("/me")
     public List<AddressResponseDTO> getMyAddresses(@RequestHeader("Authorization") String token) {
         return service.getAddressesForCurrentUser(token);
     }
-
-
 }

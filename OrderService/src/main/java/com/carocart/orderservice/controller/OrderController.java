@@ -2,6 +2,7 @@ package com.carocart.orderservice.controller;
 
 import com.carocart.orderservice.dto.OrderRequest;
 import com.carocart.orderservice.dto.OrderResponse;
+import com.carocart.orderservice.dto.PaymentUpdateRequestDTO;
 import com.carocart.orderservice.service.OrderService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/orders")
@@ -22,6 +24,8 @@ public class OrderController {
     public OrderController(OrderService orderService) {
         this.orderService = orderService;
     }
+
+    // ----------------- USER APIs -----------------
 
     @PostMapping("/place")
     public ResponseEntity<OrderResponse> placeOrder(@RequestHeader("Authorization") String token,
@@ -43,14 +47,55 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    
     @DeleteMapping("/cancel/{orderId}")
     public ResponseEntity<String> cancelOrder(@PathVariable Long orderId,
                                               @RequestHeader("Authorization") String token) {
         orderService.cancelOrder(token, orderId);
         return ResponseEntity.ok("Order cancelled successfully.");
     }
-    
- // --- ADMIN FUNCTIONALITY ---
+
+    @PutMapping("/{orderId}/payment")
+    public ResponseEntity<String> updatePaymentStatus(@PathVariable Long orderId,
+                                                      @RequestBody PaymentUpdateRequestDTO request) {
+        if (request.getPaymentId() == null || request.getPaymentId().isBlank()
+            || request.getStatus() == null || request.getStatus().isBlank()) {
+            return ResponseEntity.badRequest().body("Payment ID and status must not be blank");
+        }
+
+        try {
+            orderService.updatePaymentStatus(orderId, request.getPaymentId(), request.getStatus());
+            return ResponseEntity.ok("Payment status updated successfully.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body("Error updating payment status: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Server error while updating payment status.");
+        }
+    }
+
+
+    // Cash On Delivery
+    @PutMapping("/{orderId}/cod")
+    public ResponseEntity<String> markOrderAsCod(@PathVariable Long orderId) {
+        try {
+            orderService.markAsCod(orderId);
+            return ResponseEntity.ok("COD order placed successfully.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body("Error in COD placement: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Server error during COD order placement.");
+        }
+    }
+
+    // Debug Token
+    @GetMapping("/debug/token")
+    public ResponseEntity<String> debugToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        return ResponseEntity.ok("Authorization header = " + authHeader);
+    }
+
+    // ----------------- ADMIN APIs -----------------
+
     @GetMapping("/admin/orders")
     public ResponseEntity<List<OrderResponse>> getAllOrdersForAdmin() {
         List<OrderResponse> orders = orderService.getAllOrders();
@@ -68,21 +113,4 @@ public class OrderController {
         orderService.cancelOrderByAdmin(orderId);
         return ResponseEntity.ok("Order cancelled by Admin successfully.");
     }
-    
-    @GetMapping("/debug/token")
-    public ResponseEntity<String> debugToken(HttpServletRequest request) {
-        String authHeader = request.getHeader("Authorization");
-        return ResponseEntity.ok("Authorization header = " + authHeader);
-    }
-    
-    @PutMapping("/{orderId}/payment")
-    public ResponseEntity<String> updatePaymentStatus(@PathVariable Long orderId,
-                                                      @RequestParam String paymentId,
-                                                      @RequestParam String status) {
-        orderService.updatePaymentStatus(orderId, paymentId, status);
-        return ResponseEntity.ok("Payment status updated successfully.");
-    }
-    
-
-
 }

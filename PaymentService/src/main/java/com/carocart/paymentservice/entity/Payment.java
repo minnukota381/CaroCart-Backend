@@ -10,69 +10,108 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String orderId;
-    private String userId;
-    private double amount;
-    private String paymentStatus;
+    private Long orderId;
+    private Long userId;
+    private Double amount;
     private String paymentMethod;
+    private String razorpayOrderId;
+    private String razorpayPaymentId;
+    private String razorpaySignature;
+    private String status;
+    private String upiTransactionId;
 
-    private LocalDateTime paymentDate = LocalDateTime.now();
+    // New fields for UPI collect support
+    private String collectRequestId; // Razorpay Payment Link ID
+    private String upiId;
+    private LocalDateTime expiryTime;
 
-	public Long getId() {
-		return id;
+	 public String getCollectRequestId() {
+		return collectRequestId;
 	}
-
-	public void setId(Long id) {
-		this.id = id;
+	public void setCollectRequestId(String collectRequestId) {
+		this.collectRequestId = collectRequestId;
 	}
-
-	public String getOrderId() {
-		return orderId;
+	public String getUpiId() {
+		return upiId;
 	}
-
-	public void setOrderId(String orderId) {
-		this.orderId = orderId;
+	public void setUpiId(String upiId) {
+		this.upiId = upiId;
 	}
-
-	public String getUserId() {
+	public LocalDateTime getExpiryTime() {
+		return expiryTime;
+	}
+	public void setExpiryTime(LocalDateTime expiryTime) {
+		this.expiryTime = expiryTime;
+	}
+	public String getUpiTransactionId() {
+		return upiTransactionId;
+	}
+	public void setUpiTransactionId(String upiTransactionId) {
+		this.upiTransactionId = upiTransactionId;
+	}
+	private LocalDateTime transactionDate;
+	 
+	 public Long getUserId() {
 		return userId;
 	}
-
-	public void setUserId(String userId) {
+	public void setUserId(Long userId) {
 		this.userId = userId;
 	}
+		public Long getId() {
+			return id;
+		}
+		public void setId(Long id) {
+			this.id = id;
+		}
+		public Long getOrderId() {
+			return orderId;
+		}
+		public void setOrderId(Long orderId) {
+			this.orderId = orderId;
+		}
+		public String getRazorpayOrderId() {
+			return razorpayOrderId;
+		}
+		public void setRazorpayOrderId(String razorpayOrderId) {
+			this.razorpayOrderId = razorpayOrderId;
+		}
+		public String getRazorpayPaymentId() {
+			return razorpayPaymentId;
+		}
+		public void setRazorpayPaymentId(String razorpayPaymentId) {
+			this.razorpayPaymentId = razorpayPaymentId;
+		}
+		public String getRazorpaySignature() {
+			return razorpaySignature;
+		}
+		public void setRazorpaySignature(String razorpaySignature) {
+			this.razorpaySignature = razorpaySignature;
+		}
+		public String getPaymentMethod() {
+			return paymentMethod;
+		}
+		public void setPaymentMethod(String paymentMethod) {
+			this.paymentMethod = paymentMethod;
+		}
+		public Double getAmount() {
+			return amount;
+		}
+		public void setAmount(Double amount) {
+			this.amount = amount;
+		}
+		public String getStatus() {
+			return status;
+		}
+		public void setStatus(String status) {
+			this.status = status;
+		}
+		public LocalDateTime getTransactionDate() {
+			return transactionDate;
+		}
+		public void setTransactionDate(LocalDateTime transactionDate) {
+			this.transactionDate = transactionDate;
+		}
 
-	public double getAmount() {
-		return amount;
-	}
 
-	public void setAmount(double amount) {
-		this.amount = amount;
-	}
-
-	public String getPaymentStatus() {
-		return paymentStatus;
-	}
-
-	public void setPaymentStatus(String paymentStatus) {
-		this.paymentStatus = paymentStatus;
-	}
-
-	public String getPaymentMethod() {
-		return paymentMethod;
-	}
-
-	public void setPaymentMethod(String paymentMethod) {
-		this.paymentMethod = paymentMethod;
-	}
-
-	public LocalDateTime getPaymentDate() {
-		return paymentDate;
-	}
-
-	public void setPaymentDate(LocalDateTime paymentDate) {
-		this.paymentDate = paymentDate;
-	}
-
-
+	    
 }

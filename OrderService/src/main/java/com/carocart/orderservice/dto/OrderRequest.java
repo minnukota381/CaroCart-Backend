@@ -6,8 +6,9 @@ import java.util.List;
 
 public class OrderRequest {
     private List<OrderItemDTO> items;
-    private String shippingAddress;
+    private Long addressId; // ID of the address selected by the user
 
+    // Getters and Setters
     public List<OrderItemDTO> getItems() {
         return items;
     }
@@ -16,14 +17,15 @@ public class OrderRequest {
         this.items = items;
     }
 
-    public String getShippingAddress() {
-        return shippingAddress;
+    public Long getAddressId() {
+        return addressId;
     }
 
-    public void setShippingAddress(String shippingAddress) {
-        this.shippingAddress = shippingAddress;
+    public void setAddressId(Long addressId) {
+        this.addressId = addressId;
     }
 
+    // Inner class for individual order items
     public static class OrderItemDTO {
         private Long productId;
         private Integer quantity;

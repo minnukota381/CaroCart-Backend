@@ -24,10 +24,13 @@ public class Order {
     @Column(length = 1000)
     private String shippingAddress; // can store as JSON string or simple text
 
-    private String paymentStatus; // PENDING, PAID, FAILED (optional)
+
+    @Column(name = "payment_status")
+    private String paymentStatus;
 
     @Column(name = "payment_id")
     private String paymentId;
+
 
     
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
