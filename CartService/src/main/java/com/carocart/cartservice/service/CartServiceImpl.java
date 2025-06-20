@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -30,11 +29,18 @@ public class CartServiceImpl implements CartService {
     public CartItemDTO addToCart(String token, AddToCartRequestDTO request) {
         UserResponseDTO user = userClient.getCurrentUser(token);
         Long userId = user.getId();
-        ProductDTO product = productClient.getProductDTOById(request.getProductId());
+
+        ProductDTO product;
+        try {
+            product = productClient.getProductDTOById(request.getProductId());
+        } catch (Exception e) {
+            throw new RuntimeException("Product not found or unavailable.");
+        }
 
         if (product == null || !product.isAvailable()) {
             throw new RuntimeException("Product unavailable.");
         }
+
         if (request.getQuantity() > product.getStock()) {
             throw new RuntimeException("Requested quantity exceeds stock.");
         }
@@ -47,6 +53,7 @@ public class CartServiceImpl implements CartService {
         } else {
             item = new CartItem(userId, request.getProductId(), request.getQuantity());
         }
+
         CartItem saved = cartItemRepository.save(item);
         return convertToDTO(saved, product);
     }
@@ -55,17 +62,25 @@ public class CartServiceImpl implements CartService {
     public CartItemDTO updateCartItem(String token, Long productId, int quantity) {
         UserResponseDTO user = userClient.getCurrentUser(token);
         Long userId = user.getId();
-        ProductDTO product = productClient.getProductDTOById(productId);
+
+        ProductDTO product;
+        try {
+            product = productClient.getProductDTOById(productId);
+        } catch (Exception e) {
+            throw new RuntimeException("Product not found or unavailable.");
+        }
 
         if (product == null || !product.isAvailable()) {
             throw new RuntimeException("Product unavailable.");
         }
+
         if (quantity > product.getStock()) {
             throw new RuntimeException("Quantity exceeds available stock.");
         }
 
         CartItem item = cartItemRepository.findByUserIdAndProductId(userId, productId)
             .orElseThrow(() -> new RuntimeException("Item not in cart"));
+
         item.setQuantity(quantity);
         CartItem saved = cartItemRepository.save(item);
         return convertToDTO(saved, product);
@@ -90,18 +105,31 @@ public class CartServiceImpl implements CartService {
         UserResponseDTO user = userClient.getCurrentUser(token);
         List<CartItem> items = cartItemRepository.findByUserId(user.getId());
 
-        return items.stream().map(item -> {
-            ProductDTO product = productClient.getProductDTOById(item.getProductId());
-            return new CartItemResponse(
-                item.getId(),
-                item.getUserId(),
-                item.getProductId(),
-                product.getName(),
-                item.getQuantity(),
-                product.getPrice(),
-                product.getImageUrl()
-            );
-        }).collect(Collectors.toList());
+        return items.stream()
+            .map(item -> {
+                ProductDTO product;
+                try {
+                    product = productClient.getProductDTOById(item.getProductId());
+                } catch (Exception e) {
+                    product = null; // skip if product fetch fails
+                }
+
+                if (product == null) {
+                    return null; // skip deleted or missing products
+                }
+
+                return new CartItemResponse(
+                    item.getId(),
+                    item.getUserId(),
+                    item.getProductId(),
+                    product.getName(),
+                    item.getQuantity(),
+                    product.getPrice(),
+                    product.getImageUrl()
+                );
+            })
+            .filter(response -> response != null)
+            .collect(Collectors.toList());
     }
 
     private CartItemDTO convertToDTO(CartItem item, ProductDTO product) {
@@ -118,11 +146,4 @@ public class CartServiceImpl implements CartService {
         }
         return dto;
     }
-
-//	@Override
-//	public List<CartItemDTO> getCartItemsByUserId(Long userId) {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-
 }
