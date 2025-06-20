@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -109,7 +110,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus("CANCELLED");
         orderRepository.save(order);
     }
-    
+
     @Override
     public List<OrderResponse> getAllOrders() {
         List<Order> orders = orderRepository.findAll();
@@ -134,20 +135,33 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus("CANCELLED BY ADMIN");
-        // order.setUpdatedAt(LocalDateTime.now()); // not needed, handled by @PreUpdate
         orderRepository.save(order);
     }
-    
+
     @Override
+    @Transactional
     public void updatePaymentStatus(Long orderId, String paymentId, String status) {
         Order order = orderRepository.findById(orderId)
-            .orElseThrow(() -> new RuntimeException("Order not found"));
+                .orElseThrow(() -> new RuntimeException("Order with ID " + orderId + " not found."));
 
-        order.setPaymentStatus(status);
-        order.setPaymentId(paymentId); // Add this field if not present in your entity
+        order.setPaymentId(paymentId);
+        order.setPaymentStatus(status.toUpperCase());
+        order.setUpdatedAt(LocalDateTime.now());
 
         orderRepository.save(order);
     }
-    
 
+    @Override
+    @Transactional
+    public void markAsCod(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order with ID " + orderId + " not found."));
+
+        order.setPaymentId("COD-" + orderId);
+        order.setPaymentStatus("COD");
+        order.setStatus("PLACED");
+        order.setUpdatedAt(LocalDateTime.now());
+
+        orderRepository.save(order);
+    }
 }

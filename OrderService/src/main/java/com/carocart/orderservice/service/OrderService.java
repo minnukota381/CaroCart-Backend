@@ -6,15 +6,19 @@ import com.carocart.orderservice.dto.OrderResponse;
 import java.util.List;
 
 public interface OrderService {
+
+    // --- User Functionality ---
     OrderResponse placeOrder(String token, OrderRequest orderRequest);
     List<OrderResponse> getOrdersForUser(String token);
     OrderResponse getOrderById(String token, Long orderId);
     void cancelOrder(String token, Long orderId);
-    
- // Admin-specific methods
+
+    // --- Admin Functionality ---
     List<OrderResponse> getAllOrders();
     OrderResponse getOrderByIdForAdmin(Long orderId);
     void cancelOrderByAdmin(Long orderId);
-	void updatePaymentStatus(Long orderId, String paymentId, String status);
 
+    // --- Payment Updates ---
+    void updatePaymentStatus(Long orderId, String paymentId, String status);  // For online/UPI/card payments
+    void markAsCod(Long orderId); // For Cash on Delivery
 }
