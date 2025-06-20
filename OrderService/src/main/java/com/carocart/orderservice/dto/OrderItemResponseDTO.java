@@ -3,13 +3,15 @@ package com.carocart.orderservice.dto;
 import com.carocart.orderservice.entity.OrderItem;
 
 public class OrderItemResponseDTO {
+
     private Long productId;
     private String productName;
     private Integer quantity;
     private Double price;
     private Double totalPrice;
 
-    public OrderItemResponseDTO() {}
+    public OrderItemResponseDTO() {
+    }
 
     public OrderItemResponseDTO(OrderItem item) {
         this.productId = item.getProductId();
@@ -19,8 +21,7 @@ public class OrderItemResponseDTO {
         this.totalPrice = item.getTotalPrice();
     }
 
-    // Getters and setters
-
+    // Getters and Setters
     public Long getProductId() {
         return productId;
     }

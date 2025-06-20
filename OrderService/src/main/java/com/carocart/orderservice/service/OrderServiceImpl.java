@@ -1,8 +1,11 @@
+// Updated: OrderServiceImpl.java with full address retrieval
+
 package com.carocart.orderservice.service;
 
 import com.carocart.orderservice.dto.*;
 import com.carocart.orderservice.entity.Order;
 import com.carocart.orderservice.entity.OrderItem;
+import com.carocart.orderservice.feign.AddressClient;
 import com.carocart.orderservice.feign.CartClient;
 import com.carocart.orderservice.feign.ProductClient;
 import com.carocart.orderservice.feign.UserClient;
@@ -13,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,16 +26,21 @@ public class OrderServiceImpl implements OrderService {
     private final ProductClient productClient;
     private final UserClient userClient;
 
+    private final AddressClient addressClient;
+
     @Autowired
     public OrderServiceImpl(OrderRepository orderRepository,
                             CartClient cartClient,
                             ProductClient productClient,
-                            UserClient userClient) {
+                            UserClient userClient,
+                            AddressClient addressClient) {
         this.orderRepository = orderRepository;
         this.cartClient = cartClient;
         this.productClient = productClient;
         this.userClient = userClient;
+        this.addressClient = addressClient;
     }
+
 
     @Override
     @Transactional
@@ -45,13 +52,19 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Cart is empty. Cannot place order.");
         }
 
+        // Fetch and format the shipping address
+        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), token);
+        String formattedAddress = address.toFormattedString(); // assume this method exists
+
+        // Create the order entity
         Order order = new Order();
         order.setUserId(user.getId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
-        order.setShippingAddress(orderRequest.getShippingAddress());
+        order.setShippingAddress(formattedAddress);
         order.setPaymentStatus("PENDING");
 
+        // Prepare order items
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
             OrderItem orderItem = new OrderItem();
@@ -75,6 +88,17 @@ public class OrderServiceImpl implements OrderService {
         cartClient.clearCart(token);
 
         return new OrderResponse(savedOrder);
+    }
+
+    private String formatAddress(AddressDTO address) {
+        return String.format("%s, %s, %s, %s, %s - %s (%s)",
+                address.getHouseNumber(),
+                address.getStreet(),
+                address.getCity(),
+                address.getState(),
+                address.getLandmark(),
+                address.getPincode(),
+                address.getAddressType());
     }
 
     @Override
@@ -129,8 +153,8 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found."));
 
-        if ("CANCELLED".equalsIgnoreCase(order.getStatus()) || 
-            "CANCELLED BY ADMIN".equalsIgnoreCase(order.getStatus())) {
+        if ("CANCELLED".equalsIgnoreCase(order.getStatus()) ||
+                "CANCELLED BY ADMIN".equalsIgnoreCase(order.getStatus())) {
             throw new RuntimeException("Order is already cancelled.");
         }
 

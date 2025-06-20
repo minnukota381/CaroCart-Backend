@@ -14,6 +14,8 @@ public class Product {
     private Long id;
 
     private String name;
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
     private String description;
     private String brand;
     private double price;

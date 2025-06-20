@@ -1,8 +1,6 @@
 package com.carocart.orderservice.dto;
 
 import com.carocart.orderservice.entity.Order;
-import com.carocart.orderservice.entity.OrderItem;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,23 +25,34 @@ public class OrderResponse {
         this.orderDate = order.getOrderDate();
         this.status = order.getStatus();
         this.shippingAddress = order.getShippingAddress();
-        this.orderItems = order.getOrderItems()
-                .stream()
+
+        this.orderItems = order.getOrderItems().stream()
                 .map(OrderItemResponseDTO::new)
                 .collect(Collectors.toList());
 
-        // Calculate subtotal from items
-        this.subtotal = orderItems.stream()
-                .mapToDouble(item -> item.getPrice() * item.getQuantity())
-                .sum();
-
-        // Example fixed values for demo purposes:
-        this.shipping = 30.0;
-        this.tax = subtotal * 0.05; // e.g. 5% tax
+        this.subtotal = calculateSubtotal();
+        this.shipping = calculateShipping();
+        this.tax = calculateTax();
         this.totalAmount = subtotal + shipping + tax;
     }
 
-    // Getters and setters
+    private double calculateSubtotal() {
+        return orderItems.stream()
+                .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                .sum();
+    }
+
+    private double calculateShipping() {
+//        return 30.0; /
+    	return 0; // Example flat rate; can be dynamic later
+    }
+
+    private double calculateTax() {
+//        return subtotal * 0.05; // Example 5% tax
+    	return 0;
+    }
+
+    // --- Getters and Setters ---
 
     public Long getOrderId() {
         return orderId;
