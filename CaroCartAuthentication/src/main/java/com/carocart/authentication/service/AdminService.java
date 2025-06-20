@@ -58,5 +58,18 @@ public class AdminService {
     public void save(Admin admin) {
         adminRepository.save(admin);
     }
+    public boolean changePassword(String email, String currentPassword, String newPassword) {
+        Optional<Admin> adminOpt = adminRepository.findByEmail(email);
+        if (adminOpt.isPresent()) {
+            Admin admin = adminOpt.get();
+            if (passwordEncoder.matches(currentPassword, admin.getPassword())) {
+                admin.setPassword(passwordEncoder.encode(newPassword));
+                adminRepository.save(admin);
+                return true;
+            }
+        }
+        return false;
+    }
+
 
 }

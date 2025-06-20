@@ -249,6 +249,28 @@ public class UserController {
         return new ResponseEntity<>(image, headers, HttpStatus.OK);
     }
     
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> passwordMap) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+
+        String token = authHeader.substring(7);
+        String email = jwtUtil.extractUsername(token);
+
+        String currentPassword = passwordMap.get("currentPassword");
+        String newPassword = passwordMap.get("newPassword");
+
+        boolean success = userService.changePassword(email, currentPassword, newPassword);
+
+        return success
+                ? ResponseEntity.ok("Password changed successfully")
+                : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Current password is incorrect");
+    }
+
     
 
 }

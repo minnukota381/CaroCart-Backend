@@ -172,5 +172,15 @@ public class VendorService {
         }
         return false;
     }
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        Vendor vendor = getVendorByEmail(email);
+        if (!passwordEncoder.matches(currentPassword, vendor.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        vendor.setPassword(passwordEncoder.encode(newPassword));
+        vendorRepository.save(vendor);
+    }
+
 
 }
