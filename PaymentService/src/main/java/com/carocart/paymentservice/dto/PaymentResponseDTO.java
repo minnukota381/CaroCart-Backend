@@ -7,6 +7,10 @@ public class PaymentResponseDTO {
     private String paymentId;
     private String status;
     private LocalDateTime timestamp;
+    
+    private String collectRequestId;
+    private String paymentLink;
+    private LocalDateTime expiryTime;
 
     public PaymentResponseDTO() {
     }
@@ -41,7 +45,32 @@ public class PaymentResponseDTO {
         this.timestamp = timestamp;
     }
 
-    @Override
+    
+    public String getCollectRequestId() {
+		return collectRequestId;
+	}
+
+	public void setCollectRequestId(String collectRequestId) {
+		this.collectRequestId = collectRequestId;
+	}
+
+	public String getPaymentLink() {
+		return paymentLink;
+	}
+
+	public void setPaymentLink(String paymentLink) {
+		this.paymentLink = paymentLink;
+	}
+
+	public LocalDateTime getExpiryTime() {
+		return expiryTime;
+	}
+
+	public void setExpiryTime(LocalDateTime expiryTime) {
+		this.expiryTime = expiryTime;
+	}
+
+	@Override
     public String toString() {
         return "PaymentResponseDTO{" +
                 "paymentId='" + paymentId + '\'' +

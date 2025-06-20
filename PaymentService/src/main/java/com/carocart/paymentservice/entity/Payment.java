@@ -6,18 +6,50 @@ import java.time.LocalDateTime;
 @Entity
 public class Payment {
 
-	 @Id
-	    @GeneratedValue(strategy = GenerationType.IDENTITY)
-	    private Long id;
-	 private Long orderId;
-	 private Long userId;
-	 private Double amount;
-	 private String paymentMethod;
-	 private String razorpayOrderId;
-	 private String razorpayPaymentId;
-	 private String razorpaySignature;
-	 private String status;
-	 private LocalDateTime transactionDate;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private Long orderId;
+    private Long userId;
+    private Double amount;
+    private String paymentMethod;
+    private String razorpayOrderId;
+    private String razorpayPaymentId;
+    private String razorpaySignature;
+    private String status;
+    private String upiTransactionId;
+
+    // New fields for UPI collect support
+    private String collectRequestId; // Razorpay Payment Link ID
+    private String upiId;
+    private LocalDateTime expiryTime;
+
+	 public String getCollectRequestId() {
+		return collectRequestId;
+	}
+	public void setCollectRequestId(String collectRequestId) {
+		this.collectRequestId = collectRequestId;
+	}
+	public String getUpiId() {
+		return upiId;
+	}
+	public void setUpiId(String upiId) {
+		this.upiId = upiId;
+	}
+	public LocalDateTime getExpiryTime() {
+		return expiryTime;
+	}
+	public void setExpiryTime(LocalDateTime expiryTime) {
+		this.expiryTime = expiryTime;
+	}
+	public String getUpiTransactionId() {
+		return upiTransactionId;
+	}
+	public void setUpiTransactionId(String upiTransactionId) {
+		this.upiTransactionId = upiTransactionId;
+	}
+	private LocalDateTime transactionDate;
 	 
 	 public Long getUserId() {
 		return userId;
