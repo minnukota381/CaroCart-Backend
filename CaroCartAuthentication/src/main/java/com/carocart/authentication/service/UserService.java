@@ -85,6 +85,23 @@ public class UserService {
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
+    public boolean changePassword(String email, String currentPassword, String newPassword) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+
+            // Match current password
+            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+                return false; // Current password incorrect
+            }
+
+            // Encode and update new password
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
 
 
 }

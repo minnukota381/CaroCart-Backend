@@ -168,5 +168,27 @@ public class VendorController {
             return ResponseEntity.badRequest().body("Vendor not found or could not be deleted");
         }
     }
+    
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+        @RequestHeader("Authorization") String token,
+        @RequestBody Map<String, String> passwords
+    ) {
+        String jwt = token.startsWith("Bearer ") ? token.substring(7) : token;
+        String email = jwtUtil.extractUsername(jwt);
+
+        String currentPassword = passwords.get("currentPassword");
+        String newPassword = passwords.get("newPassword");
+
+        try {
+            vendorService.changePassword(email, currentPassword, newPassword);
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("message", "An error occurred"));
+        }
+    }
+
 
 }

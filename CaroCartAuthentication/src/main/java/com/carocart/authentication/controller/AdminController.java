@@ -196,4 +196,27 @@ public class AdminController {
         headers.setContentType(MediaType.IMAGE_JPEG); // Or detect type dynamically
         return new ResponseEntity<>(image, headers, HttpStatus.OK);
     }
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> request) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+
+        String token = authHeader.substring(7);
+        String email = jwtUtil.extractUsername(token);
+
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        boolean success = adminService.changePassword(email, currentPassword, newPassword);
+        if (success) {
+            return ResponseEntity.ok("Password updated successfully");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Incorrect current password");
+        }
+    }
+
 }
