@@ -7,13 +7,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@FeignClient(name = "ORDER-SERVICE", url = "http://localhost:8084/orders")
-public interface OrderFeignClient {
+@FeignClient(
+	    name = "ORDER-SERVICE",
+	    url = "http://localhost:8084/orders",
+	    configuration = com.carocart.paymentservice.config.FeignClientConfig.class // ✅ ADD THIS
+	)
+	public interface OrderFeignClient {
+	    @GetMapping("/{orderId}")
+	    ResponseEntity<Map<String, Object>> getOrderById(@PathVariable("orderId") Long orderId);
 
-    @GetMapping("/{orderId}")
-    ResponseEntity<Map<String, Object>> getOrderById(@PathVariable("orderId") Long orderId);
+	    @PutMapping("/{orderId}/payment")
+	    ResponseEntity<String> updatePaymentStatus(@PathVariable("orderId") Long orderId,
+	                                               @RequestBody PaymentUpdateRequestDTO request);
+	}
 
-    @PutMapping("/{orderId}/payment")
-    ResponseEntity<String> updatePaymentStatus(@PathVariable("orderId") Long orderId,
-                                               @RequestBody PaymentUpdateRequestDTO request);
-}
