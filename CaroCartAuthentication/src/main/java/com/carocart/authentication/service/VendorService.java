@@ -1,5 +1,6 @@
 package com.carocart.authentication.service;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -8,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.carocart.authentication.entity.Vendor;
 import com.carocart.authentication.repository.VendorRepository;
@@ -84,7 +86,7 @@ public class VendorService {
 
         return jwtUtil.generateToken(
                 vendor.getEmail(),
-                "VENDOR", // or user.getRole() if dynamic
+                vendor.getRole(),
                 vendor.getFirstName(),
                 vendor.getLastName()
         );
@@ -102,7 +104,7 @@ public class VendorService {
         }
         return false;
     }
-    
+
     public boolean rejectVendor(Long vendorId) {
         Optional<Vendor> optionalVendor = vendorRepository.findById(vendorId);
         if (optionalVendor.isPresent()) {
@@ -114,21 +116,61 @@ public class VendorService {
         return false;
     }
 
-
     // Utility method: get vendor by ID
     public Optional<Vendor> getVendorById(Long id) {
         return vendorRepository.findById(id);
     }
-    
+
     public List<Vendor> getPendingVendors() {
         return vendorRepository.findByIsApprovedFalse();
     }
-    
+
     public List<Vendor> getAllVendors() {
         return vendorRepository.findAll();
     }
-    
+
     public Vendor getVendorByEmail(String email) {
         return vendorRepository.findByEmail(email).orElse(null);
     }
+
+    // Get vendor profile (by JWT email)
+    public Vendor getCurrentVendorProfile(String email) {
+        return vendorRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
+    }
+
+    // Update vendor profile (excluding email & password)
+    public Vendor updateVendorProfile(String email, Vendor updated) {
+        Vendor existing = getVendorByEmail(email);
+        existing.setFirstName(updated.getFirstName());
+        existing.setLastName(updated.getLastName());
+        existing.setCompanyName(updated.getCompanyName());
+        existing.setContactNumber(updated.getContactNumber());
+        existing.setGstNumber(updated.getGstNumber());
+        existing.setBusinessType(updated.getBusinessType());
+        existing.setBusinessAddress(updated.getBusinessAddress());
+        return vendorRepository.save(existing);
+    }
+
+    // Upload profile image
+    public void uploadProfileImage(String email, MultipartFile file) throws IOException {
+        Vendor vendor = getVendorByEmail(email);
+        vendor.setProfileImage(file.getBytes());
+        vendorRepository.save(vendor);
+    }
+
+    // Get profile image as byte[]
+    public byte[] getProfileImage(String email) {
+        Vendor vendor = getVendorByEmail(email);
+        return vendor.getProfileImage();
+    }
+    public boolean deleteVendorById(Long vendorId) {
+        Optional<Vendor> vendorOptional = vendorRepository.findById(vendorId);
+        if (vendorOptional.isPresent()) {
+            vendorRepository.deleteById(vendorId);
+            return true;
+        }
+        return false;
+    }
+
 }

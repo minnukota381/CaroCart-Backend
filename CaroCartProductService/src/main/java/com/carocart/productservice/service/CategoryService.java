@@ -12,5 +12,7 @@ public interface CategoryService {
     List<SubCategory> getSubCategoriesByCategoryId(Long categoryId);
     
     Category getCategoryById(Long id);
+    void deleteCategoryById(Long categoryId, String token);
+    void deleteSubCategoryById(Long subcategoryId, String token);
 
 }

@@ -68,10 +68,11 @@ public class ProductController {
     }
 
     // ✅ Get all products (public)
-    @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
-    }
+//    @GetMapping
+//    public ResponseEntity<List<Product>> getAllProducts() {
+//        return ResponseEntity.ok(productService.getAllProducts());
+//    }
+    
 
     // ✅ Get product by ID (public)
     @GetMapping("/{id}")
@@ -114,11 +115,9 @@ public class ProductController {
     }
     
     @GetMapping("/all")
-    public ResponseEntity<List<Product>> getAllProducts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Page<Product> productPage = productService.getAllProducts(PageRequest.of(page, size));
-        return ResponseEntity.ok(productPage.getContent());
+    public ResponseEntity<List<Product>> getAllProducts() {
+        return ResponseEntity.ok(productService.getAllProducts());
     }
+
 
 }
