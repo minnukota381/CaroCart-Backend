@@ -12,12 +12,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
+
 
 
 @Service
@@ -189,5 +193,58 @@ public class ProductServiceImpl implements ProductService {
     public Page<Product> getAllProducts(Pageable pageable) {
         return productRepository.findAll(pageable);
     }
+    @Override
+    public List<Product> searchAndFilterProducts(String keyword, Long categoryId, Long subCategoryId,
+                                                 Double minPrice, Double maxPrice, Boolean inStock,
+                                                 Boolean discounted, String sortBy, String sortDir) {
+        Specification<Product> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (keyword != null && !keyword.isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("name")), "%" + keyword.toLowerCase() + "%"));
+            }
+
+            if (categoryId != null) {
+                predicates.add(cb.equal(root.get("subCategory").get("category").get("id"), categoryId));
+            }
+
+            if (subCategoryId != null) {
+                predicates.add(cb.equal(root.get("subCategory").get("id"), subCategoryId));
+            }
+
+            if (minPrice != null) {
+                predicates.add(cb.ge(root.get("price"), minPrice));
+            }
+
+            if (maxPrice != null) {
+                predicates.add(cb.le(root.get("price"), maxPrice));
+            }
+
+            if (Boolean.TRUE.equals(inStock)) {
+                predicates.add(cb.and(
+                        cb.greaterThan(root.get("stock"), 0),
+                        cb.isTrue(root.get("isAvailable"))
+                ));
+            }
+
+            if (Boolean.TRUE.equals(discounted)) {
+                predicates.add(cb.gt(root.get("discount"), 0));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        return productRepository.findAll(spec, sort);
+    }
+    
+    @Override
+    public List<Product> getProductsByCategoryId(Long categoryId) {
+        return productRepository.findBySubCategory_Category_Id(categoryId);
+    }
+
 
 }
