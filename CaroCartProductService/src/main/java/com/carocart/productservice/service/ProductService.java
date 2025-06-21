@@ -21,5 +21,11 @@ public interface ProductService {
     List<Product> getProductsBySubCategory(Long subCategoryId);
     List<Product> getProductsByVendor(String token);
     Page<Product> getAllProducts(Pageable pageable);
+    List<Product> searchAndFilterProducts(String keyword, Long categoryId, Long subCategoryId,
+            Double minPrice, Double maxPrice, Boolean inStock,
+            Boolean discounted, String sortBy, String sortDir);
+	List<Product> getProductsByCategoryId(Long categoryId);
+
+
 
 }
