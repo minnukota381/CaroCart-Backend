@@ -118,6 +118,30 @@ public class ProductController {
     public ResponseEntity<List<Product>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
-
+    @GetMapping("/search")
+    public ResponseEntity<List<Product>> searchAndFilterProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long subCategoryId,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Boolean inStock,
+            @RequestParam(required = false) Boolean discounted,
+            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDir
+    ) {
+        List<Product> results = productService.searchAndFilterProducts(
+                keyword, categoryId, subCategoryId, minPrice, maxPrice,
+                inStock, discounted, sortBy, sortDir
+        );
+        return ResponseEntity.ok(results);
+    }
+    
+ // ✅ Add this in ProductController
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<List<Product>> getProductsByCategoryId(@PathVariable Long categoryId) {
+        List<Product> products = productService.getProductsByCategoryId(categoryId);
+        return ResponseEntity.ok(products);
+    }
 
 }
