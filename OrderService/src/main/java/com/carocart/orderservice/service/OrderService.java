@@ -21,4 +21,6 @@ public interface OrderService {
     // --- Payment Updates ---
     void updatePaymentStatus(Long orderId, String paymentId, String status);  // For online/UPI/card payments
     void markAsCod(Long orderId); // For Cash on Delivery
+    void markOrderAsShipped(Long orderId);
+
 }

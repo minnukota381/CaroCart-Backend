@@ -127,8 +127,8 @@ public class UserController {
 
         if (userOptional.isPresent()) {
             User user = userOptional.get();
-            UserDTO userDTO = new UserDTO(user.getId(), user.getEmail(), user.getRole());
-            return ResponseEntity.ok(userDTO);
+            UserDTO dto = new UserDTO(user.getId(), user.getEmail(), user.getRole(), user.getFirstName());
+            return ResponseEntity.ok( dto);
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
@@ -272,5 +272,18 @@ public class UserController {
     }
 
     
+  @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> getCurrentUserById(@PathVariable Long id) {
+        Optional<User> userOptional = userRepository.findById(id);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            // Pass firstName in constructor
+            UserDTO dto = new UserDTO(user.getId(), user.getEmail(), user.getRole(), user.getFirstName());
+            return ResponseEntity.ok(dto);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
 
+    
 }

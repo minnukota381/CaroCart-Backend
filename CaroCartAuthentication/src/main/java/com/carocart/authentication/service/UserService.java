@@ -1,8 +1,11 @@
 package com.carocart.authentication.service;
 
+import com.carocart.authentication.dto.EmailRequest;
 import com.carocart.authentication.entity.User;
+import com.carocart.authentication.feign.NotificationClient;
 import com.carocart.authentication.repository.UserRepository;
 import com.carocart.authentication.util.JwtUtil;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,12 +25,30 @@ public class UserService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private NotificationClient notificationClient;
+
     public String signup(User user) {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             return "Email already registered";
         }
+
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
+
+        // ✅ Send welcome email via Notification microservice
+        EmailRequest emailRequest = new EmailRequest();
+        emailRequest.setToEmail(user.getEmail());
+        emailRequest.setSubject("Welcome to CaroCart!");
+        emailRequest.setBody("Hi " + user.getFirstName() + ",\n\nThanks for registering at CaroCart.\nEnjoy shopping with us!");
+
+        try {
+            notificationClient.sendEmail(emailRequest); // Feign call
+        } catch (Exception e) {
+            // Log or handle error if needed
+            System.out.println("Error sending email: " + e.getMessage());
+        }
+
         return "User registered successfully";
     }
 
@@ -43,59 +64,40 @@ public class UserService {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
-
+        // Return JWT token
         return jwtUtil.generateToken(
                 user.getEmail(),
-                "USER", // or user.getRole() if dynamic
+                "USER", // Change if role is dynamic
                 user.getFirstName(),
                 user.getLastName()
         );
     }
-    
+
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
-    
+
     public boolean updateUserProfile(String email, User updatedUser) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
+
             user.setFirstName(updatedUser.getFirstName());
             user.setLastName(updatedUser.getLastName());
             user.setDob(updatedUser.getDob());
             user.setPhoneNumber(updatedUser.getPhoneNumber());
-            // update other editable fields as needed
+            // Add more fields if needed
+
             userRepository.save(user);
             return true;
         }
         return false;
     }
+
     public boolean updatePassword(String email, String newPassword) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-            user.setPassword(passwordEncoder.encode(newPassword)); // ✅ Encrypt new password
-            userRepository.save(user);
-            return true;
-        }
-        return false;
-    }
-
-    
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
-    }
-    public boolean changePassword(String email, String currentPassword, String newPassword) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-
-            // Match current password
-            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-                return false; // Current password incorrect
-            }
-
-            // Encode and update new password
             user.setPassword(passwordEncoder.encode(newPassword));
             userRepository.save(user);
             return true;
@@ -103,5 +105,23 @@ public class UserService {
         return false;
     }
 
+    public boolean changePassword(String email, String currentPassword, String newPassword) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
 
+            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+                return false;
+            }
+
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
 }

@@ -6,6 +6,8 @@ public class ProductDTO {
     private Double price;
     private Integer stock;
     private Boolean isAvailable;
+    private String vendorEmail; // ✅ NEW FIELD
+
 	public Long getId() {
 		return id;
 	}
@@ -35,6 +37,12 @@ public class ProductDTO {
 	}
 	public void setIsAvailable(Boolean isAvailable) {
 		this.isAvailable = isAvailable;
+	}
+	public String getVendorEmail() {
+		return vendorEmail;
+	}
+	public void setVendorEmail(String vendorEmail) {
+		this.vendorEmail = vendorEmail;
 	}
 
     // getters and setters

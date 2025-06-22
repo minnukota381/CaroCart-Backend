@@ -4,13 +4,16 @@ public class UserDTO {
     private Long id;
     private String email;
     private String role;
+    private String firstName;  // ✅ Add this field
 
     public UserDTO() {}
 
-    public UserDTO(Long id, String email, String role) {
+    // ✅ Updated constructor
+    public UserDTO(Long id, String email, String role, String firstName) {
         this.id = id;
         this.email = email;
         this.role = role;
+        this.firstName = firstName;
     }
 
     public Long getId() { return id; }
@@ -21,4 +24,7 @@ public class UserDTO {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
 }

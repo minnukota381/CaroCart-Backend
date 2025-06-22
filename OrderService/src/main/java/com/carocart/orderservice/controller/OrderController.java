@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/orders")
@@ -47,7 +46,6 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
-    
     @DeleteMapping("/cancel/{orderId}")
     public ResponseEntity<String> cancelOrder(@PathVariable Long orderId,
                                               @RequestHeader("Authorization") String token) {
@@ -59,7 +57,7 @@ public class OrderController {
     public ResponseEntity<String> updatePaymentStatus(@PathVariable Long orderId,
                                                       @RequestBody PaymentUpdateRequestDTO request) {
         if (request.getPaymentId() == null || request.getPaymentId().isBlank()
-            || request.getStatus() == null || request.getStatus().isBlank()) {
+                || request.getStatus() == null || request.getStatus().isBlank()) {
             return ResponseEntity.badRequest().body("Payment ID and status must not be blank");
         }
 
@@ -73,8 +71,6 @@ public class OrderController {
         }
     }
 
-
-    // Cash On Delivery
     @PutMapping("/{orderId}/cod")
     public ResponseEntity<String> markOrderAsCod(@PathVariable Long orderId) {
         try {
@@ -87,7 +83,6 @@ public class OrderController {
         }
     }
 
-    // Debug Token
     @GetMapping("/debug/token")
     public ResponseEntity<String> debugToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
@@ -112,5 +107,11 @@ public class OrderController {
     public ResponseEntity<String> cancelOrderByAdmin(@PathVariable Long orderId) {
         orderService.cancelOrderByAdmin(orderId);
         return ResponseEntity.ok("Order cancelled by Admin successfully.");
+    }
+
+    @PutMapping("/admin/orders/{orderId}/ship")
+    public ResponseEntity<String> shipOrder(@PathVariable Long orderId) {
+        orderService.markOrderAsShipped(orderId);
+        return ResponseEntity.ok("Order marked as shipped.");
     }
 }
