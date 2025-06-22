@@ -117,9 +117,10 @@ public class VendorService {
     }
 
     // Utility method: get vendor by ID
-    public Optional<Vendor> getVendorById(Long id) {
-        return vendorRepository.findById(id);
+    public Vendor getVendorById(Long id) {
+        return vendorRepository.findById(id).orElse(null);
     }
+
 
     public List<Vendor> getPendingVendors() {
         return vendorRepository.findByIsApprovedFalse();
@@ -181,6 +182,6 @@ public class VendorService {
         vendor.setPassword(passwordEncoder.encode(newPassword));
         vendorRepository.save(vendor);
     }
-
-
 }
+
+

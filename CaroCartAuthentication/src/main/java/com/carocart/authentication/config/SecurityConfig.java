@@ -50,6 +50,7 @@ public class SecurityConfig {
                 .requestMatchers("/admins/me").hasRole("ADMIN")
                 .requestMatchers("/users/admin/users/all").hasRole("ADMIN")
                 .requestMatchers("/users/admin/users/{id}").hasRole("ADMIN")
+                .requestMatchers("/users/{id}").hasAnyRole("USER", "ADMIN")
 
                 .requestMatchers("/vendors/admin/**").hasRole("ADMIN")
 

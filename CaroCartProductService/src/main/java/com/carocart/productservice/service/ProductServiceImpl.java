@@ -155,12 +155,8 @@ public class ProductServiceImpl implements ProductService {
             return productRepository.save(product);
         }).orElse(null);
     }
-
-    @Override
-    public List<Product> getProductsBySubCategory(Long subCategoryId) {
-        return productRepository.findBySubCategoryId(subCategoryId);
-    }
-
+    
+    
     @Override
     public ProductDTO getProductDTOById(Long id) {
         Product product = productRepository.findById(id)
@@ -177,8 +173,24 @@ public class ProductServiceImpl implements ProductService {
         dto.setStock(product.getStock());
         dto.setIsAvailable(Boolean.TRUE.equals(product.getIsAvailable()));
 
+        // ✅ Set vendor email if addedByRole is VENDOR
+        if ("VENDOR".equals(product.getAddedByRole()) && product.getAddedById() != null) {
+            try {
+                VendorDTO vendor = vendorClient.getVendorById(product.getAddedById());
+                dto.setVendorEmail(vendor.getEmail());
+            } catch (Exception e) {
+                dto.setVendorEmail(null); // fallback if not found or error
+            }
+        }
+
         return dto;
     }
+
+    @Override
+    public List<Product> getProductsBySubCategory(Long subCategoryId) {
+        return productRepository.findBySubCategoryId(subCategoryId);
+    }
+
 
     @Override
     public List<Product> getProductsByVendor(String token) {

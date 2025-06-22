@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.carocart.Notifications</groupId>
+    <groupId>com.carocart.notifications</groupId>
     <artifactId>CaroCartNotifications</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>CaroCartNotifications</name>
@@ -34,7 +34,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
-
+<dependency>
+		  <groupId>org.springframework.cloud</groupId>
+		  <artifactId>spring-cloud-starter-openfeign</artifactId>
+		</dependency>
         <!-- ✅ Eureka client -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -74,6 +77,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            
         </dependencies>
     </dependencyManagement>
 
