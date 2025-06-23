@@ -9,6 +9,7 @@ public class ProductDTO {
     private int stock;  // added stock field
     private boolean isAvailable;
 
+    private String vendorEmail; // ✅ Add this
 
     // Getters and Setters
 
@@ -67,4 +68,13 @@ public class ProductDTO {
 	public void setIsAvailable(boolean isAvailable) {
 		this.isAvailable = isAvailable;
 	}
+
+	public String getVendorEmail() {
+		return vendorEmail;
+	}
+
+	public void setVendorEmail(String vendorEmail) {
+		this.vendorEmail = vendorEmail;
+	}
+	
 }

@@ -189,6 +189,30 @@ public class VendorController {
             return ResponseEntity.status(500).body(Map.of("message", "An error occurred"));
         }
     }
+    
+ // --- Internal: Get vendor by ID (used by ProductService/OrderService via Feign) ---
+    @GetMapping("/{id}")
+    public ResponseEntity<VendorResponseDTO> getVendorById(@PathVariable Long id) {
+        Vendor vendor = vendorService.getVendorById(id);
+        if (vendor == null || !vendor.isApproved()) {
+            return ResponseEntity.status(404).body(null);
+        }
+
+        VendorResponseDTO dto = new VendorResponseDTO();
+        dto.setId(vendor.getId());
+        dto.setFirstName(vendor.getFirstName());
+        dto.setLastName(vendor.getLastName());
+        dto.setEmail(vendor.getEmail());
+        dto.setRole("VENDOR");
+        dto.setCompanyName(vendor.getCompanyName());
+        dto.setContactNumber(vendor.getContactNumber());
+        dto.setGstNumber(vendor.getGstNumber());
+        dto.setBusinessType(vendor.getBusinessType());
+        dto.setBusinessAddress(vendor.getBusinessAddress());
+        dto.setProfileImage(vendor.getProfileImage());
+        return ResponseEntity.ok(dto);
+    }
+
 
 
 }
