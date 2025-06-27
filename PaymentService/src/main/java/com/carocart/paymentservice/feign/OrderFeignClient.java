@@ -1,23 +1,26 @@
 package com.carocart.paymentservice.feign;
 
-import com.carocart.paymentservice.dto.PaymentUpdateRequestDTO;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import com.razorpay.*;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
-import java.util.Map;
+@Service
+public class OrderFeignClient {
 
-@FeignClient(
-	    name = "ORDER-SERVICE",
-	    url = "http://localhost:8084/orders",
-	    configuration = com.carocart.paymentservice.config.FeignClientConfig.class // ✅ ADD THIS
-	)
-	public interface OrderFeignClient {
-	    @GetMapping("/{orderId}")
-	    ResponseEntity<Map<String, Object>> getOrderById(@PathVariable("orderId") Long orderId);
+    @Value("${razorpay.keyId}")
+    private String keyId;
 
-	    @PutMapping("/{orderId}/payment")
-	    ResponseEntity<String> updatePaymentStatus(@PathVariable("orderId") Long orderId,
-	                                               @RequestBody PaymentUpdateRequestDTO request);
-	}
+    @Value("${razorpay.keySecret}")
+    private String keySecret;
 
+    public Order createOrder(Double amount) throws RazorpayException {
+        RazorpayClient razorpayClient = new RazorpayClient(keyId, keySecret);
+        JSONObject orderRequest = new JSONObject();
+        orderRequest.put("amount", (int) (amount * 100));
+        orderRequest.put("currency", "INR");
+        orderRequest.put("receipt", "txn_rcptid_" + System.currentTimeMillis());
+        orderRequest.put("payment_capture", true);
+        return razorpayClient.orders.create(orderRequest);
+    }
+}

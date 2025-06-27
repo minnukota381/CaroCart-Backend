@@ -5,6 +5,7 @@ public class ManualUpiPaymentRequest {
     private Long userId;
     private Double amount;
     private String upiTransactionId;
+    // Getters and Setters
 	public Long getOrderId() {
 		return orderId;
 	}

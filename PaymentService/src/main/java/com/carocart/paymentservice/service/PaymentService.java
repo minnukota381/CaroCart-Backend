@@ -1,18 +1,14 @@
 package com.carocart.paymentservice.service;
 
-import com.carocart.paymentservice.dto.PaymentVerificationRequest;
 import com.carocart.paymentservice.dto.PaymentResponseDTO;
+import com.carocart.paymentservice.dto.PaymentVerificationRequest;
+import com.carocart.paymentservice.dto.RazorpaySuccessResponse;
 
 public interface PaymentService {
-    
-    // For processing Razorpay payments (with signature verification)
-    PaymentResponseDTO processPayment(PaymentVerificationRequest request);
-
-    // For recording manual UPI payments
+    RazorpaySuccessResponse createRazorpayOrder(Long orderId);
+    void verifyAndSavePayment(PaymentVerificationRequest request);
     PaymentResponseDTO recordManualUpiPayment(Long orderId, Long userId, Double amount, String upiTransactionId);
-
-    // For issuing refunds
     String refundPayment(String razorpayPaymentId, double amount);
-    
-    PaymentResponseDTO requestUpiCollect(Long orderId, String upiId);
+    PaymentResponseDTO generateUpiCollectRequest(Long orderId, String upiId);
+    PaymentResponseDTO checkStatus(String paymentId);
 }

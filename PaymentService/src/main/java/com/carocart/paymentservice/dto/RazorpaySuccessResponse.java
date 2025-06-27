@@ -1,21 +1,50 @@
 package com.carocart.paymentservice.dto;
 
 public class RazorpaySuccessResponse {
-    private Long orderId; // internal backend order ID
     private String razorpayOrderId;
-    private String paymentId;
-    private String signature;
+    private int amount;
+    private String currency;
+    private String razorpayKey;
+    // Constructors, Getters, Setters
 
-    // Getters and Setters
-    public Long getOrderId() { return orderId; }
-    public void setOrderId(Long orderId) { this.orderId = orderId; }
 
-    public String getRazorpayOrderId() { return razorpayOrderId; }
-    public void setRazorpayOrderId(String razorpayOrderId) { this.razorpayOrderId = razorpayOrderId; }
 
-    public String getPaymentId() { return paymentId; }
-    public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
+    public RazorpaySuccessResponse(String razorpayOrderId, int amount, String currency, String razorpayKey) {
+        this.razorpayOrderId = razorpayOrderId;
+        this.amount = amount;
+        this.currency = currency;
+        this.razorpayKey = razorpayKey;
+    }
 
-    public String getSignature() { return signature; }
-    public void setSignature(String signature) { this.signature = signature; }
+    public String getRazorpayOrderId() {
+        return razorpayOrderId;
+    }
+
+    public void setRazorpayOrderId(String razorpayOrderId) {
+        this.razorpayOrderId = razorpayOrderId;
+    }
+
+    public int getAmount() {
+        return amount;
+    }
+
+    public void setAmount(int amount) {
+        this.amount = amount;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    public String getRazorpayKey() {
+        return razorpayKey;
+    }
+
+    public void setRazorpayKey(String razorpayKey) {
+        this.razorpayKey = razorpayKey;
+    }
 }

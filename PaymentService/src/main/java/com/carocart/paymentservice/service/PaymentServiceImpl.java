@@ -1,189 +1,131 @@
-// Updated PaymentServiceImpl with UPI Collect support
 package com.carocart.paymentservice.service;
 
-import com.carocart.paymentservice.dto.PaymentVerificationRequest;
-import com.carocart.paymentservice.dto.PaymentResponseDTO;
+import com.carocart.paymentservice.dto.*;
 import com.carocart.paymentservice.entity.Payment;
+import com.carocart.paymentservice.feign.OrderFeignClient;
 import com.carocart.paymentservice.repository.PaymentRepository;
-import com.razorpay.PaymentLink;
+import com.carocart.paymentservice.util.PaymentValidator;
+import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
-import com.razorpay.Refund;
-import com.razorpay.Utils;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.util.Map;
 import java.util.Optional;
-import jakarta.annotation.PostConstruct;
+import java.util.UUID;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
-
-    private final PaymentRepository paymentRepository;
-    private final PaymentValidator paymentValidator;
-
-    @Value("${razorpay.key_id}")
+    @Value("${razorpay.key}")
     private String razorpayKey;
 
-    @Value("${razorpay.key_secret}")
+    @Value("${razorpay.secret}")
     private String razorpaySecret;
 
-    private RazorpayClient razorpayClient;
+    private final PaymentRepository paymentRepo;
+    private final PaymentValidator validator;
+    private final OrderFeignClient orderClient;
 
-    @Autowired
-    public PaymentServiceImpl(PaymentRepository paymentRepository, PaymentValidator paymentValidator) {
-        this.paymentRepository = paymentRepository;
-        this.paymentValidator = paymentValidator;
+    public PaymentServiceImpl(PaymentRepository paymentRepo, PaymentValidator validator, OrderFeignClient orderClient) {
+        this.paymentRepo = paymentRepo;
+        this.validator = validator;
+        this.orderClient = orderClient;
     }
 
-    @PostConstruct
-    public void init() {
+    @Override
+    public RazorpaySuccessResponse createRazorpayOrder(Long orderId) {
+        // Validate orderId and fetch totalAmount
+        ResponseEntity<Map<String, Object>> orderResponse = orderClient.getOrderById(orderId);
+        if (!orderResponse.getStatusCode().is2xxSuccessful()) throw new RuntimeException("Order not found");
+
+        Double amount = Double.parseDouble(orderResponse.getBody().get("totalAmount").toString());
+        int amountInPaise = (int) (amount * 100);
+
         try {
-            this.razorpayClient = new RazorpayClient(razorpayKey, razorpaySecret);
+            RazorpayClient client = new RazorpayClient(razorpayKey, razorpaySecret);
+            JSONObject orderRequest = new JSONObject();
+            orderRequest.put("amount", amountInPaise);
+            orderRequest.put("currency", "INR");
+            orderRequest.put("receipt", "order_rcptid_" + orderId);
+            orderRequest.put("payment_capture", true);
+            Order razorpayOrder = client.orders.create(orderRequest);
+
+            Payment payment = new Payment();
+            payment.setOrderId(orderId);
+            payment.setAmount(amount);
+            payment.setStatus("CREATED");
+            payment.setPaymentId(razorpayOrder.get("id"));
+            paymentRepo.save(payment);
+
+            return new RazorpaySuccessResponse(
+                razorpayOrder.get("id"), amountInPaise, "INR", razorpayKey);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize Razorpay client", e);
+            throw new RuntimeException("Razorpay order creation failed: " + e.getMessage());
         }
     }
 
     @Override
-    public PaymentResponseDTO processPayment(PaymentVerificationRequest request) {
-        paymentValidator.validate(request);
+    public void verifyAndSavePayment(PaymentVerificationRequest request) {
+        boolean isValid = validator.verifySignature(
+            request.getRazorpayOrderId(),
+            request.getRazorpayPaymentId(),
+            request.getRazorpaySignature(),
+            razorpaySecret);
 
-        if (!verifySignature(request)) {
-            throw new RuntimeException("Invalid Razorpay signature. Payment verification failed.");
-        }
+        if (!isValid) throw new RuntimeException("Invalid Razorpay signature");
 
-        if (paymentRepository.existsByRazorpayPaymentId(request.getRazorpayPaymentId())) {
-            throw new RuntimeException("Payment already recorded.");
-        }
+        Payment payment = paymentRepo.findByOrderId(request.getOrderId())
+                .orElseThrow(() -> new RuntimeException("Payment record not found"));
 
-        Payment payment = new Payment();
-        payment.setOrderId(request.getOrderId());
-        payment.setUserId(request.getUserId());
-        payment.setAmount(request.getAmount());
-        payment.setPaymentMethod(request.getPaymentMethod());
-        payment.setRazorpayOrderId(request.getRazorpayOrderId());
-        payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
-        payment.setRazorpaySignature(request.getRazorpaySignature());
-        payment.setStatus("PAID");
-        payment.setTransactionDate(LocalDateTime.now());
+        payment.setStatus("SUCCESS");
+        payment.setPaymentId(request.getRazorpayPaymentId());
+        paymentRepo.save(payment);
 
-        Payment saved = paymentRepository.save(payment);
-
-        return new PaymentResponseDTO(
-            saved.getId().toString(),
-            saved.getStatus(),
-            saved.getTransactionDate()
-        );
-    }
-
-    private boolean verifySignature(PaymentVerificationRequest request) {
-        try {
-            String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
-            return Utils.verifySignature(payload, request.getRazorpaySignature(), razorpaySecret);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
+        orderClient.updatePaymentStatus(request.getOrderId(),
+            new PaymentUpdateRequestDTO(request.getRazorpayPaymentId(), "PAID"));
     }
 
     @Override
     public PaymentResponseDTO recordManualUpiPayment(Long orderId, Long userId, Double amount, String upiTxnId) {
-        if (upiTxnId == null || upiTxnId.trim().isEmpty()) {
-            throw new IllegalArgumentException("UPI Transaction ID is required.");
-        }
-
         Payment payment = new Payment();
         payment.setOrderId(orderId);
         payment.setUserId(userId);
         payment.setAmount(amount);
-        payment.setUpiTransactionId(upiTxnId);
+        payment.setPaymentId("manual-upi-" + UUID.randomUUID());
         payment.setPaymentMethod("MANUAL_UPI");
         payment.setStatus("PENDING");
-        payment.setTransactionDate(LocalDateTime.now());
+        paymentRepo.save(payment);
 
-        Payment saved = paymentRepository.save(payment);
-
-        return new PaymentResponseDTO(
-            saved.getId().toString(),
-            saved.getStatus(),
-            saved.getTransactionDate()
-        );
+        return new PaymentResponseDTO(payment.getPaymentId(), orderId, upiTxnId, payment.getStatus(), payment.getUpdatedAt());
     }
 
     @Override
-    public String refundPayment(String razorpayPaymentId, double refundAmount) {
+    public String refundPayment(String paymentId, double amount) {
         try {
+            RazorpayClient client = new RazorpayClient(razorpayKey, razorpaySecret);
             JSONObject refundRequest = new JSONObject();
-            refundRequest.put("amount", Math.round(refundAmount * 100));
-
-            Refund refund = razorpayClient.payments.refund(razorpayPaymentId, refundRequest);
-
-            Optional<Payment> optionalPayment = paymentRepository.findByRazorpayPaymentId(razorpayPaymentId);
-            if (optionalPayment.isPresent()) {
-                Payment payment = optionalPayment.get();
-                payment.setStatus("REFUNDED");
-                paymentRepository.save(payment);
-            }
-
-            return "Refund initiated: " + refund.get("id");
+            refundRequest.put("amount", (int)(amount * 100));
+            client.payments.refund(paymentId, refundRequest);
+            return "Refund initiated";
         } catch (Exception e) {
-            e.printStackTrace();
-            return "Refund failed: " + e.getMessage();
+            throw new RuntimeException("Refund failed: " + e.getMessage());
         }
     }
 
     @Override
-    public PaymentResponseDTO requestUpiCollect(Long orderId, String upiId) {
-        try {
-            long expiryEpoch = (System.currentTimeMillis() / 1000) + 300;
-            long amountInPaise = 10000; // Replace with actual logic to fetch order amount
+    public PaymentResponseDTO generateUpiCollectRequest(Long orderId, String upiId) {
+        // Simulated UPI collect
+        return new PaymentResponseDTO("COLLECT-" + UUID.randomUUID(), orderId, upiId, "PENDING", null);
+    }
 
-            JSONObject request = new JSONObject();
-            request.put("amount", amountInPaise);
-            request.put("currency", "INR");
-            request.put("accept_partial", false);
-            request.put("expire_by", expiryEpoch);
-            request.put("reference_id", "UPI_COLLECT_" + orderId);
-            request.put("description", "Collect request for CaroCart order");
-
-            JSONObject customer = new JSONObject();
-            customer.put("contact", "9999999999");
-            customer.put("email", "user@example.com");
-            request.put("customer", customer);
-
-            request.put("notify", new JSONObject().put("email", true).put("sms", true));
-            request.put("callback_method", "get");
-
-            PaymentLink paymentLink = razorpayClient.paymentLink.create(request);
-
-            Payment payment = new Payment();
-            payment.setOrderId(orderId);
-            payment.setUpiId(upiId);
-            payment.setCollectRequestId(paymentLink.get("id"));
-            payment.setPaymentMethod("UPI_COLLECT");
-            payment.setStatus("PENDING");
-            payment.setAmount(amountInPaise / 100.0);
-            payment.setExpiryTime(LocalDateTime.ofInstant(Instant.ofEpochSecond(expiryEpoch), ZoneId.systemDefault()));
-            payment.setTransactionDate(LocalDateTime.now());
-
-            Payment saved = paymentRepository.save(payment);
-
-            PaymentResponseDTO dto = new PaymentResponseDTO();
-            dto.setPaymentId(saved.getId().toString());
-            dto.setStatus(saved.getStatus());
-            dto.setTimestamp(saved.getTransactionDate());
-            dto.setCollectRequestId(saved.getCollectRequestId());
-            dto.setPaymentLink((String) paymentLink.get("short_url"));
-            dto.setExpiryTime(saved.getExpiryTime());
-
-            return dto;
-        } catch (Exception e) {
-            throw new RuntimeException("UPI collect request failed: " + e.getMessage(), e);
-        }
+    @Override
+    public PaymentResponseDTO checkStatus(String paymentId) {
+        Payment payment = paymentRepo.findByPaymentId(paymentId).orElseThrow(() ->
+                new RuntimeException("Payment not found"));
+        return new PaymentResponseDTO(payment.getPaymentId(), payment.getOrderId(),
+                payment.getUpiTransactionId(), payment.getStatus(), payment.getUpdatedAt());
     }
 }
