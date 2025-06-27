@@ -3,6 +3,7 @@ package com.carocart.paymentservice.dto;
 public class PaymentUpdateRequestDTO {
     private String paymentId;
     private String status;
+    // Getters and Setters
 
     public String getPaymentId() {
         return paymentId;
