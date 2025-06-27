@@ -6,7 +6,7 @@ import java.util.List;
 public class OrderResponse {
     private Long orderId;
     private Long userId;
-    private LocalDateTime orderDate;
+    private LocalDateTime orderDate; 
     private String status;
     private Double totalAmount;
     private String shippingAddress;
