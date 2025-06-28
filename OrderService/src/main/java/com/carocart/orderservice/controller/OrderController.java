@@ -114,4 +114,12 @@ public class OrderController {
         orderService.markOrderAsShipped(orderId);
         return ResponseEntity.ok("Order marked as shipped.");
     }
+    
+ // For admin dashboard stats: total order count
+    @GetMapping("/admin/orders/count")
+    public ResponseEntity<Long> getTotalOrdersCount() {
+        long count = orderService.getTotalOrdersCount();
+        return ResponseEntity.ok(count);
+    }
+
 }

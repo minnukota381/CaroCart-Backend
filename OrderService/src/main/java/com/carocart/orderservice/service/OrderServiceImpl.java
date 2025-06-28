@@ -239,4 +239,9 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
         sendOrderShippedEmails(order);
     }
+    
+    @Override
+    public long getTotalOrdersCount() {
+        return orderRepository.count();
+    }
 }
