@@ -143,5 +143,13 @@ public class ProductController {
         List<Product> products = productService.getProductsByCategoryId(categoryId);
         return ResponseEntity.ok(products);
     }
+    
+ // Add this method at the end of your ProductController
 
+ // ✅ Get total products count
+	 @GetMapping("/count")
+	 public ResponseEntity<Long> getProductsCount() {
+	     long count = productService.countAllProducts(); // You should implement this in your service/repo
+	     return ResponseEntity.ok(count);
+	 }
 }

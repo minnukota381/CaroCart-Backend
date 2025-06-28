@@ -258,5 +258,8 @@ public class ProductServiceImpl implements ProductService {
         return productRepository.findBySubCategory_Category_Id(categoryId);
     }
 
+    public long countAllProducts() {
+        return productRepository.count();
+    }
 
 }

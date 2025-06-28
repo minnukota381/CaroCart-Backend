@@ -26,6 +26,6 @@ public interface ProductService {
             Boolean discounted, String sortBy, String sortDir);
 	List<Product> getProductsByCategoryId(Long categoryId);
 
-
+	long countAllProducts();
 
 }

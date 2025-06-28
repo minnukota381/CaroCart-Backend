@@ -48,11 +48,15 @@ public class SecurityConfig {
                     "/vendors/login"
                 ).permitAll()
                 .requestMatchers("/admins/me").hasRole("ADMIN")
+                
                 .requestMatchers("/users/admin/users/all").hasRole("ADMIN")
+                .requestMatchers("/users/admin/users/count").hasRole("ADMIN")
                 .requestMatchers("/users/admin/users/{id}").hasRole("ADMIN")
                 .requestMatchers("/users/{id}").hasAnyRole("USER", "ADMIN")
 
                 .requestMatchers("/vendors/admin/**").hasRole("ADMIN")
+                .requestMatchers("/vendors/admin/vendors/count").hasRole("ADMIN")
+
 
                 .requestMatchers(
                     "/admins/profile/upload-image",

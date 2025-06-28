@@ -169,6 +169,14 @@ public class VendorController {
         }
     }
     
+ // ✅ Get total vendor count (for admin dashboard/stat card)
+    @GetMapping("/admin/vendors/count")
+    public ResponseEntity<Long> getTotalVendors() {
+        long count = vendorRepository.count();
+        return ResponseEntity.ok(count);
+    }
+
+    
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
         @RequestHeader("Authorization") String token,

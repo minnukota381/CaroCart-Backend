@@ -82,6 +82,14 @@ public class UserController {
         }
         return ResponseEntity.badRequest().body("Update failed");
     }
+    
+ // Get total users count (ADMIN only)
+    @GetMapping("/admin/users/count")
+    public ResponseEntity<Long> getUserCount() {
+        long count = userRepository.count();
+        return ResponseEntity.ok(count);
+    }
+
 
     @GetMapping("/admin/users/all")
     public ResponseEntity<List<User>> getAllUsers() {
