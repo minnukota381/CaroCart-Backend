@@ -50,82 +50,82 @@ public class PaymentController {
     }
 
     // ✅ Create Razorpay Order
-    @GetMapping("/create-order")
-    public ResponseEntity<?> createOrder(@RequestParam Long orderId) {
-        try {
-            ResponseEntity<Map<String, Object>> response = orderFeignClient.getOrderById(orderId);
+//    @GetMapping("/create-order")
+//    public ResponseEntity<?> createOrder(@RequestParam Long orderId) {
+//        try {
+//            ResponseEntity<Map<String, Object>> response = orderFeignClient.getOrderById(orderId);
+//
+//            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+//                return ResponseEntity.badRequest().body("Invalid orderId or order not found.");
+//            }
+//
+//            Map<String, Object> order = response.getBody();
+//            Double amount = Double.parseDouble(order.get("totalAmount").toString());
+//            Long amountInPaise = Math.round(amount * 100);
+//
+//            JSONObject options = new JSONObject();
+//            options.put("amount", amountInPaise);
+//            options.put("currency", "INR");
+//            options.put("receipt", "order_rcptid_" + orderId);
+//            options.put("payment_capture", 1);
+//
+//            Order razorpayOrder = razorpayClient.orders.create(options);
+//
+//            Map<String, Object> responseBody = new HashMap<>();
+//            responseBody.put("id", razorpayOrder.get("id"));
+//            responseBody.put("currency", razorpayOrder.get("currency"));
+//            responseBody.put("amount", razorpayOrder.get("amount"));
+//            responseBody.put("key", razorpayKey);
+//            responseBody.put("orderId", orderId);
+//
+//            return ResponseEntity.ok(responseBody);
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body("Failed to create Razorpay order: " + e.getMessage());
+//        }
+//    }
 
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                return ResponseEntity.badRequest().body("Invalid orderId or order not found.");
-            }
-
-            Map<String, Object> order = response.getBody();
-            Double amount = Double.parseDouble(order.get("totalAmount").toString());
-            Long amountInPaise = Math.round(amount * 100);
-
-            JSONObject options = new JSONObject();
-            options.put("amount", amountInPaise);
-            options.put("currency", "INR");
-            options.put("receipt", "order_rcptid_" + orderId);
-            options.put("payment_capture", 1);
-
-            Order razorpayOrder = razorpayClient.orders.create(options);
-
-            Map<String, Object> responseBody = new HashMap<>();
-            responseBody.put("id", razorpayOrder.get("id"));
-            responseBody.put("currency", razorpayOrder.get("currency"));
-            responseBody.put("amount", razorpayOrder.get("amount"));
-            responseBody.put("key", razorpayKey);
-            responseBody.put("orderId", orderId);
-
-            return ResponseEntity.ok(responseBody);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to create Razorpay order: " + e.getMessage());
-        }
-    }
-
-    // ✅ Razorpay Payment Verification & Save
-    @PostMapping("/verify-and-update")
-    public ResponseEntity<?> verifyPayment(@RequestBody PaymentVerificationRequest request) {
-        try {
-            String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
-            String expectedSignature = hmacSha256(payload, razorpaySecret);
-
-            if (!expectedSignature.equals(request.getRazorpaySignature())) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid Razorpay signature.");
-            }
-
-            // Save payment
-            Payment payment = new Payment();
-            payment.setOrderId(request.getOrderId());
-            payment.setUserId(request.getUserId());
-            payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
-            payment.setRazorpayOrderId(request.getRazorpayOrderId());
-            payment.setRazorpaySignature(request.getRazorpaySignature());
-            payment.setAmount(request.getAmount() / 100.0); // Convert paise to rupees
-            payment.setStatus("PAID");
-            payment.setPaymentMethod(request.getPaymentMethod());
-            payment.setTransactionDate(LocalDateTime.now());
-
-            paymentRepository.save(payment);
-
-            // Update order status
-            PaymentUpdateRequestDTO updateRequest = new PaymentUpdateRequestDTO();
-            updateRequest.setStatus("PAID");
-            updateRequest.setPaymentId(request.getRazorpayPaymentId());
-
-            orderFeignClient.updatePaymentStatus(request.getOrderId(), updateRequest);
-
-            return ResponseEntity.ok("Payment verified and saved.");
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Payment verification failed: " + e.getMessage());
-        }
-    }
+//    // ✅ Razorpay Payment Verification & Save
+//    @PostMapping("/verify-and-update")
+//    public ResponseEntity<?> verifyPayment(@RequestBody PaymentVerificationRequest request) {
+//        try {
+//            String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
+//            String expectedSignature = hmacSha256(payload, razorpaySecret);
+//
+//            if (!expectedSignature.equals(request.getRazorpaySignature())) {
+//                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid Razorpay signature.");
+//            }
+//
+//            // Save payment
+//            Payment payment = new Payment();
+//            payment.setOrderId(request.getOrderId());
+//            payment.setUserId(request.getUserId());
+//            payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
+//            payment.setRazorpayOrderId(request.getRazorpayOrderId());
+//            payment.setRazorpaySignature(request.getRazorpaySignature());
+//            payment.setAmount(request.getAmount() / 100.0); // Convert paise to rupees
+//            payment.setStatus("PAID");
+//            payment.setPaymentMethod(request.getPaymentMethod());
+//            payment.setTransactionDate(LocalDateTime.now());
+//
+//            paymentRepository.save(payment);
+//
+//            // Update order status
+//            PaymentUpdateRequestDTO updateRequest = new PaymentUpdateRequestDTO();
+//            updateRequest.setStatus("PAID");
+//            updateRequest.setPaymentId(request.getRazorpayPaymentId());
+//
+//            orderFeignClient.updatePaymentStatus(request.getOrderId(), updateRequest);
+//
+//            return ResponseEntity.ok("Payment verified and saved.");
+//
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body("Payment verification failed: " + e.getMessage());
+//        }
+//    }
 
     // ✅ Manual UPI Submission via DTO
     @PostMapping("/upi/manual")
@@ -154,73 +154,73 @@ public class PaymentController {
                     .body("Refund failed: " + e.getMessage());
         }
     }
-    @PostMapping("/upi/verify")
-    public ResponseEntity<?> verifyManualUpi(@RequestParam Long paymentId) {
-        try {
-            Optional<Payment> paymentOpt = paymentRepository.findById(paymentId);
-            if (paymentOpt.isEmpty()) return ResponseEntity.notFound().build();
-
-            Payment payment = paymentOpt.get();
-            payment.setStatus("PAID");
-            paymentRepository.save(payment);
-
-            // Update order status as PAID
-            PaymentUpdateRequestDTO updateRequest = new PaymentUpdateRequestDTO();
-            updateRequest.setStatus("PAID");
-            updateRequest.setPaymentId("MANUAL_UPI_" + payment.getId());
-
-            orderFeignClient.updatePaymentStatus(payment.getOrderId(), updateRequest);
-
-            return ResponseEntity.ok("Payment marked as verified.");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Verification failed: " + e.getMessage());
-        }
-    }
+//    @PostMapping("/upi/verify")
+//    public ResponseEntity<?> verifyManualUpi(@RequestParam Long paymentId) {
+//        try {
+//            Optional<Payment> paymentOpt = paymentRepository.findById(paymentId);
+//            if (paymentOpt.isEmpty()) return ResponseEntity.notFound().build();
+//
+//            Payment payment = paymentOpt.get();
+//            payment.setStatus("PAID");
+//            paymentRepository.save(payment);
+//
+//            // Update order status as PAID
+//            PaymentUpdateRequestDTO updateRequest = new PaymentUpdateRequestDTO();
+//            updateRequest.setStatus("PAID");
+//            updateRequest.setPaymentId("MANUAL_UPI_" + payment.getId());
+//
+//            orderFeignClient.updatePaymentStatus(payment.getOrderId(), updateRequest);
+//
+//            return ResponseEntity.ok("Payment marked as verified.");
+//        } catch (Exception e) {
+//            return ResponseEntity.status(500).body("Verification failed: " + e.getMessage());
+//        }
+//    }
     
     //Upi transactoions
-    @PostMapping("/upi/collect")
-    public ResponseEntity<?> requestUpiCollect(@RequestParam Long orderId, @RequestParam String upiId) {
-        try {
-            ResponseEntity<Map<String, Object>> response = orderFeignClient.getOrderById(orderId);
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                return ResponseEntity.badRequest().body("Invalid orderId or order not found.");
-            }
-
-            Map<String, Object> order = response.getBody();
-            Double amount = Double.parseDouble(order.get("totalAmount").toString());
-            Long amountInPaise = Math.round(amount * 100);
-
-            JSONObject request = new JSONObject();
-            request.put("amount", amountInPaise);
-            request.put("currency", "INR");
-            request.put("accept_partial", false);
-            request.put("expire_by", (System.currentTimeMillis() / 1000) + 300); // 5 min expiry
-            request.put("reference_id", "UPI_COLLECT_" + orderId);
-            request.put("description", "Collect request for CaroCart order");
-
-            JSONObject customer = new JSONObject();
-            customer.put("contact", "9999999999"); // Optional
-            customer.put("email", "user@example.com"); // Optional
-            request.put("customer", customer);
-
-            request.put("notify", new JSONObject().put("email", true).put("sms", true));
-            request.put("callback_url", "https://localhost:8086/api/payments/upi/verify");
-            request.put("callback_method", "get");
-
-            com.razorpay.PaymentLink paymentLink = razorpayClient.paymentLink.create(request);
-
-            // Optionally save this link to DB for tracking
-            return ResponseEntity.ok(Map.of(
-                    "paymentLink", paymentLink.get("short_url"),
-                    "requestId", paymentLink.get("id"),
-                    "expiry", 5 * 60 // 5 minutes
-            ));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("UPI Collect request failed: " + e.getMessage());
-        }
-    }
+//    @PostMapping("/upi/collect")
+//    public ResponseEntity<?> requestUpiCollect(@RequestParam Long orderId, @RequestParam String upiId) {
+//        try {
+//            ResponseEntity<Map<String, Object>> response = orderFeignClient.getOrderById(orderId);
+//            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+//                return ResponseEntity.badRequest().body("Invalid orderId or order not found.");
+//            }
+//
+//            Map<String, Object> order = response.getBody();
+//            Double amount = Double.parseDouble(order.get("totalAmount").toString());
+//            Long amountInPaise = Math.round(amount * 100);
+//
+//            JSONObject request = new JSONObject();
+//            request.put("amount", amountInPaise);
+//            request.put("currency", "INR");
+//            request.put("accept_partial", false);
+//            request.put("expire_by", (System.currentTimeMillis() / 1000) + 300); // 5 min expiry
+//            request.put("reference_id", "UPI_COLLECT_" + orderId);
+//            request.put("description", "Collect request for CaroCart order");
+//
+//            JSONObject customer = new JSONObject();
+//            customer.put("contact", "9999999999"); // Optional
+//            customer.put("email", "user@example.com"); // Optional
+//            request.put("customer", customer);
+//
+//            request.put("notify", new JSONObject().put("email", true).put("sms", true));
+//            request.put("callback_url", "https://localhost:8086/api/payments/upi/verify");
+//            request.put("callback_method", "get");
+//
+//            com.razorpay.PaymentLink paymentLink = razorpayClient.paymentLink.create(request);
+//
+//            // Optionally save this link to DB for tracking
+//            return ResponseEntity.ok(Map.of(
+//                    "paymentLink", paymentLink.get("short_url"),
+//                    "requestId", paymentLink.get("id"),
+//                    "expiry", 5 * 60 // 5 minutes
+//            ));
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.status(500).body("UPI Collect request failed: " + e.getMessage());
+//        }
+//    }
 
  // ✅ Check payment status (used for polling UPI collect)
     @GetMapping("/status/{paymentId}")

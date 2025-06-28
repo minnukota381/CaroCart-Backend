@@ -14,13 +14,13 @@ public class RazorpayService {
     @Value("${razorpay.keySecret}")
     private String keySecret;
 
-    public Order createOrder(Double amount) throws RazorpayException {
-        RazorpayClient razorpayClient = new RazorpayClient(keyId, keySecret);
-        JSONObject orderRequest = new JSONObject();
-        orderRequest.put("amount", (int) (amount * 100));
-        orderRequest.put("currency", "INR");
-        orderRequest.put("receipt", "txn_rcptid_" + System.currentTimeMillis());
-        orderRequest.put("payment_capture", true);
-        return razorpayClient.Orders.create(orderRequest);
-    }
+//    public Order createOrder(Double amount) throws RazorpayException {
+//        RazorpayClient razorpayClient = new RazorpayClient(keyId, keySecret);
+//        JSONObject orderRequest = new JSONObject();
+//        orderRequest.put("amount", (int) (amount * 100));
+//        orderRequest.put("currency", "INR");
+//        orderRequest.put("receipt", "txn_rcptid_" + System.currentTimeMillis());
+//        orderRequest.put("payment_capture", true);
+//        return razorpayClient.Orders.create(orderRequest);
+//    }
 }
