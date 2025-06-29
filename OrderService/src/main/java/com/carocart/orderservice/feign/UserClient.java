@@ -1,11 +1,13 @@
 package com.carocart.orderservice.feign;
 
 import com.carocart.orderservice.dto.UserDTO;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
-@FeignClient(name = "CaroCartAuthentication")
+
+@FeignClient(name = "CaroCartAuthentication", url = "${carocart.auth.url}", contextId = "userClient")
 public interface UserClient {
 
     @GetMapping("/users/me")

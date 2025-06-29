@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import com.carocart.authentication.dto.EmailRequest;
 
-@FeignClient(name = "carocart-notifications", url = "http://localhost:8087")
+@FeignClient(name = "CaroCartNotifications", url = "${carocart.notification.url}")
 public interface NotificationClient {
 
     @PostMapping("/notifications/send")

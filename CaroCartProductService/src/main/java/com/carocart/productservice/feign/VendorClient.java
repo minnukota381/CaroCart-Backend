@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import com.carocart.productservice.dto.VendorDTO;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "carocart-authentication", url = "http://localhost:8081")
+@FeignClient(name = "CaroCartAuthentication", url = "${carocart.auth.url}", contextId = "vendorClient")
 public interface VendorClient {
     
     @GetMapping("/vendors/me")

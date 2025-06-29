@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "carocart-authentication", url = "http://localhost:8081", contextId = "userClient")
+@FeignClient(name = "CaroCartAuthentication", url = "${carocart.auth.url}", contextId = "userClient")
 public interface UserClient {
 
     @GetMapping("/users/me")

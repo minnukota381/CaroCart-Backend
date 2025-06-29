@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-@FeignClient(name = "carocart-authentication", url = "http://localhost:8081", contextId = "adminClient")
+@FeignClient(name = "CaroCartAuthentication", url = "${carocart.auth.url}", contextId = "adminClient")
 public interface AdminClient {
 
     @GetMapping("/admins/me")
