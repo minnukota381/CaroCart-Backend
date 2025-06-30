@@ -1,11 +1,11 @@
 package com.carocart.authentication.service;
 
 import com.carocart.authentication.dto.EmailRequest;
+import com.carocart.authentication.dto.UserRegistrationDTO;
 import com.carocart.authentication.entity.User;
 import com.carocart.authentication.feign.NotificationClient;
 import com.carocart.authentication.repository.UserRepository;
 import com.carocart.authentication.util.JwtUtil;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,34 +18,36 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
-
     @Autowired
     private PasswordEncoder passwordEncoder;
-
     @Autowired
     private JwtUtil jwtUtil;
-
     @Autowired
     private NotificationClient notificationClient;
 
-    public String signup(User user) {
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+    // -- UPDATED SIGNUP WITH DTO & VALIDATION --
+    public String signup(UserRegistrationDTO dto) {
+        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
             return "Email already registered";
         }
-
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        User user = new User();
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setEmail(dto.getEmail());
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setPhoneNumber(dto.getPhoneNumber());
+        user.setDob(dto.getDob());
+        user.setRole("USER");
         userRepository.save(user);
 
-        // ✅ Send welcome email via Notification microservice
+        // Send welcome email via Notification microservice
         EmailRequest emailRequest = new EmailRequest();
         emailRequest.setToEmail(user.getEmail());
         emailRequest.setSubject("Welcome to CaroCart!");
         emailRequest.setBody("Hi " + user.getFirstName() + ",\n\nThanks for registering at CaroCart.\nEnjoy shopping with us!");
-
         try {
-            notificationClient.sendEmail(emailRequest); // Feign call
+            notificationClient.sendEmail(emailRequest);
         } catch (Exception e) {
-            // Log or handle error if needed
             System.out.println("Error sending email: " + e.getMessage());
         }
 
@@ -57,17 +59,13 @@ public class UserService {
         if (userOptional.isEmpty()) {
             throw new IllegalArgumentException("Invalid email or password");
         }
-
         User user = userOptional.get();
-
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
-
-        // Return JWT token
         return jwtUtil.generateToken(
                 user.getEmail(),
-                "USER", // Change if role is dynamic
+                "USER",
                 user.getFirstName(),
                 user.getLastName()
         );
@@ -81,13 +79,10 @@ public class UserService {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-
             user.setFirstName(updatedUser.getFirstName());
             user.setLastName(updatedUser.getLastName());
             user.setDob(updatedUser.getDob());
             user.setPhoneNumber(updatedUser.getPhoneNumber());
-            // Add more fields if needed
-
             userRepository.save(user);
             return true;
         }
@@ -109,11 +104,9 @@ public class UserService {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-
             if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
                 return false;
             }
-
             user.setPassword(passwordEncoder.encode(newPassword));
             userRepository.save(user);
             return true;

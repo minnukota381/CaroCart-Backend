@@ -6,7 +6,6 @@ import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.feign.AdminClient;
 import com.carocart.productservice.repository.CategoryRepository;
 import com.carocart.productservice.repository.SubCategoryRepository;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -34,12 +33,27 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public Category addCategory(Category category, String token) {
         validateAdmin(token);
+
+        // Prevent duplicate category name (case-insensitive)
+        if (categoryRepo.findByNameIgnoreCase(category.getName()).isPresent()) {
+            throw new IllegalArgumentException("Category name already exists");
+        }
+
         return categoryRepo.save(category);
     }
 
     @Override
     public SubCategory addSubCategory(SubCategory subCategory, String token) {
         validateAdmin(token);
+
+        // Prevent duplicate subcategory in the same category
+        List<SubCategory> existingSubcategories = subCategoryRepo.findByCategoryId(subCategory.getCategory().getId());
+        boolean duplicate = existingSubcategories.stream()
+            .anyMatch(sc -> sc.getName().equalsIgnoreCase(subCategory.getName()));
+        if (duplicate) {
+            throw new IllegalArgumentException("Subcategory name already exists in this category");
+        }
+
         return subCategoryRepo.save(subCategory);
     }
 
@@ -52,11 +66,12 @@ public class CategoryServiceImpl implements CategoryService {
     public List<SubCategory> getSubCategoriesByCategoryId(Long categoryId) {
         return subCategoryRepo.findByCategoryId(categoryId);
     }
-    
+
     @Override
     public Category getCategoryById(Long id) {
         return categoryRepo.findById(id).orElse(null);
     }
+
     @Override
     public void deleteCategoryById(Long categoryId, String token) {
         validateAdmin(token);
@@ -74,6 +89,4 @@ public class CategoryServiceImpl implements CategoryService {
         }
         subCategoryRepo.deleteById(subcategoryId);
     }
-
-
 }

@@ -1,43 +1,26 @@
 package com.carocart.cartservice.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+
 public class AddToCartRequestDTO {
 
-    private Long userId;      // Add this field
+    @NotNull(message = "Product ID is required")
     private Long productId;
+
+    @Min(value = 1, message = "Quantity must be at least 1")
     private int quantity;
 
-    public AddToCartRequestDTO() {
-    }
+    public AddToCartRequestDTO() {}
 
-    public AddToCartRequestDTO(Long userId, Long productId, int quantity) {
-        this.userId = userId;
+    public AddToCartRequestDTO(Long productId, int quantity) {
         this.productId = productId;
         this.quantity = quantity;
     }
 
-    // Getters and Setters
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
 
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public Long getProductId() {
-        return productId;
-    }
-
-    public void setProductId(Long productId) {
-        this.productId = productId;
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
+    public int getQuantity() { return quantity; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
 }

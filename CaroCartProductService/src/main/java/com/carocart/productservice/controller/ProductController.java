@@ -1,10 +1,14 @@
 package com.carocart.productservice.controller;
 
 import com.carocart.productservice.dto.ProductDTO;
+import com.carocart.productservice.dto.ProductRequestDTO;
 import com.carocart.productservice.entity.Product;
+import com.carocart.productservice.entity.SubCategory;
+import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.service.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +23,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
-
 @RestController
 @RequestMapping("/products")
 public class ProductController {
@@ -28,30 +31,81 @@ public class ProductController {
     private ProductService productService;
 
     @Autowired
+    private SubCategoryRepository subCategoryRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
-    // ✅ Add product (Admin or Vendor)
+    // ✅ Add product (Admin or Vendor) with validation
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Product> addProduct(@RequestPart("product") String productJson,
-                                              @RequestPart(value = "image", required = false) MultipartFile image,
-                                              @RequestHeader("Authorization") String token) throws IOException {
-        Product product = objectMapper.readValue(productJson, Product.class);
+    public ResponseEntity<Product> addProduct(
+            @RequestPart("product") String productJson,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            @RequestHeader("Authorization") String token) throws IOException {
+
+        ProductRequestDTO productDTO = objectMapper.readValue(productJson, ProductRequestDTO.class);
+
+        // Validate price <= mrp
+        if (productDTO.getPrice() > productDTO.getMrp()) {
+            throw new IllegalArgumentException("Price must not exceed MRP");
+        }
+
+        // Validate subcategory exists
+        SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("Subcategory not found"));
+
+        Product product = new Product();
+        product.setName(productDTO.getName());
+        product.setDescription(productDTO.getDescription());
+        product.setBrand(productDTO.getBrand());
+        product.setPrice(productDTO.getPrice());
+        product.setMrp(productDTO.getMrp());
+        product.setDiscount(productDTO.getDiscount());
+        product.setStock(productDTO.getStock());
+        product.setUnit(productDTO.getUnit());
+        product.setIsAvailable(productDTO.getIsAvailable());
+        product.setSubCategory(subCategory);
+
         if (image != null && !image.isEmpty()) {
             product.setImage(image.getBytes());
         }
+
         return ResponseEntity.ok(productService.addProduct(product, token));
     }
 
-    // ✅ Update product (Admin or Vendor)
+    // ✅ Update product (Admin or Vendor) with validation
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id,
-                                                 @RequestPart("product") String productJson,
-                                                 @RequestPart(value = "image", required = false) MultipartFile image,
-                                                 @RequestHeader("Authorization") String token) throws IOException {
-        Product updatedProduct = objectMapper.readValue(productJson, Product.class);
+    public ResponseEntity<Product> updateProduct(
+            @PathVariable Long id,
+            @RequestPart("product") String productJson,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            @RequestHeader("Authorization") String token) throws IOException {
+
+        ProductRequestDTO productDTO = objectMapper.readValue(productJson, ProductRequestDTO.class);
+
+        if (productDTO.getPrice() > productDTO.getMrp()) {
+            throw new IllegalArgumentException("Price must not exceed MRP");
+        }
+
+        SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("Subcategory not found"));
+
+        Product updatedProduct = new Product();
+        updatedProduct.setName(productDTO.getName());
+        updatedProduct.setDescription(productDTO.getDescription());
+        updatedProduct.setBrand(productDTO.getBrand());
+        updatedProduct.setPrice(productDTO.getPrice());
+        updatedProduct.setMrp(productDTO.getMrp());
+        updatedProduct.setDiscount(productDTO.getDiscount());
+        updatedProduct.setStock(productDTO.getStock());
+        updatedProduct.setUnit(productDTO.getUnit());
+        updatedProduct.setIsAvailable(productDTO.getIsAvailable());
+        updatedProduct.setSubCategory(subCategory);
+
         if (image != null && !image.isEmpty()) {
             updatedProduct.setImage(image.getBytes());
         }
+
         Product updated = productService.updateProduct(id, updatedProduct, token);
         if (updated == null) {
             return ResponseEntity.notFound().build();
@@ -66,13 +120,6 @@ public class ProductController {
         productService.deleteProduct(id, token);
         return ResponseEntity.ok("Product deleted successfully");
     }
-
-    // ✅ Get all products (public)
-//    @GetMapping
-//    public ResponseEntity<List<Product>> getAllProducts() {
-//        return ResponseEntity.ok(productService.getAllProducts());
-//    }
-    
 
     // ✅ Get product by ID (public)
     @GetMapping("/{id}")
@@ -113,11 +160,14 @@ public class ProductController {
     public ResponseEntity<List<Product>> getVendorProducts(@RequestHeader("Authorization") String token) {
         return ResponseEntity.ok(productService.getProductsByVendor(token));
     }
-    
+
+    // ✅ Get all products (public)
     @GetMapping("/all")
     public ResponseEntity<List<Product>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
+
+    // ✅ Search and filter products (public)
     @GetMapping("/search")
     public ResponseEntity<List<Product>> searchAndFilterProducts(
             @RequestParam(required = false) String keyword,
@@ -136,20 +186,18 @@ public class ProductController {
         );
         return ResponseEntity.ok(results);
     }
-    
- // ✅ Add this in ProductController
+
+    // ✅ Get products by category ID
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<List<Product>> getProductsByCategoryId(@PathVariable Long categoryId) {
         List<Product> products = productService.getProductsByCategoryId(categoryId);
         return ResponseEntity.ok(products);
     }
-    
- // Add this method at the end of your ProductController
 
- // ✅ Get total products count
-	 @GetMapping("/count")
-	 public ResponseEntity<Long> getProductsCount() {
-	     long count = productService.countAllProducts(); // You should implement this in your service/repo
-	     return ResponseEntity.ok(count);
-	 }
+    // ✅ Get total products count
+    @GetMapping("/count")
+    public ResponseEntity<Long> getProductsCount() {
+        long count = productService.countAllProducts();
+        return ResponseEntity.ok(count);
+    }
 }
