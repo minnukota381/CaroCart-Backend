@@ -1,8 +1,5 @@
-// src/main/java/com/carocart/address/controller/AddressController.java
-
 package com.carocart.address.controller;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -11,10 +8,10 @@ import com.carocart.address.DTO.AddressRequestDTO;
 import com.carocart.address.DTO.AddressResponseDTO;
 import com.carocart.address.service.AddressService;
 import com.carocart.address.util.MapmyIndiaTokenService;
+
+import jakarta.validation.Valid;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-
-
 import java.util.List;
 
 @RestController
@@ -48,11 +45,8 @@ public class AddressController {
     @GetMapping("/geocode-forward")
     public ResponseEntity<?> forwardGeocode(@RequestParam String address) {
         String accessToken = tokenService.getAccessToken();
-
-        // Replace spaces with %20 or use UriComponentsBuilder for encoding
         String encodedAddress = URLEncoder.encode(address, StandardCharsets.UTF_8);
         String url = "https://atlas.mapmyindia.com/api/places/geocode?address=" + encodedAddress;
-
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + accessToken);
@@ -71,7 +65,6 @@ public class AddressController {
     public ResponseEntity<?> placesAutocomplete(@RequestParam String query) {
         String accessToken = tokenService.getAccessToken();
         String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-
         String url = "https://atlas.mapmyindia.com/api/places/search/json?query=" + encodedQuery;
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
@@ -87,18 +80,17 @@ public class AddressController {
         }
     }
 
-
     // --- Address CRUD endpoints ---
 
     @PostMapping
-    public AddressResponseDTO create(@RequestBody AddressRequestDTO dto,
+    public AddressResponseDTO create(@Valid @RequestBody AddressRequestDTO dto,
                                      @RequestHeader("Authorization") String token) {
         return service.createAddress(dto, token);
     }
 
     @PutMapping("/{id}")
     public AddressResponseDTO update(@PathVariable Long id,
-                                     @RequestBody AddressRequestDTO dto) {
+                                     @Valid @RequestBody AddressRequestDTO dto) {
         return service.updateAddress(id, dto);
     }
 

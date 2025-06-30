@@ -1,10 +1,12 @@
 package com.carocart.productservice.controller;
 
+import com.carocart.productservice.dto.CategoryRequestDTO;
 import com.carocart.productservice.dto.SubCategoryDTO;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.service.CategoryService;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,16 +20,19 @@ public class CategoryController {
     @Autowired
     private CategoryService categoryService;
 
-    // ✅ Admin: Add category
+    // ✅ Admin: Add category with validation
     @PostMapping("/admin/add")
-    public ResponseEntity<Category> addCategory(@RequestBody Category category,
+    public ResponseEntity<Category> addCategory(@Valid @RequestBody CategoryRequestDTO dto,
                                                 @RequestHeader("Authorization") String token) {
+        // (Optional) Check for duplicate name in service if you want
+        Category category = new Category();
+        category.setName(dto.getName());
         return ResponseEntity.ok(categoryService.addCategory(category, token));
     }
 
-    // ✅ Admin: Add subcategory
+    // ✅ Admin: Add subcategory with validation
     @PostMapping("/admin/subcategory/add")
-    public ResponseEntity<SubCategory> addSubCategory(@RequestBody SubCategoryDTO dto,
+    public ResponseEntity<SubCategory> addSubCategory(@Valid @RequestBody SubCategoryDTO dto,
                                                       @RequestHeader("Authorization") String token) {
         SubCategory subCategory = new SubCategory();
         subCategory.setName(dto.getName());
@@ -53,7 +58,8 @@ public class CategoryController {
     public ResponseEntity<List<SubCategory>> getSubCategories(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getSubCategoriesByCategoryId(id));
     }
- // ✅ Admin: Delete category
+
+    // ✅ Admin: Delete category
     @DeleteMapping("/admin/delete/{categoryId}")
     public ResponseEntity<String> deleteCategory(@PathVariable Long categoryId,
                                                  @RequestHeader("Authorization") String token) {
@@ -68,5 +74,4 @@ public class CategoryController {
         categoryService.deleteSubCategoryById(subcategoryId, token);
         return ResponseEntity.ok("Subcategory deleted successfully");
     }
-
 }
