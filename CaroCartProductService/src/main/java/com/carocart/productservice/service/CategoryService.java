@@ -10,9 +10,8 @@ public interface CategoryService {
     SubCategory addSubCategory(SubCategory subCategory, String token);
     List<Category> getAllCategories();
     List<SubCategory> getSubCategoriesByCategoryId(Long categoryId);
-    
+
     Category getCategoryById(Long id);
     void deleteCategoryById(Long categoryId, String token);
     void deleteSubCategoryById(Long subcategoryId, String token);
-
 }

@@ -1,48 +1,55 @@
 package com.carocart.authentication.service;
 
+import com.carocart.authentication.dto.VendorRegistrationDTO;
+import com.carocart.authentication.entity.Vendor;
+import com.carocart.authentication.repository.VendorRepository;
+import com.carocart.authentication.util.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import com.carocart.authentication.entity.Vendor;
-import com.carocart.authentication.repository.VendorRepository;
-import com.carocart.authentication.util.JwtUtil;
-
 @Service
 public class VendorService {
 
     @Autowired
     private VendorRepository vendorRepository;
-
     @Autowired
     private OtpEmailService otpEmailService;
-
     @Autowired
     private PasswordEncoder passwordEncoder;
-
     @Autowired
     private JwtUtil jwtUtil;
 
     private final Map<String, Vendor> pendingVendors = new ConcurrentHashMap<>();
 
-    // Step 1: Request OTP for signup
-    public String requestSignupOtp(Vendor vendor) {
-        if (vendorRepository.existsByEmail(vendor.getEmail())) {
+    // Step 1: Request OTP for signup (now uses DTO & validation)
+    public String requestSignupOtp(VendorRegistrationDTO dto) {
+        if (vendorRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Email already registered");
         }
+        Vendor vendor = new Vendor();
+        vendor.setFirstName(dto.getFirstName());
+        vendor.setLastName(dto.getLastName());
+        vendor.setCompanyName(dto.getCompanyName());
+        vendor.setEmail(dto.getEmail());
+        vendor.setPassword(dto.getPassword()); // Will encode after OTP
+        vendor.setContactNumber(dto.getContactNumber());
+        vendor.setGstNumber(dto.getGstNumber());
+        vendor.setBusinessType(dto.getBusinessType());
+        vendor.setBusinessAddress(dto.getBusinessAddress());
+        vendor.setRole("VENDOR");
+        pendingVendors.put(dto.getEmail(), vendor);
 
         String otp = otpEmailService.generateOtp();
-        otpEmailService.storeOtp(vendor.getEmail(), otp);
-        pendingVendors.put(vendor.getEmail(), vendor);
-        otpEmailService.sendOtpEmail(vendor.getEmail(), otp);
-
+        otpEmailService.storeOtp(dto.getEmail(), otp);
+        otpEmailService.sendOtpEmail(dto.getEmail(), otp);
         return "OTP sent to your email";
     }
 
@@ -51,12 +58,10 @@ public class VendorService {
         if (!otpEmailService.validateOtp(email, otp)) {
             throw new IllegalArgumentException("Invalid or expired OTP");
         }
-
         Vendor vendor = pendingVendors.get(email);
         if (vendor == null) {
             throw new IllegalStateException("No pending signup found for this email");
         }
-
         vendor.setPassword(passwordEncoder.encode(vendor.getPassword()));
         vendor.setApproved(false);
         vendorRepository.save(vendor);
@@ -73,17 +78,13 @@ public class VendorService {
         if (vendorOpt.isEmpty()) {
             throw new IllegalArgumentException("Invalid email or password");
         }
-
         Vendor vendor = vendorOpt.get();
-
         if (!passwordEncoder.matches(password, vendor.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
-
         if (!vendor.isApproved()) {
             throw new IllegalStateException("Vendor not approved yet");
         }
-
         return jwtUtil.generateToken(
                 vendor.getEmail(),
                 vendor.getRole(),
@@ -120,7 +121,6 @@ public class VendorService {
     public Vendor getVendorById(Long id) {
         return vendorRepository.findById(id).orElse(null);
     }
-
 
     public List<Vendor> getPendingVendors() {
         return vendorRepository.findByIsApprovedFalse();
@@ -165,6 +165,7 @@ public class VendorService {
         Vendor vendor = getVendorByEmail(email);
         return vendor.getProfileImage();
     }
+
     public boolean deleteVendorById(Long vendorId) {
         Optional<Vendor> vendorOptional = vendorRepository.findById(vendorId);
         if (vendorOptional.isPresent()) {
@@ -173,15 +174,13 @@ public class VendorService {
         }
         return false;
     }
+
     public void changePassword(String email, String currentPassword, String newPassword) {
         Vendor vendor = getVendorByEmail(email);
         if (!passwordEncoder.matches(currentPassword, vendor.getPassword())) {
             throw new IllegalArgumentException("Current password is incorrect");
         }
-
         vendor.setPassword(passwordEncoder.encode(newPassword));
         vendorRepository.save(vendor);
     }
 }
-
-
