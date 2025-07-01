@@ -8,6 +8,7 @@ public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    private String upiTransactionId;
 
     private Long orderId;
     private Long userId;
@@ -100,6 +101,14 @@ public class Payment {
 
 	public void setUpdatedAt(LocalDateTime updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	public String getUpiTransactionId() {
+		return upiTransactionId;
+	}
+
+	public void setUpiTransactionId(String upiTransactionId) {
+		this.upiTransactionId = upiTransactionId;
 	}
     
 }
