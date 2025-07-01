@@ -1,19 +1,19 @@
 package com.carocart.paymentservice.dto;
 
+
 public class RazorpaySuccessResponse {
     private String razorpayOrderId;
-    private int amount;
-    private String currency;
-    private String razorpayKey;
-    // Constructors, Getters, Setters
+    private Integer amount;   // Amount in paise (int)
+    private String currency;  // "INR"
+    private String key;       // Razorpay public key for frontend
 
+    public RazorpaySuccessResponse() {}
 
-
-    public RazorpaySuccessResponse(String razorpayOrderId, int amount, String currency, String razorpayKey) {
+    public RazorpaySuccessResponse(String razorpayOrderId, Integer amount, String currency, String key) {
         this.razorpayOrderId = razorpayOrderId;
         this.amount = amount;
         this.currency = currency;
-        this.razorpayKey = razorpayKey;
+        this.key = key;
     }
 
     public String getRazorpayOrderId() {
@@ -24,11 +24,11 @@ public class RazorpaySuccessResponse {
         this.razorpayOrderId = razorpayOrderId;
     }
 
-    public int getAmount() {
+    public Integer getAmount() {
         return amount;
     }
 
-    public void setAmount(int amount) {
+    public void setAmount(Integer amount) {
         this.amount = amount;
     }
 
@@ -40,11 +40,21 @@ public class RazorpaySuccessResponse {
         this.currency = currency;
     }
 
-    public String getRazorpayKey() {
-        return razorpayKey;
+    public String getKey() {
+        return key;
     }
 
-    public void setRazorpayKey(String razorpayKey) {
-        this.razorpayKey = razorpayKey;
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    @Override
+    public String toString() {
+        return "RazorpaySuccessResponse{" +
+                "razorpayOrderId='" + razorpayOrderId + '\'' +
+                ", amount=" + amount +
+                ", currency='" + currency + '\'' +
+                ", key='" + key + '\'' +
+                '}';
     }
 }

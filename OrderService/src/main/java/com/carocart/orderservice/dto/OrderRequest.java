@@ -1,49 +1,38 @@
-// package: com.carocart.orderservice.dto
-
 package com.carocart.orderservice.dto;
+
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class OrderRequest {
-    private List<OrderItemDTO> items;
-    private Long addressId; // ID of the address selected by the user
+	 @JsonProperty("userId")
+	    private Long userId;
+	    @JsonProperty("addressId")
+	    private Long addressId;
+	    @JsonProperty("shippingAddress")
+	    private String shippingAddress;
+	    @JsonProperty("items")
+	    private List<OrderItemDTO> items;
+	    @JsonProperty("totalAmount")
+	    private Double totalAmount;
 
-    // Getters and Setters
-    public List<OrderItemDTO> getItems() {
-        return items;
-    }
+ public OrderRequest() {}
 
-    public void setItems(List<OrderItemDTO> items) {
-        this.items = items;
-    }
+ // --- Getters and Setters ---
 
-    public Long getAddressId() {
-        return addressId;
-    }
+ public Long getUserId() { return userId; }
+ public void setUserId(Long userId) { this.userId = userId; }
 
-    public void setAddressId(Long addressId) {
-        this.addressId = addressId;
-    }
+ public Long getAddressId() { return addressId; }
+ public void setAddressId(Long addressId) { this.addressId = addressId; }
 
-    // Inner class for individual order items
-    public static class OrderItemDTO {
-        private Long productId;
-        private Integer quantity;
+ public String getShippingAddress() { return shippingAddress; }
+ public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
 
-        public Long getProductId() {
-            return productId;
-        }
+ public List<OrderItemDTO> getItems() { return items; }
+ public void setItems(List<OrderItemDTO> items) { this.items = items; }
 
-        public void setProductId(Long productId) {
-            this.productId = productId;
-        }
-
-        public Integer getQuantity() {
-            return quantity;
-        }
-
-        public void setQuantity(Integer quantity) {
-            this.quantity = quantity;
-        }
-    }
+ public Double getTotalAmount() { return totalAmount; }
+ public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
 }

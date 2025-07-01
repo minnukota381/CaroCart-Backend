@@ -24,5 +24,6 @@ public interface OrderService {
     void markOrderAsShipped(Long orderId);
     
     long getTotalOrdersCount();
+    OrderResponse placeOrderInternal(OrderRequest orderRequest);
 
 }
