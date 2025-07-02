@@ -86,6 +86,7 @@ public class VendorService {
             throw new IllegalStateException("Vendor not approved yet");
         }
         return jwtUtil.generateToken(
+        		vendor.getId(),
                 vendor.getEmail(),
                 vendor.getRole(),
                 vendor.getFirstName(),
