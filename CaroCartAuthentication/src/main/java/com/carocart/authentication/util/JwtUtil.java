@@ -27,17 +27,20 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(String email, String role, String firstName, String lastName) {
+    public String generateToken(Long userId, String email, String role, String firstName, String lastName) {
         return Jwts.builder()
-                .setSubject(email)
-                .claim("role", role)
-                .claim("firstName", firstName)
-                .claim("lastName", lastName)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
+            .setSubject(email)
+            .claim("userId", userId)
+            .claim("role", role)
+            .claim("firstName", firstName)
+            .claim("lastName", lastName)
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
+            .signWith(key, SignatureAlgorithm.HS256)
+            .compact();
     }
+
+
 
     public boolean validateToken(String token) {
         try {

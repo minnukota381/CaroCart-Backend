@@ -49,6 +49,7 @@ public class AdminServiceImpl implements AdminService {
             return "Invalid credentials";
         }
         return jwtUtil.generateToken(
+        		 admin.getId(), 
                 admin.getEmail(),
                 "ADMIN",
                 admin.getFirstName(),

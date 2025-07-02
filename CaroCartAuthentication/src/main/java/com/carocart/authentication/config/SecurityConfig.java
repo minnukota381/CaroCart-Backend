@@ -5,6 +5,8 @@ import com.carocart.authentication.repository.UserRepository;
 import com.carocart.authentication.service.JwtAuthenticationFilter;
 import com.carocart.authentication.util.JwtUtil;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.util.Optional;
 
 import org.springframework.context.annotation.Bean;
@@ -101,15 +103,24 @@ public class SecurityConfig {
             String email = oAuth2User.getAttribute("email");
 
             Optional<User> userOpt = userRepository.findByEmail(email);
-            String jwt = jwtUtil.generateToken(
-                email,
-                userOpt.map(User::getRole).orElse("USER"),
-                userOpt.map(User::getFirstName).orElse(""),
-                userOpt.map(User::getLastName).orElse("")
-            );
 
-            // Redirect with JWT to frontend
-            response.sendRedirect("http://localhost:5173/oauth-success?token=" + jwt);
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                // Include user.getId() in the token
+                String jwt = jwtUtil.generateToken(
+                    user.getId(), // <-- pass the id here
+                    user.getEmail(),
+                    user.getRole(),
+                    user.getFirstName(),
+                    user.getLastName()
+                );
+                // Redirect with JWT to frontend
+                response.sendRedirect("http://localhost:5173/oauth-success?token=" + jwt);
+            } else {
+                // Handle user not found (maybe register automatically or show error)
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not found");
+            }
         };
     }
+
 }
