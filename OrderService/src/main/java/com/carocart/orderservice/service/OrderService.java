@@ -25,5 +25,12 @@ public interface OrderService {
     
     long getTotalOrdersCount();
     OrderResponse placeOrderInternal(OrderRequest orderRequest);
+    
+ // Delivery management
+    List<OrderResponse> getReadyForDeliveryOrders();
+    void assignOrderToDeliveryBoy(Long orderId, Long deliveryBoyId);
+    List<OrderResponse> getAssignedOrders(Long deliveryBoyId);
+    void updateDeliveryStatus(Long orderId, String status);
+
 
 }
