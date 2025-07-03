@@ -1,136 +1,96 @@
 package com.carocart.orderservice.dto;
 
-import com.carocart.orderservice.entity.Order;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
+// DTO for API responses sent to frontend after order placement, fetching orders, etc.
 public class OrderResponse {
+
     private Long orderId;
     private Long userId;
-    private LocalDateTime orderDate;
-    private String status;
-    private Double subtotal;
-    private Double shipping;
-    private Double tax;
-    private Double totalAmount;
     private String shippingAddress;
-    private List<OrderItemResponseDTO> orderItems;
+    private Long addressId;
+    private Double totalAmount;
+    private String status;         // e.g. PLACED, SHIPPED, DELIVERED, CANCELLED
+    private String paymentStatus;  // e.g. PAID, PENDING, COD, REFUNDED
+    private String paymentId;      // Razorpay/cash/upi/payment txn id
+    private LocalDateTime orderDate;
+    private LocalDateTime updatedAt;
+    private List<OrderItemDTO> items;
 
+    // --- Constructors ---
     public OrderResponse() {}
 
-    public OrderResponse(Order order) {
+    public OrderResponse(Long orderId, Long userId, String shippingAddress, Long addressId, Double totalAmount,
+                         String status, String paymentStatus, String paymentId,
+                         LocalDateTime orderDate, LocalDateTime updatedAt,
+                         List<OrderItemDTO> items) {
+        this.orderId = orderId;
+        this.userId = userId;
+        this.shippingAddress = shippingAddress;
+        this.addressId = addressId;
+        this.totalAmount = totalAmount;
+        this.status = status;
+        this.paymentStatus = paymentStatus;
+        this.paymentId = paymentId;
+        this.orderDate = orderDate;
+        this.updatedAt = updatedAt;
+        this.items = items;
+    }
+
+    // Entity-to-DTO constructor (if needed)
+    public OrderResponse(com.carocart.orderservice.entity.Order order) {
         this.orderId = order.getId();
         this.userId = order.getUserId();
-        this.orderDate = order.getOrderDate();
-        this.status = order.getStatus();
         this.shippingAddress = order.getShippingAddress();
-
-        this.orderItems = order.getOrderItems().stream()
-                .map(OrderItemResponseDTO::new)
-                .collect(Collectors.toList());
-
-        this.subtotal = calculateSubtotal();
-        this.shipping = calculateShipping();
-        this.tax = calculateTax();
-        this.totalAmount = subtotal + shipping + tax;
+        // If addressId exists as a field in your entity, map here. Else leave null.
+        try {
+            this.addressId = (Long) order.getClass().getDeclaredMethod("getAddressId").invoke(order);
+        } catch (Exception ignored) {}
+        this.totalAmount = order.getTotalAmount();
+        this.status = order.getStatus();
+        this.paymentStatus = order.getPaymentStatus();
+        this.paymentId = order.getPaymentId();
+        this.orderDate = order.getOrderDate();
+        this.updatedAt = order.getUpdatedAt();
+        if (order.getOrderItems() != null) {
+            this.items = order.getOrderItems().stream()
+                .map(OrderItemDTO::new)
+                .toList();
+        }
     }
 
-    private double calculateSubtotal() {
-        return orderItems.stream()
-                .mapToDouble(item -> item.getPrice() * item.getQuantity())
-                .sum();
-    }
+    // --- Getters & Setters ---
+    public Long getOrderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
 
-    private double calculateShipping() {
-//        return 30.0; /
-    	return 0; // Example flat rate; can be dynamic later
-    }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
-    private double calculateTax() {
-//        return subtotal * 0.05; // Example 5% tax
-    	return 0;
-    }
+    public String getShippingAddress() { return shippingAddress; }
+    public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
 
-    // --- Getters and Setters ---
+    public Long getAddressId() { return addressId; }
+    public void setAddressId(Long addressId) { this.addressId = addressId; }
 
-    public Long getOrderId() {
-        return orderId;
-    }
+    public Double getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
 
-    public void setOrderId(Long orderId) {
-        this.orderId = orderId;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public Long getUserId() {
-        return userId;
-    }
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
+    public String getPaymentId() { return paymentId; }
+    public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
 
-    public LocalDateTime getOrderDate() {
-        return orderDate;
-    }
+    public LocalDateTime getOrderDate() { return orderDate; }
+    public void setOrderDate(LocalDateTime orderDate) { this.orderDate = orderDate; }
 
-    public void setOrderDate(LocalDateTime orderDate) {
-        this.orderDate = orderDate;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Double getSubtotal() {
-        return subtotal;
-    }
-
-    public void setSubtotal(Double subtotal) {
-        this.subtotal = subtotal;
-    }
-
-    public Double getShipping() {
-        return shipping;
-    }
-
-    public void setShipping(Double shipping) {
-        this.shipping = shipping;
-    }
-
-    public Double getTax() {
-        return tax;
-    }
-
-    public void setTax(Double tax) {
-        this.tax = tax;
-    }
-
-    public Double getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public String getShippingAddress() {
-        return shippingAddress;
-    }
-
-    public void setShippingAddress(String shippingAddress) {
-        this.shippingAddress = shippingAddress;
-    }
-
-    public List<OrderItemResponseDTO> getOrderItems() {
-        return orderItems;
-    }
-
-    public void setOrderItems(List<OrderItemResponseDTO> orderItems) {
-        this.orderItems = orderItems;
-    }
+    public List<OrderItemDTO> getItems() { return items; }
+    public void setItems(List<OrderItemDTO> items) { this.items = items; }
 }
