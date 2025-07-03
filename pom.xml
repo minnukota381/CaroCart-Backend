@@ -19,6 +19,7 @@
         <module>PaymentService</module>
         <module>CaroCartAddress</module>
         <module>CaroCartNotifications</module>
+        <module>CaroCartDeliveryService</module>
     </modules>
     
     <properties>
