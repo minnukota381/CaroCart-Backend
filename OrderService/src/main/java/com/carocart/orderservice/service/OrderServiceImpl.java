@@ -49,7 +49,6 @@ public class OrderServiceImpl implements OrderService {
         this.internalToken = "Bearer " + jwtUtil.generateToken("system@carocart.com", "ADMIN", "System", "Service");
     }
 
-    
     @Override
     @Transactional
     public OrderResponse placeOrder(String token, OrderRequest orderRequest) {
@@ -84,6 +83,10 @@ public class OrderServiceImpl implements OrderService {
         double totalAmount = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
         order.setOrderItems(orderItems);
         order.setTotalAmount(totalAmount);
+
+        // For delivery assignment
+        order.setDeliveryStatus("READY_FOR_DELIVERY");
+        order.setDeliveryBoyId(null);
 
         Order savedOrder = orderRepository.save(order);
         cartClient.clearCart(token);
@@ -226,6 +229,10 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentId("COD-" + orderId);
         order.setPaymentStatus("COD");
         order.setStatus("PLACED");
+        // Delivery status reset
+        order.setDeliveryStatus("READY_FOR_DELIVERY");
+        order.setDeliveryBoyId(null);
+
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
     }
@@ -236,6 +243,10 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         order.setStatus("SHIPPED");
+        // Optionally, you can trigger delivery status to READY_FOR_DELIVERY here too
+        order.setDeliveryStatus("READY_FOR_DELIVERY");
+        order.setDeliveryBoyId(null);
+
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
         sendOrderShippedEmails(order);
@@ -245,7 +256,7 @@ public class OrderServiceImpl implements OrderService {
     public long getTotalOrdersCount() {
         return orderRepository.count();
     }
-    
+
     @Override
     @Transactional
     public OrderResponse placeOrderInternal(OrderRequest orderRequest) {
@@ -266,6 +277,10 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentStatus("PAID");
         order.setTotalAmount(orderRequest.getTotalAmount());
 
+        // For delivery assignment
+        order.setDeliveryStatus("READY_FOR_DELIVERY");
+        order.setDeliveryBoyId(null);
+
         // --- Create OrderItems ---
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             OrderItem orderItem = new OrderItem();
@@ -285,7 +300,46 @@ public class OrderServiceImpl implements OrderService {
         return new OrderResponse(savedOrder);
     }
 
+    // ===== DELIVERY BOY SELF-ASSIGNMENT FLOW (NEW) =====
 
+    @Override
+    public List<OrderResponse> getReadyForDeliveryOrders() {
+        // Orders ready for delivery and not assigned
+        return orderRepository.findAll().stream()
+                .filter(o -> "READY_FOR_DELIVERY".equalsIgnoreCase(o.getDeliveryStatus()) && o.getDeliveryBoyId() == null)
+                .map(OrderResponse::new)
+                .collect(Collectors.toList());
+    }
 
+    @Override
+    @Transactional
+    public void assignOrderToDeliveryBoy(Long orderId, Long deliveryBoyId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        if (order.getDeliveryBoyId() != null) {
+            throw new RuntimeException("Order already assigned to a delivery boy.");
+        }
+        order.setDeliveryBoyId(deliveryBoyId);
+        order.setDeliveryStatus("CLAIMED");
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+    }
 
+    @Override
+    public List<OrderResponse> getAssignedOrders(Long deliveryBoyId) {
+        return orderRepository.findAll().stream()
+                .filter(o -> deliveryBoyId.equals(o.getDeliveryBoyId()))
+                .map(OrderResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void updateDeliveryStatus(Long orderId, String status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+        order.setDeliveryStatus(status.toUpperCase());
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+    }
 }
