@@ -137,6 +137,7 @@ public class OrderController {
     }
     
  // For admin dashboard stats: total order count
+    
     @GetMapping("/admin/orders/count")
     public ResponseEntity<Long> getTotalOrdersCount() {
         long count = orderService.getTotalOrdersCount();
