@@ -49,6 +49,7 @@ public class OrderServiceImpl implements OrderService {
         this.internalToken = "Bearer " + jwtUtil.generateToken("system@carocart.com", "ADMIN", "System", "Service");
     }
 
+    
     @Override
     @Transactional
     public OrderResponse placeOrder(String token, OrderRequest orderRequest) {
@@ -244,4 +245,47 @@ public class OrderServiceImpl implements OrderService {
     public long getTotalOrdersCount() {
         return orderRepository.count();
     }
+    
+    @Override
+    @Transactional
+    public OrderResponse placeOrderInternal(OrderRequest orderRequest) {
+        List<OrderItemDTO> cartItems = orderRequest.getItems();
+        if (cartItems == null || cartItems.isEmpty()) {
+            throw new RuntimeException("Cart is empty. Cannot place order.");
+        }
+
+        String formattedAddress = orderRequest.getShippingAddress() != null
+            ? orderRequest.getShippingAddress()
+            : "Unknown Address";
+
+        Order order = new Order();
+        order.setUserId(orderRequest.getUserId());
+        order.setOrderDate(LocalDateTime.now());
+        order.setStatus("PLACED");
+        order.setShippingAddress(formattedAddress);
+        order.setPaymentStatus("PAID");
+        order.setTotalAmount(orderRequest.getTotalAmount());
+
+        // --- Create OrderItems ---
+        List<OrderItem> orderItems = cartItems.stream().map(item -> {
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProductId(item.getProductId());
+            orderItem.setProductName(item.getProductName() != null ? item.getProductName() : "Product");
+            orderItem.setQuantity(item.getQuantity());
+            orderItem.setPrice(item.getPrice());
+            orderItem.setTotalPrice(item.getPrice() * item.getQuantity());
+            orderItem.setOrder(order);
+            return orderItem;
+        }).collect(Collectors.toList());
+
+        order.setOrderItems(orderItems);
+
+        Order savedOrder = orderRepository.save(order);
+
+        return new OrderResponse(savedOrder);
+    }
+
+
+
+
 }

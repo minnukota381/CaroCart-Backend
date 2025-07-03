@@ -25,7 +25,28 @@ public class OrderController {
     }
 
     // ----------------- USER APIs -----------------
+ // --------- PaymentService Integration Endpoint ---------
 
+    @PostMapping
+    public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest orderRequest) {
+        OrderResponse response = orderService.placeOrderInternal(orderRequest);
+        return ResponseEntity.ok(response);
+    }
+    @PostMapping("/internal/place")
+    public ResponseEntity<OrderResponse> placeOrderInternal(@RequestBody OrderRequest orderRequest) {
+        // ADD THIS LOG
+        System.out.println("OrderRequest received: " +
+            "userId=" + orderRequest.getUserId() +
+            ", addressId=" + orderRequest.getAddressId() +
+            ", shippingAddress=" + orderRequest.getShippingAddress() +
+            ", items=" + orderRequest.getItems() +
+            ", totalAmount=" + orderRequest.getTotalAmount()
+        );
+        OrderResponse response = orderService.placeOrderInternal(orderRequest);
+        return ResponseEntity.ok(response);
+    }
+
+    // For user checkout (JWT required)
     @PostMapping("/place")
     public ResponseEntity<OrderResponse> placeOrder(@RequestHeader("Authorization") String token,
                                                     @RequestBody OrderRequest orderRequest) {
