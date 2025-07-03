@@ -143,5 +143,40 @@ public class OrderController {
         long count = orderService.getTotalOrdersCount();
         return ResponseEntity.ok(count);
     }
+    
+ // --- DELIVERY SERVICE ENDPOINTS ---
+
+ // 1. Get all ready-for-delivery (unassigned) orders
+ @GetMapping("/ready-for-delivery")
+ public ResponseEntity<List<OrderResponse>> getReadyForDeliveryOrders() {
+     List<OrderResponse> readyOrders = orderService.getReadyForDeliveryOrders();
+     return ResponseEntity.ok(readyOrders);
+ }
+
+ // 2. Assign order to delivery boy (self-assignment)
+ @PutMapping("/{orderId}/assign-delivery")
+ public ResponseEntity<String> assignOrderToDeliveryBoy(
+         @PathVariable Long orderId,
+         @RequestParam Long deliveryBoyId) {
+     orderService.assignOrderToDeliveryBoy(orderId, deliveryBoyId);
+     return ResponseEntity.ok("Order assigned to delivery boy.");
+ }
+
+ // 3. Get all assigned orders for a delivery boy
+ @GetMapping("/assigned/{deliveryBoyId}")
+ public ResponseEntity<List<OrderResponse>> getAssignedOrders(@PathVariable Long deliveryBoyId) {
+     List<OrderResponse> assigned = orderService.getAssignedOrders(deliveryBoyId);
+     return ResponseEntity.ok(assigned);
+ }
+
+ // 4. Delivery boy updates delivery status (OUT_FOR_DELIVERY, DELIVERED, etc)
+ @PutMapping("/{orderId}/delivery-status")
+ public ResponseEntity<String> updateDeliveryStatus(
+         @PathVariable Long orderId,
+         @RequestParam String status) {
+     orderService.updateDeliveryStatus(orderId, status);
+     return ResponseEntity.ok("Delivery status updated.");
+ }
+
 
 }
