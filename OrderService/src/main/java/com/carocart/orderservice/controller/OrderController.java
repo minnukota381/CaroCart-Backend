@@ -150,6 +150,7 @@ public class OrderController {
  @GetMapping("/ready-for-delivery")
  public ResponseEntity<List<OrderResponse>> getReadyForDeliveryOrders() {
      List<OrderResponse> readyOrders = orderService.getReadyForDeliveryOrders();
+     
      return ResponseEntity.ok(readyOrders);
  }
 

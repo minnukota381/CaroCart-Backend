@@ -1,7 +1,6 @@
 package com.carocart.orderservice.config;
 
 import com.carocart.orderservice.service.JwtAuthenticationFilter;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,17 +24,25 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .cors().and().csrf().disable()
-            .authorizeHttpRequests(authorize -> authorize
-                    .requestMatchers("/orders/debug/token").permitAll()
-                    .requestMatchers("/orders/admin/orders/**").hasAuthority("ROLE_ADMIN")
-                    .requestMatchers("/orders/**").authenticated()
-                    .anyRequest().permitAll()
+            .authorizeHttpRequests(authz -> authz
+                // Public endpoint
+                .requestMatchers("/orders/debug/token").permitAll()
+                // Admin endpoints
+                .requestMatchers("/orders/admin/orders/**").hasAuthority("ROLE_ADMIN")
+                // Delivery endpoints
+                .requestMatchers("/orders/ready-for-delivery").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN")
+                // All other order endpoints require authentication
+                .requestMatchers("/orders/**").authenticated()
+                // All else
+                .anyRequest().permitAll()
             )
+            // Add JWT authentication filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    // Bean for AuthenticationManager
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
