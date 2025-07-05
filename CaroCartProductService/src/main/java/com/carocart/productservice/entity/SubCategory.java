@@ -1,8 +1,7 @@
 package com.carocart.productservice.entity;
 
-import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-
 import java.util.List;
 
 @Entity
@@ -15,46 +14,40 @@ public class SubCategory {
 
     private String name;
 
+    // NEW: S3/Cloud image URL
+    private String imageUrl;
+
+    // NEW: Local/dev image blob
+    @Lob
+    @Column(name = "image", columnDefinition = "LONGBLOB")
+    private byte[] image;
+
     @ManyToOne
     @JoinColumn(name = "category_id")
     @JsonIgnoreProperties("subcategories")
     private Category category;
 
-
     @OneToMany(mappedBy = "subCategory", cascade = CascadeType.ALL)
-    @JsonIgnoreProperties("subCategory")  // Ignore 'subCategory' inside products
+    @JsonIgnoreProperties("subCategory")
     private List<Product> products;
 
-	public String getName() {
-		return name;
-	}
+    // --- Getters & Setters ---
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-	public Long getId() {
-		return id;
-	}
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
-	public Category getCategory() {
-		return category;
-	}
+    public byte[] getImage() { return image; }
+    public void setImage(byte[] image) { this.image = image; }
 
-	public void setCategory(Category category) {
-		this.category = category;
-	}
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
 
-	public List<Product> getProducts() {
-		return products;
-	}
-
-	public void setProducts(List<Product> products) {
-		this.products = products;
-	}
-    // Getters and setters
+    public List<Product> getProducts() { return products; }
+    public void setProducts(List<Product> products) { this.products = products; }
 }

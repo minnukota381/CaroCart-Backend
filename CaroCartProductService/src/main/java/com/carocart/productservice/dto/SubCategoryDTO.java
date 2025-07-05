@@ -3,6 +3,7 @@ package com.carocart.productservice.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.springframework.web.multipart.MultipartFile;
 
 public class SubCategoryDTO {
     @NotBlank(message = "Subcategory name is required")
@@ -12,9 +13,22 @@ public class SubCategoryDTO {
     @NotNull(message = "Category ID is required")
     private Long categoryId;
 
+    // Optional: Cloud image URL
+    private String imageUrl;
+
+    // Optional: For file upload (dev/BLOB)
+    private MultipartFile imageFile;
+
     // Getters & Setters
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
     public Long getCategoryId() { return categoryId; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public MultipartFile getImageFile() { return imageFile; }
+    public void setImageFile(MultipartFile imageFile) { this.imageFile = imageFile; }
 }

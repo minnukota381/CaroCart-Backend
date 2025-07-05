@@ -14,4 +14,7 @@ public interface CategoryService {
     Category getCategoryById(Long id);
     void deleteCategoryById(Long categoryId, String token);
     void deleteSubCategoryById(Long subcategoryId, String token);
+    Category saveCategory(Category category);
+    Category saveCategory(Category category, String token);
+
 }
