@@ -89,4 +89,16 @@ public class CategoryServiceImpl implements CategoryService {
         }
         subCategoryRepo.deleteById(subcategoryId);
     }
+    
+    public Category saveCategory(Category category) {
+        return categoryRepo.save(category);
+    }
+    
+    @Override
+    public Category saveCategory(Category category, String token) {
+        validateAdmin(token);
+        return categoryRepo.save(category);
+    }
+
+
 }

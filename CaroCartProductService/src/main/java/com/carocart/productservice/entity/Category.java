@@ -2,7 +2,6 @@ package com.carocart.productservice.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-
 import java.util.List;
 
 @Entity
@@ -15,31 +14,32 @@ public class Category {
 
     private String name;
 
+    // For BLOB storage
+    @Lob
+    @Column(name = "image", columnDefinition = "LONGBLOB")
+    private byte[] image;
+
+    // For future S3 migration (optional, can be null now)
+    private String imageUrl;
+
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("category")
     private List<SubCategory> subcategories;
 
-    public Long getId() {
-        return id;
-    }
+    // --- Getters & Setters ---
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
-    public List<SubCategory> getSubcategories() {
-        return subcategories;
-    }
+    public byte[] getImage() { return image; }
+    public void setImage(byte[] image) { this.image = image; }
 
-    public void setSubcategories(List<SubCategory> subcategories) {
-        this.subcategories = subcategories;
-    }
+    public List<SubCategory> getSubcategories() { return subcategories; }
+    public void setSubcategories(List<SubCategory> subcategories) { this.subcategories = subcategories; }
 }
