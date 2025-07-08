@@ -12,9 +12,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,7 +30,7 @@ public class UserController {
     @Autowired
     private OtpEmailService otpEmailService;
 
-    // -- USER REGISTRATION (DTO + Validation) --
+    // USER REGISTRATION
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@Valid @RequestBody UserRegistrationDTO dto) {
         String result = userService.signup(dto);
@@ -43,7 +41,7 @@ public class UserController {
         }
     }
 
-    // -- USER LOGIN --
+    // USER LOGIN
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody User user) {
         try {
@@ -54,22 +52,11 @@ public class UserController {
         }
     }
 
-    // -- GET PROFILE --
-    @GetMapping("/profile")
-    public ResponseEntity<User> getProfile(@RequestHeader("Authorization") String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        String token = authorizationHeader.substring(7);
-        String email = jwtUtil.extractUsername(token);
-        Optional<User> user = userService.findByEmail(email);
-        return user.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
-    }
-
-    // -- UPDATE PROFILE --
+    // UPDATE PROFILE
     @PutMapping("/profile")
-    public ResponseEntity<String> updateProfile(@RequestHeader("Authorization") String authorizationHeader,
-                                                @RequestBody User updatedUser) {
+    public ResponseEntity<String> updateProfile(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody User updatedUser) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Authorization header");
         }
@@ -82,21 +69,21 @@ public class UserController {
         return ResponseEntity.badRequest().body("Update failed");
     }
 
-    // -- ADMIN: Get total users count --
+    // ADMIN: Get total users count
     @GetMapping("/admin/users/count")
     public ResponseEntity<Long> getUserCount() {
         long count = userRepository.count();
         return ResponseEntity.ok(count);
     }
 
-    // -- ADMIN: Get all users --
+    // ADMIN: Get all users
     @GetMapping("/admin/users/all")
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
     }
 
-    // -- ADMIN: Update user --
+    // ADMIN: Update user
     @PutMapping("/admin/users/{id}")
     public ResponseEntity<String> updateUserByAdmin(@PathVariable Long id, @RequestBody User updatedUser) {
         Optional<User> userOpt = userRepository.findById(id);
@@ -110,7 +97,7 @@ public class UserController {
         return ResponseEntity.ok("User updated successfully");
     }
 
-    // -- ADMIN: Delete user --
+    // ADMIN: Delete user
     @DeleteMapping("/admin/users/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
         if (!userRepository.existsById(id)) {
@@ -120,7 +107,7 @@ public class UserController {
         return ResponseEntity.ok("User deleted successfully");
     }
 
-    // -- GET CURRENT USER (for Feign client) --
+    // GET CURRENT USER (for Feign client)
     @GetMapping("/me")
     public ResponseEntity<UserDTO> getCurrentUser(@RequestHeader("Authorization") String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
@@ -138,7 +125,7 @@ public class UserController {
         }
     }
 
-    // -- FORGOT PASSWORD WORKFLOW --
+    // FORGOT PASSWORD WORKFLOW
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
@@ -174,67 +161,37 @@ public class UserController {
                 : ResponseEntity.badRequest().body("Failed to update password");
     }
 
-    // -- UPLOAD PROFILE IMAGE --
-    @PostMapping("/profile/upload-image")
-    public ResponseEntity<String> uploadProfileImage(
-            @RequestParam("profileImage") MultipartFile file,
-            @RequestHeader("Authorization") String authHeader) {
+    // --- Save profile image URL (from Firebase) ---
+    @PutMapping("/profile/image-url")
+    public ResponseEntity<String> updateProfileImageUrl(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> body) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
         String token = authHeader.substring(7);
         String email = jwtUtil.extractUsername(token);
-        try {
-            if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body("Please select a file to upload");
-            }
-            long maxSize = 2 * 1024 * 1024;
-            if (file.getSize() > maxSize) {
-                return ResponseEntity.badRequest().body("File size exceeds the 2MB limit");
-            }
-            String contentType = file.getContentType();
-            if (contentType == null ||
-                !(contentType.equals("image/jpeg") ||
-                  contentType.equals("image/png") ||
-                  contentType.equals("image/gif"))) {
-                return ResponseEntity.badRequest().body("Only JPEG, PNG, or GIF images are allowed");
-            }
-            Optional<User> userOpt = userService.findByEmail(email);
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            User user = userOpt.get();
-            user.setProfileImage(file.getBytes());
-            userRepository.save(user);
-            return ResponseEntity.ok("Profile image updated successfully");
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to process image: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An error occurred: " + e.getMessage());
-        }
+        String imageUrl = body.get("imageUrl");
+        boolean success = userService.updateProfileImageUrl(email, imageUrl);
+        return success
+            ? ResponseEntity.ok("Profile image URL updated successfully")
+            : ResponseEntity.badRequest().body("User not found");
     }
 
-    // -- GET PROFILE IMAGE --
-    @GetMapping("/profile/image")
-    public ResponseEntity<byte[]> getProfileImage(@RequestHeader("Authorization") String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+    // --- GET PROFILE (with image URL) ---
+    @GetMapping("/profile")
+    public ResponseEntity<User> getProfile(@RequestHeader("Authorization") String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        String token = authHeader.substring(7);
+        String token = authorizationHeader.substring(7);
         String email = jwtUtil.extractUsername(token);
-        Optional<User> userOpt = userService.findByEmail(email);
-        if (userOpt.isEmpty() || userOpt.get().getProfileImage() == null) {
-            return ResponseEntity.notFound().build();
-        }
-        byte[] image = userOpt.get().getProfileImage();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.IMAGE_JPEG);
-        return new ResponseEntity<>(image, headers, HttpStatus.OK);
+        Optional<User> user = userService.findByEmail(email);
+        // The returned User object will contain the image URL
+        return user.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
-    // -- CHANGE PASSWORD --
+    // CHANGE PASSWORD
     @PostMapping("/change-password")
     public ResponseEntity<String> changePassword(
             @RequestHeader("Authorization") String authHeader,
@@ -252,7 +209,7 @@ public class UserController {
                 : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Current password is incorrect");
     }
 
-    // -- GET BY ID (for Feign) --
+    // GET BY ID (for Feign)
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getCurrentUserById(@PathVariable Long id) {
         Optional<User> userOptional = userRepository.findById(id);

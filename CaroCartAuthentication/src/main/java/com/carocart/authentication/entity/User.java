@@ -1,8 +1,6 @@
 package com.carocart.authentication.entity;
 
 import java.time.LocalDate;
-import com.fasterxml.jackson.annotation.JsonFormat;
-
 import jakarta.persistence.*;
 
 @Entity
@@ -12,6 +10,8 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String profileImageUrl;
+
     private String firstName;
     private String lastName;
 
@@ -20,34 +20,20 @@ public class User {
 
     @Column(nullable = false)
     private String password;
-    
+
     private String phoneNumber;
-    private LocalDate dob; // Make sure to format it as "yyyy-MM-dd"
+    private LocalDate dob;
 
-    // ✅ Add this
     @Column(nullable = false)
-    private String role = "USER";  // Default role
-    
-    @Lob
-    @Column(name = "profile_image", columnDefinition = "LONGBLOB")
-    private byte[] profileImage;
+    private String role = "USER";
 
-    // Getters and setters
-    
+    // --- Getters and Setters ---
+
     public Long getId() { return id; }
-    public String getPhoneNumber() {
-		return phoneNumber;
-	}
-	public void setPhoneNumber(String phoneNumber) {
-		this.phoneNumber = phoneNumber;
-	}
-	public LocalDate getDob() {
-		return dob;
-	}
-	public void setDob(LocalDate dob) {
-		this.dob = dob;
-	}
-	public void setId(Long id) { this.id = id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getProfileImageUrl() { return profileImageUrl; }
+    public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
 
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -63,11 +49,10 @@ public class User {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
-	public byte[] getProfileImage() {
-		return profileImage;
-	}
-	public void setProfileImage(byte[] profileImage) {
-		this.profileImage = profileImage;
-	}
-    
+
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public LocalDate getDob() { return dob; }
+    public void setDob(LocalDate dob) { this.dob = dob; }
 }
