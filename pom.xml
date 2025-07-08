@@ -20,6 +20,7 @@
         <module>CaroCartAddress</module>
         <module>CaroCartNotifications</module>
         <module>CaroCartDeliveryService</module>
+        <module>CaroCartAPIGateway</module>
     </modules>
     
     <properties>
