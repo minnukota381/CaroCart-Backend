@@ -69,6 +69,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/users/profile/upload-image",
                     "/users/profile/image",
+                    "/users/profile/image-url",
                     "/users/profile",
                     "/users/me"
                 ).authenticated()
