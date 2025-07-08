@@ -25,7 +25,6 @@ public class UserService {
     @Autowired
     private NotificationClient notificationClient;
 
-    // -- UPDATED SIGNUP WITH DTO & VALIDATION --
     public String signup(UserRegistrationDTO dto) {
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
             return "Email already registered";
@@ -40,7 +39,7 @@ public class UserService {
         user.setRole("USER");
         userRepository.save(user);
 
-        // Send welcome email via Notification microservice
+        // Send welcome email
         EmailRequest emailRequest = new EmailRequest();
         emailRequest.setToEmail(user.getEmail());
         emailRequest.setSubject("Welcome to CaroCart!");
@@ -54,6 +53,17 @@ public class UserService {
         return "User registered successfully";
     }
 
+    public boolean updateProfileImageUrl(String email, String imageUrl) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setProfileImageUrl(imageUrl);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
+
     public String login(String email, String password) {
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isEmpty()) {
@@ -64,9 +74,9 @@ public class UserService {
             throw new IllegalArgumentException("Invalid email or password");
         }
         return jwtUtil.generateToken(
-        		user.getId(),
+                user.getId(),
                 user.getEmail(),
-                "USER",
+                user.getRole(),
                 user.getFirstName(),
                 user.getLastName()
         );
