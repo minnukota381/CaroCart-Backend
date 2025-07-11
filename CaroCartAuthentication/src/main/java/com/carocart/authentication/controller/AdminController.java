@@ -12,9 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
@@ -107,64 +105,21 @@ public class AdminController {
         return ResponseEntity.ok("Admin profile updated successfully");
     }
 
-    // -- UPLOAD PROFILE IMAGE --
-    @PostMapping("/profile/upload-image")
-    public ResponseEntity<String> uploadProfileImage(
-            @RequestParam("profileImage") MultipartFile file,
-            @RequestHeader("Authorization") String authHeader) {
-        long maxSize = 2 * 1024 * 1024;
-        if (file.getSize() > maxSize) {
-            return ResponseEntity.badRequest().body("File size exceeds 2MB limit");
-        }
-        try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
-            }
-            String token = authHeader.substring(7);
-            String email = jwtUtil.extractUsername(token);
-            Optional<Admin> adminOpt = adminRepository.findByEmail(email);
-            if (adminOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Admin not found");
-            }
-            if (file == null || file.isEmpty()) {
-                return ResponseEntity.badRequest().body("Please select a file to upload");
-            }
-            String contentType = file.getContentType();
-            if (contentType == null ||
-                !(contentType.equals("image/jpeg") ||
-                  contentType.equals("image/png") ||
-                  contentType.equals("image/gif"))) {
-                return ResponseEntity.badRequest().body("Only JPEG, PNG, or GIF images are allowed");
-            }
-            Admin admin = adminOpt.get();
-            admin.setProfileImage(file.getBytes());
-            adminRepository.save(admin);
-            return ResponseEntity.ok("Profile image updated successfully");
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to process image: " + e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An error occurred: " + e.getMessage());
-        }
-    }
-
-    // -- GET PROFILE IMAGE --
-    @GetMapping("/profile/image")
-    public ResponseEntity<byte[]> getProfileImage(@RequestHeader("Authorization") String authHeader) {
+    // --- Save profile image URL (from Firebase) ---
+    @PutMapping("/profile/image-url")
+    public ResponseEntity<String> updateProfileImageUrl(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> body) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
         String token = authHeader.substring(7);
         String email = jwtUtil.extractUsername(token);
-        Optional<Admin> adminOpt = adminRepository.findByEmail(email);
-        if (adminOpt.isEmpty() || adminOpt.get().getProfileImage() == null) {
-            return ResponseEntity.notFound().build();
-        }
-        byte[] image = adminOpt.get().getProfileImage();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.IMAGE_JPEG);
-        return new ResponseEntity<>(image, headers, HttpStatus.OK);
+        String imageUrl = body.get("imageUrl");
+        boolean success = adminService.updateProfileImageUrl(email, imageUrl);
+        return success
+            ? ResponseEntity.ok("Profile image URL updated successfully")
+            : ResponseEntity.badRequest().body("Admin not found");
     }
 
     // -- CHANGE PASSWORD --

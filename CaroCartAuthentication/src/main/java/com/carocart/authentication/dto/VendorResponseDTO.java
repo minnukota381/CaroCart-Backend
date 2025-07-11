@@ -12,9 +12,8 @@ public class VendorResponseDTO {
     private String businessType;
     private String businessAddress;
 
-    // Use either profileImageUrl or profileImage (byte array)
-    private String profileImageUrl;  // If you're storing image path or URL
-    private byte[] profileImage;     // If you're storing image as byte[] in DB
+    // Profile image URL (Firebase/public link)
+    private String profileImageUrl;
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -49,7 +48,4 @@ public class VendorResponseDTO {
 
     public String getProfileImageUrl() { return profileImageUrl; }
     public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
-
-    public byte[] getProfileImage() { return profileImage; }
-    public void setProfileImage(byte[] profileImage) { this.profileImage = profileImage; }
 }
