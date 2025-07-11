@@ -41,6 +41,9 @@ public class Vendor {
     private String businessType;
     private String businessAddress;
 
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
+    
     @Lob
     @Basic(fetch = FetchType.LAZY)
     @Column(name = "profile_image", columnDefinition = "LONGBLOB")
@@ -106,4 +109,13 @@ public class Vendor {
 
     public byte[] getProfileImage() { return profileImage; }
     public void setProfileImage(byte[] profileImage) { this.profileImage = profileImage; }
+
+	public String getProfileImageUrl() {
+		return profileImageUrl;
+	}
+
+	public void setProfileImageUrl(String profileImageUrl) {
+		this.profileImageUrl = profileImageUrl;
+	}
+    
 }
