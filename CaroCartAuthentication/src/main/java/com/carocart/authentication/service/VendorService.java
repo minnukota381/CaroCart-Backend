@@ -26,7 +26,6 @@ public class VendorService {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private JwtUtil jwtUtil;
-    
 
     private final Map<String, Vendor> pendingVendors = new ConcurrentHashMap<>();
 
@@ -114,16 +113,6 @@ public class VendorService {
             Vendor vendor = optionalVendor.get();
             vendorRepository.delete(vendor);
             otpEmailService.sendRejectionEmail(vendor.getEmail());
-            return true;
-        }
-        return false;
-    }
-
-    public boolean updateProfileImageUrl(String email, String imageUrl) {
-        Vendor vendor = getVendorByEmail(email);
-        if (vendor != null) {
-            vendor.setProfileImageUrl(imageUrl);
-            vendorRepository.save(vendor);
             return true;
         }
         return false;

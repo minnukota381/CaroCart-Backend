@@ -22,13 +22,12 @@ public class Admin {
     @Column(nullable = false)
     private String role = "ADMIN"; // default value
 
-    // Profile image URL (Firebase)
-    private String profileImageUrl;
+    // Add profile image field
+    @Lob
+    @Column(name = "profile_image", columnDefinition = "LONGBLOB")
+    private byte[] profileImage;
 
-
- // <--- ADD THIS
-
-    // --- Getters and Setters ---
+    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -49,11 +48,8 @@ public class Admin {
 
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
-	public String getProfileImageUrl() {
-		return profileImageUrl;
-	}
-	public void setProfileImageUrl(String profileImageUrl) {
-		this.profileImageUrl = profileImageUrl;
-	}
 
+    // Profile image getter and setter
+    public byte[] getProfileImage() { return profileImage; }
+    public void setProfileImage(byte[] profileImage) { this.profileImage = profileImage; }
 }

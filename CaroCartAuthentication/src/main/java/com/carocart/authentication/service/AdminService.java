@@ -12,7 +12,4 @@ public interface AdminService {
     Admin findAdminByEmail(String email);
     void save(Admin admin);
     boolean changePassword(String email, String currentPassword, String newPassword);
-
-    // Add this method:
-    boolean updateProfileImageUrl(String email, String imageUrl);
 }
