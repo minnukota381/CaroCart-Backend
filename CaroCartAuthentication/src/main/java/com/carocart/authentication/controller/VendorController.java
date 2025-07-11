@@ -75,13 +75,14 @@ public class VendorController {
         dto.setFirstName(vendor.getFirstName());
         dto.setLastName(vendor.getLastName());
         dto.setEmail(vendor.getEmail());
-        dto.setRole("VENDOR");
+        dto.setRole(vendor.getRole());
         dto.setCompanyName(vendor.getCompanyName());
         dto.setContactNumber(vendor.getContactNumber());
         dto.setGstNumber(vendor.getGstNumber());
         dto.setBusinessType(vendor.getBusinessType());
         dto.setBusinessAddress(vendor.getBusinessAddress());
-        dto.setProfileImage(vendor.getProfileImage());
+        dto.setProfileImageUrl(vendor.getProfileImageUrl()); // <- the URL field
+
         return ResponseEntity.ok(dto);
     }
 
@@ -120,6 +121,20 @@ public class VendorController {
             return ResponseEntity.status(500).body("Error uploading image");
         }
     }
+ // Save the Firebase image URL to Vendor profile
+    @PutMapping("/me/profile-image-url")
+    public ResponseEntity<String> updateVendorProfileImageUrl(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, String> body) {
+        String jwt = token.startsWith("Bearer ") ? token.substring(7) : token;
+        String email = jwtUtil.extractUsername(jwt);
+        String imageUrl = body.get("imageUrl");
+        boolean success = vendorService.updateProfileImageUrl(email, imageUrl);
+        return success
+            ? ResponseEntity.ok("Vendor profile image URL updated successfully")
+            : ResponseEntity.badRequest().body("Vendor not found");
+    }
+
 
     // -- ADMIN: Get all vendors --
     @GetMapping("/admin/vendors/all")
@@ -205,13 +220,14 @@ public class VendorController {
         dto.setFirstName(vendor.getFirstName());
         dto.setLastName(vendor.getLastName());
         dto.setEmail(vendor.getEmail());
-        dto.setRole("VENDOR");
+        dto.setRole(vendor.getRole());
         dto.setCompanyName(vendor.getCompanyName());
         dto.setContactNumber(vendor.getContactNumber());
         dto.setGstNumber(vendor.getGstNumber());
         dto.setBusinessType(vendor.getBusinessType());
         dto.setBusinessAddress(vendor.getBusinessAddress());
-        dto.setProfileImage(vendor.getProfileImage());
+        dto.setProfileImageUrl(vendor.getProfileImageUrl()); // <- the URL field
+
         return ResponseEntity.ok(dto);
     }
 }
