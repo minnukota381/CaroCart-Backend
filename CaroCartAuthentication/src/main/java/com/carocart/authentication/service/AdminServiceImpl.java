@@ -49,11 +49,11 @@ public class AdminServiceImpl implements AdminService {
             return "Invalid credentials";
         }
         return jwtUtil.generateToken(
-        		 admin.getId(), 
-                admin.getEmail(),
-                "ADMIN",
-                admin.getFirstName(),
-                admin.getLastName()
+            admin.getId(), 
+            admin.getEmail(),
+            "ADMIN",
+            admin.getFirstName(),
+            admin.getLastName()
         );
     }
 
@@ -82,6 +82,19 @@ public class AdminServiceImpl implements AdminService {
                 adminRepository.save(admin);
                 return true;
             }
+        }
+        return false;
+    }
+
+    // Add this for Firebase image URL
+    @Override
+    public boolean updateProfileImageUrl(String email, String imageUrl) {
+        Optional<Admin> adminOpt = adminRepository.findByEmail(email);
+        if (adminOpt.isPresent()) {
+            Admin admin = adminOpt.get();
+            admin.setProfileImageUrl(imageUrl); // Ensure your Admin entity has this field/getter/setter!
+            adminRepository.save(admin);
+            return true;
         }
         return false;
     }
