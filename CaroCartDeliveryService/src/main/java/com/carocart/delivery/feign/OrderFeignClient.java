@@ -8,7 +8,7 @@ import java.util.List;
 
 @FeignClient(
 	    name = "order-service",
-	    url = "${order.service.url}",  // Use this property from application.properties
+	      // Use this property from application.properties
 	    configuration = com.carocart.delivery.config.FeignClientConfig.class
 	)
 	public interface OrderFeignClient {
