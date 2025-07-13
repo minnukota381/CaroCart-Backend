@@ -2,6 +2,8 @@ package com.carocart.productservice.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import org.hibernate.annotations.UpdateTimestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -21,6 +23,10 @@ public class Category {
 
     // For future S3 migration (optional, can be null now)
     private String imageUrl;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("category")
@@ -42,4 +48,7 @@ public class Category {
 
     public List<SubCategory> getSubcategories() { return subcategories; }
     public void setSubcategories(List<SubCategory> subcategories) { this.subcategories = subcategories; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }
