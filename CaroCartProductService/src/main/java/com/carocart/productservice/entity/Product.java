@@ -33,7 +33,8 @@ public class Product {
     @Column(name = "image", columnDefinition = "LONGBLOB")
     private byte[] image;
 
-
+    @Column(name = "image_url")
+    private String imageUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -178,6 +179,14 @@ public class Product {
 
 	public void setSubCategory(SubCategory subCategory) {
 		this.subCategory = subCategory;
+	}
+
+	public String getImageUrl() {
+		return imageUrl;
+	}
+
+	public void setImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
 	}
 
     
