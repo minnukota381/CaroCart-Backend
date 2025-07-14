@@ -22,7 +22,7 @@ public class FirebaseStorageUtil {
             FileInputStream serviceAccount = new FileInputStream("src/main/resources/carocart-d4171-firebase-adminsdk-fbsvc-6bfc483193.json");
             FirebaseOptions options = new FirebaseOptions.Builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                    .setStorageBucket("carocart.appspot.com") // Replace with your actual bucket
+                    .setStorageBucket("carocart-d4171.firebasestorage.app") // Replace with your actual bucket
                     .build();
             FirebaseApp.initializeApp(options);
         }
