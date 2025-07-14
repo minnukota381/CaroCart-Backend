@@ -6,22 +6,13 @@ import com.carocart.productservice.entity.Product;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.service.ProductService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/products")
@@ -33,16 +24,11 @@ public class ProductController {
     @Autowired
     private SubCategoryRepository subCategoryRepository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Product> addProduct(
-            @RequestPart("product") String productJson,
-            @RequestPart(value = "image", required = false) MultipartFile image,
-            @RequestHeader("Authorization") String token) throws IOException {
-
-        ProductRequestDTO productDTO = objectMapper.readValue(productJson, ProductRequestDTO.class);
+        @RequestBody ProductRequestDTO productDTO,
+        @RequestHeader("Authorization") String token
+    ) throws IOException {
 
         // Validate price <= mrp
         if (productDTO.getPrice() > productDTO.getMrp()) {
@@ -65,17 +51,18 @@ public class ProductController {
         product.setIsAvailable(productDTO.getIsAvailable());
         product.setSubCategory(subCategory);
 
-        return ResponseEntity.ok(productService.addProduct(product, image, token));
+        // Set imageUrl (from Firebase, sent by frontend)
+        product.setImageUrl(productDTO.getImageUrl());
+
+        return ResponseEntity.ok(productService.addProduct(product, null, token));
     }
 
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    // === UPDATE PRODUCT ===
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Product> updateProduct(
             @PathVariable Long id,
-            @RequestPart("product") String productJson,
-            @RequestPart(value = "image", required = false) MultipartFile image,
+            @RequestBody ProductRequestDTO productDTO,
             @RequestHeader("Authorization") String token) throws IOException {
-
-        ProductRequestDTO productDTO = objectMapper.readValue(productJson, ProductRequestDTO.class);
 
         if (productDTO.getPrice() > productDTO.getMrp()) {
             throw new IllegalArgumentException("Price must not exceed MRP");
@@ -96,13 +83,15 @@ public class ProductController {
         updatedProduct.setIsAvailable(productDTO.getIsAvailable());
         updatedProduct.setSubCategory(subCategory);
 
-        Product updated = productService.updateProduct(id, updatedProduct, image, token);
+        // Set new imageUrl (if changed)
+        updatedProduct.setImageUrl(productDTO.getImageUrl());
+
+        Product updated = productService.updateProduct(id, updatedProduct, null, token);
         if (updated == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(updated);
     }
-
 
     // ✅ Delete product (Admin or Vendor)
     @DeleteMapping("/{id}")
