@@ -35,7 +35,7 @@ public class ProductRequestDTO {
     private Long subCategoryId;
 
     private Boolean isAvailable = true;
-
+    private String imageUrl;
     // Image will be handled in the controller as MultipartFile, not here
 
     // Getters and setters
@@ -68,4 +68,11 @@ public class ProductRequestDTO {
 
     public Boolean getIsAvailable() { return isAvailable; }
     public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
+	public String getImageUrl() {
+		return imageUrl;
+	}
+	public void setImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
+	}
+    
 }
