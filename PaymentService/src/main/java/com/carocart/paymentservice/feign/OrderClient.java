@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@FeignClient(name = "ORDER-SERVICE", url = "${order.service.url}", configuration = FeignConfig.class)
+@FeignClient(name = "ORDER-SERVICE", configuration = FeignConfig.class)
 public interface OrderClient {
     @PostMapping("/orders/internal/place")
     ResponseEntity<OrderResponseDTO> createOrder(@RequestBody OrderRequestDTO orderRequest);
