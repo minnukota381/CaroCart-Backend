@@ -6,46 +6,22 @@ public class ProductDTO {
     private Double price;
     private Integer stock;
     private Boolean isAvailable;
-    private String vendorEmail; // ✅ NEW FIELD
+    private String vendorEmail;
+    private String imageUrl;    // <-- Add this line
 
-	public Long getId() {
-		return id;
-	}
-	public void setId(Long id) {
-		this.id = id;
-	}
-	public String getName() {
-		return name;
-	}
-	public void setName(String name) {
-		this.name = name;
-	}
-	public Double getPrice() {
-		return price;
-	}
-	public void setPrice(Double price) {
-		this.price = price;
-	}
-	public Integer getStock() {
-		return stock;
-	}
-	public void setStock(Integer stock) {
-		this.stock = stock;
-	}
-	public Boolean getIsAvailable() {
-		return isAvailable;
-	}
-	public void setIsAvailable(Boolean isAvailable) {
-		this.isAvailable = isAvailable;
-	}
-	public String getVendorEmail() {
-		return vendorEmail;
-	}
-	public void setVendorEmail(String vendorEmail) {
-		this.vendorEmail = vendorEmail;
-	}
-
-    // getters and setters
-    
-    
+    // --- Getters and Setters ---
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public Double getPrice() { return price; }
+    public void setPrice(Double price) { this.price = price; }
+    public Integer getStock() { return stock; }
+    public void setStock(Integer stock) { this.stock = stock; }
+    public Boolean getIsAvailable() { return isAvailable; }
+    public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
+    public String getVendorEmail() { return vendorEmail; }
+    public void setVendorEmail(String vendorEmail) { this.vendorEmail = vendorEmail; }
+    public String getImageUrl() { return imageUrl; }             // <-- Add this getter
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; } // <-- And setter
 }
