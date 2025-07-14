@@ -128,6 +128,7 @@ public class ProductServiceImpl implements ProductService {
             product.setImageUrl(imageUrl);
         }
 
+        // SKIP Firebase upload (handled by frontend), imageUrl already set in Product
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
         return productRepository.save(product);
