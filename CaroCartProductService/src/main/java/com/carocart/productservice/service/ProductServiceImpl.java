@@ -7,10 +7,12 @@ import com.carocart.productservice.entity.Product;
 import com.carocart.productservice.feign.AdminClient;
 import com.carocart.productservice.feign.VendorClient;
 import com.carocart.productservice.repository.ProductRepository;
+import com.carocart.productservice.util.FirebaseStorageUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +23,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
-
+import com.carocart.productservice.util.FirebaseStorageUtil;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @Service
@@ -35,6 +38,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private VendorClient vendorClient;
+    @Autowired
+    private FirebaseStorageUtil firebaseStorageUtil;
 
     private boolean isAdmin(AdminResponseDTO admin) {
         return admin != null && "ADMIN".equals(admin.getRole());
@@ -97,14 +102,14 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Product addProduct(Product product, String token) {
+    public Product addProduct(Product product, MultipartFile image, String token) throws IOException {
         AdminResponseDTO admin = tryGetAdmin(token);
         VendorDTO vendor = tryGetVendor(token);
 
         if (isAdmin(admin)) {
             product.setAddedByRole("ADMIN");
             product.setAddedById(admin.getId());
-            product.setVendorName(null); // Not needed
+            product.setVendorName(null);
         } else if (isVendor(vendor)) {
             product.setAddedByRole("VENDOR");
             product.setAddedById(vendor.getId());
@@ -117,13 +122,19 @@ public class ProductServiceImpl implements ProductService {
             throw new RuntimeException("SubCategory must be provided");
         }
 
+        // Firebase image upload
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = firebaseStorageUtil.uploadFile(image);
+            product.setImageUrl(imageUrl);
+        }
+
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
         return productRepository.save(product);
     }
 
     @Override
-    public Product updateProduct(Long id, Product updatedProduct, String token) {
+    public Product updateProduct(Long id, Product updatedProduct, MultipartFile image, String token) throws IOException {
         AdminResponseDTO admin = tryGetAdmin(token);
         VendorDTO vendor = tryGetVendor(token);
 
@@ -148,8 +159,14 @@ public class ProductServiceImpl implements ProductService {
             product.setUpdatedAt(LocalDateTime.now());
             product.setSubCategory(updatedProduct.getSubCategory());
 
-            if (updatedProduct.getImage() != null && updatedProduct.getImage().length > 0) {
-                product.setImage(updatedProduct.getImage());
+            // Upload new image if provided
+            try {
+                if (image != null && !image.isEmpty()) {
+                    String imageUrl = firebaseStorageUtil.uploadFile(image);
+                    product.setImageUrl(imageUrl);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Image upload failed", e);
             }
 
             return productRepository.save(product);

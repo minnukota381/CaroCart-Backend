@@ -36,7 +36,6 @@ public class ProductController {
     @Autowired
     private ObjectMapper objectMapper;
 
-    // ✅ Add product (Admin or Vendor) with validation
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Product> addProduct(
             @RequestPart("product") String productJson,
@@ -66,14 +65,9 @@ public class ProductController {
         product.setIsAvailable(productDTO.getIsAvailable());
         product.setSubCategory(subCategory);
 
-        if (image != null && !image.isEmpty()) {
-            product.setImage(image.getBytes());
-        }
-
-        return ResponseEntity.ok(productService.addProduct(product, token));
+        return ResponseEntity.ok(productService.addProduct(product, image, token));
     }
 
-    // ✅ Update product (Admin or Vendor) with validation
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Product> updateProduct(
             @PathVariable Long id,
@@ -102,16 +96,13 @@ public class ProductController {
         updatedProduct.setIsAvailable(productDTO.getIsAvailable());
         updatedProduct.setSubCategory(subCategory);
 
-        if (image != null && !image.isEmpty()) {
-            updatedProduct.setImage(image.getBytes());
-        }
-
-        Product updated = productService.updateProduct(id, updatedProduct, token);
+        Product updated = productService.updateProduct(id, updatedProduct, image, token);
         if (updated == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(updated);
     }
+
 
     // ✅ Delete product (Admin or Vendor)
     @DeleteMapping("/{id}")
