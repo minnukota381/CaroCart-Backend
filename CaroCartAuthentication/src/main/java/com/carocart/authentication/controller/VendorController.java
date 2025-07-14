@@ -228,7 +228,6 @@ public class VendorController {
         dto.setBusinessAddress(vendor.getBusinessAddress());
         dto.setProfileImageUrl(vendor.getProfileImageUrl()); // <- the URL field
 
-        
         return ResponseEntity.ok(dto);
     }
 }
