@@ -10,9 +10,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Existing
     List<Order> findByUserId(Long userId);
 
-    // NEW: For listing ready-for-delivery orders (not assigned)
-    List<Order> findByDeliveryStatusAndDeliveryBoyIdIsNull(String deliveryStatus);
-
-    // NEW: For listing orders assigned to a delivery boy
-    List<Order> findByDeliveryBoyId(Long deliveryBoyId);
+//    // NEW: For listing ready-for-delivery orders (not assigned)
+//    List<Order> findByDeliveryStatusAndDeliveryBoyIdIsNull(String deliveryStatus);
+//
+//    // NEW: For listing orders assigned to a delivery boy
+//    List<Order> findByDeliveryBoyId(Long deliveryBoyId);
 }

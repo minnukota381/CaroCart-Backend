@@ -24,30 +24,8 @@ public class Order {
     @Column(length = 1000)
     private String shippingAddress; // can store as JSON string or simple text
 
- // --- NEW CODE: add these fields ---
-    @Column(name = "delivery_boy_id")
-    private Long deliveryBoyId;
 
-    @Column(name = "delivery_status")
-    private String deliveryStatus; // READY_FOR_DELIVERY, CLAIMED, OUT_FOR_DELIVERY, DELIVERED, etc.
-
-    public Long getDeliveryBoyId() {
-		return deliveryBoyId;
-	}
-
-	public void setDeliveryBoyId(Long deliveryBoyId) {
-		this.deliveryBoyId = deliveryBoyId;
-	}
-
-	public String getDeliveryStatus() {
-		return deliveryStatus;
-	}
-
-	public void setDeliveryStatus(String deliveryStatus) {
-		this.deliveryStatus = deliveryStatus;
-	}
-
-	@Column(name = "payment_status")
+    @Column(name = "payment_status")
     private String paymentStatus;
 
     @Column(name = "payment_id")
