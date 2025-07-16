@@ -93,7 +93,8 @@ public class OrderServiceImpl implements OrderService {
 
         sendOrderPlacedEmails(savedOrder, user, orderItems);
 
-        return new OrderResponse(savedOrder);
+        // --- Return OrderResponse with product images ---
+        return mapOrderToOrderResponseWithImages(savedOrder);
     }
 
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
@@ -124,7 +125,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void sendOrderShippedEmails(Order order) {
-        // ✅ Use internal token here
         UserDTO user = userClient.getCurrentUserById(internalToken, order.getUserId());
 
         notificationClient.sendEmail(new EmailRequest(
@@ -153,11 +153,43 @@ public class OrderServiceImpl implements OrderService {
         ));
     }
 
+    // --- MAPPING LOGIC FOR PRODUCT IMAGE ON ORDER RESPONSE ---
+
+    private OrderResponse mapOrderToOrderResponseWithImages(Order order) {
+        OrderResponse response = new OrderResponse();
+        response.setOrderId(order.getId());
+        response.setUserId(order.getUserId());
+        response.setShippingAddress(order.getShippingAddress());
+        response.setTotalAmount(order.getTotalAmount());
+        response.setStatus(order.getStatus());
+        response.setPaymentStatus(order.getPaymentStatus());
+        response.setPaymentId(order.getPaymentId());
+        response.setOrderDate(order.getOrderDate());
+        response.setUpdatedAt(order.getUpdatedAt());
+        response.setDeliveryStatus(order.getDeliveryStatus());
+        response.setDeliveryBoyId(order.getDeliveryBoyId());
+
+        // Fetch and attach product image URLs to all items
+        if (order.getOrderItems() != null) {
+            List<OrderItemDTO> itemDTOs = order.getOrderItems().stream()
+                .map(item -> {
+                    ProductDTO product = productClient.getProductById(item.getProductId());
+                    String imageUrl = (product != null && product.getImageUrl() != null) ? product.getImageUrl() : null;
+                    return new OrderItemDTO(item, imageUrl);
+                })
+                .collect(Collectors.toList());
+            response.setItems(itemDTOs);
+        }
+        return response;
+    }
+
     @Override
     public List<OrderResponse> getOrdersForUser(String token) {
         UserDTO user = userClient.getCurrentUser(token);
         return orderRepository.findByUserId(user.getId())
-                .stream().map(OrderResponse::new).collect(Collectors.toList());
+                .stream()
+                .map(this::mapOrderToOrderResponseWithImages)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -168,7 +200,7 @@ public class OrderServiceImpl implements OrderService {
         if (!order.getUserId().equals(user.getId())) {
             throw new RuntimeException("Unauthorized access.");
         }
-        return new OrderResponse(order);
+        return mapOrderToOrderResponseWithImages(order);
     }
 
     @Override
@@ -200,14 +232,15 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<OrderResponse> getAllOrders() {
         return orderRepository.findAll().stream()
-                .map(OrderResponse::new).collect(Collectors.toList());
+                .map(this::mapOrderToOrderResponseWithImages)
+                .collect(Collectors.toList());
     }
 
     @Override
     public OrderResponse getOrderByIdForAdmin(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-        return new OrderResponse(order);
+        return mapOrderToOrderResponseWithImages(order);
     }
 
     @Override
@@ -229,7 +262,6 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentId("COD-" + orderId);
         order.setPaymentStatus("COD");
         order.setStatus("PLACED");
-        // Delivery status reset
         order.setDeliveryStatus("READY_FOR_DELIVERY");
         order.setDeliveryBoyId(null);
 
@@ -243,7 +275,6 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         order.setStatus("SHIPPED");
-        // Optionally, you can trigger delivery status to READY_FOR_DELIVERY here too
         order.setDeliveryStatus("READY_FOR_DELIVERY");
         order.setDeliveryBoyId(null);
 
@@ -251,7 +282,7 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save(order);
         sendOrderShippedEmails(order);
     }
-    
+
     @Override
     public long getTotalOrdersCount() {
         return orderRepository.count();
@@ -277,11 +308,9 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentStatus("PAID");
         order.setTotalAmount(orderRequest.getTotalAmount());
 
-        // For delivery assignment
         order.setDeliveryStatus("READY_FOR_DELIVERY");
         order.setDeliveryBoyId(null);
 
-        // --- Create OrderItems ---
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(item.getProductId());
@@ -294,20 +323,18 @@ public class OrderServiceImpl implements OrderService {
         }).collect(Collectors.toList());
 
         order.setOrderItems(orderItems);
-
         Order savedOrder = orderRepository.save(order);
 
-        return new OrderResponse(savedOrder);
+        return mapOrderToOrderResponseWithImages(savedOrder);
     }
 
     // ===== DELIVERY BOY SELF-ASSIGNMENT FLOW (NEW) =====
 
     @Override
     public List<OrderResponse> getReadyForDeliveryOrders() {
-        // Orders ready for delivery and not assigned
         return orderRepository.findAll().stream()
                 .filter(o -> "READY_FOR_DELIVERY".equalsIgnoreCase(o.getDeliveryStatus()) && o.getDeliveryBoyId() == null)
-                .map(OrderResponse::new)
+                .map(this::mapOrderToOrderResponseWithImages)
                 .collect(Collectors.toList());
     }
 
@@ -329,7 +356,7 @@ public class OrderServiceImpl implements OrderService {
     public List<OrderResponse> getAssignedOrders(Long deliveryBoyId) {
         return orderRepository.findAll().stream()
                 .filter(o -> deliveryBoyId.equals(o.getDeliveryBoyId()))
-                .map(OrderResponse::new)
+                .map(this::mapOrderToOrderResponseWithImages)
                 .collect(Collectors.toList());
     }
 

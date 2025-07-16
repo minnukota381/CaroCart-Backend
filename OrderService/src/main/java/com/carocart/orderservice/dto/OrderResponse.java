@@ -17,69 +17,52 @@ public class OrderResponse {
     private LocalDateTime updatedAt;
     private List<OrderItemDTO> items;
 
-    // NEW FIELDS
+    // Other fields...
     private String deliveryStatus;
     private Long deliveryBoyId;
-    private String userContact;  // Add user's phone/email here
+    private String userContact;
 
     public OrderResponse() {}
 
-    public OrderResponse(com.carocart.orderservice.entity.Order order) {
-        this.orderId = order.getId();
-        this.userId = order.getUserId();
-        this.shippingAddress = order.getShippingAddress();
-        try {
-            this.addressId = (Long) order.getClass().getDeclaredMethod("getAddressId").invoke(order);
-        } catch (Exception ignored) {}
+    public Long getOrderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
 
-        this.totalAmount = order.getTotalAmount();
-        this.status = order.getStatus();
-        this.paymentStatus = order.getPaymentStatus();
-        this.paymentId = order.getPaymentId();
-        this.orderDate = order.getOrderDate();
-        this.updatedAt = order.getUpdatedAt();
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
-        this.deliveryStatus = order.getDeliveryStatus();
-        this.deliveryBoyId = order.getDeliveryBoyId();
+    public String getShippingAddress() { return shippingAddress; }
+    public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
 
-        if (order.getOrderItems() != null) {
-            this.items = order.getOrderItems().stream()
-                .map(OrderItemDTO::new)
-                .toList();
-        }
+    public Long getAddressId() { return addressId; }
+    public void setAddressId(Long addressId) { this.addressId = addressId; }
 
-        // TODO: Populate userContact
-        // Option 1: If you store user's contact in Order entity, map here
-        // Option 2: Fetch from UserService or userClient (better approach, async or via Feign)
-        // For example, userContact = userClient.getUserContactById(order.getUserId());
-        // For now, set as null or empty string
-        this.userContact = null;
-    }
+    public Double getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
 
-    // Getters and Setters for new fields
-    public String getDeliveryStatus() {
-        return deliveryStatus;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public void setDeliveryStatus(String deliveryStatus) {
-        this.deliveryStatus = deliveryStatus;
-    }
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
 
-    public Long getDeliveryBoyId() {
-        return deliveryBoyId;
-    }
+    public String getPaymentId() { return paymentId; }
+    public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
 
-    public void setDeliveryBoyId(Long deliveryBoyId) {
-        this.deliveryBoyId = deliveryBoyId;
-    }
+    public LocalDateTime getOrderDate() { return orderDate; }
+    public void setOrderDate(LocalDateTime orderDate) { this.orderDate = orderDate; }
 
-    public String getUserContact() {
-        return userContact;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public void setUserContact(String userContact) {
-        this.userContact = userContact;
-    }
+    public List<OrderItemDTO> getItems() { return items; }
+    public void setItems(List<OrderItemDTO> items) { this.items = items; }
 
-    // ... existing getters/setters here ...
+    public String getDeliveryStatus() { return deliveryStatus; }
+    public void setDeliveryStatus(String deliveryStatus) { this.deliveryStatus = deliveryStatus; }
+
+    public Long getDeliveryBoyId() { return deliveryBoyId; }
+    public void setDeliveryBoyId(Long deliveryBoyId) { this.deliveryBoyId = deliveryBoyId; }
+
+    public String getUserContact() { return userContact; }
+    public void setUserContact(String userContact) { this.userContact = userContact; }
 }
