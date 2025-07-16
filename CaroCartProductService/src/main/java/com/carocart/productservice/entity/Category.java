@@ -15,12 +15,7 @@ public class Category {
     private Long id;
 
     private String name;
-
-    // For BLOB storage
-    @Lob
-    @Column(name = "image", columnDefinition = "LONGBLOB")
-    private byte[] image;
-
+    
     // For future S3 migration (optional, can be null now)
     private String imageUrl;
 
@@ -43,8 +38,6 @@ public class Category {
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
-    public byte[] getImage() { return image; }
-    public void setImage(byte[] image) { this.image = image; }
 
     public List<SubCategory> getSubcategories() { return subcategories; }
     public void setSubcategories(List<SubCategory> subcategories) { this.subcategories = subcategories; }
