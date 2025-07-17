@@ -1,0 +1,142 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.3
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${db_password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 20s
+      retries: 10
+
+  eureka-server:
+    build:
+      context: ./CaroCartServer
+    image: carocart-eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+  authentication:
+    build:
+      context: ./CaroCartAuthentication
+    image: carocart-authentication
+    ports:
+      - "8081:8081"
+    depends_on:
+      - eureka-server
+      - mysql
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+  productservice:
+    build:
+      context: ./CaroCartProductService
+    image: carocart-productservice
+    ports:
+      - "8082:8082"
+    depends_on:
+      - eureka-server
+      - mysql
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+  cartservice:
+    build:
+      context: ./CartService
+    image: carocart-cartservice
+    ports:
+      - "8083:8083"
+    depends_on:
+      - eureka-server
+      - mysql
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+  orderservice:
+    build:
+      context: ./OrderService
+    image: carocart-orderservice
+    ports:
+      - "8084:8084"
+    depends_on:
+      - eureka-server
+      - mysql
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+  address:
+    build:
+      context: ./CaroCartAddress
+    image: carocart-address
+    ports:
+      - "8085:8085"
+    depends_on:
+      - eureka-server
+      - mysql
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+  paymentservice:
+    build:
+      context: ./PaymentService
+    image: carocart-paymentservice
+    ports:
+      - "8086:8086"
+    depends_on:
+      - eureka-server
+      - mysql
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+  notifications:
+    build:
+      context: ./CaroCartNotifications
+    image: carocart-notifications
+    ports:
+      - "8087:8087"
+    depends_on:
+      - eureka-server
+      - mysql
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+  apigateway:
+    build:
+      context: ./CaroCartAPIGateway
+    image: carocart-apigateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    env_file:
+      - .env
+
+volumes:
+  mysql_data:

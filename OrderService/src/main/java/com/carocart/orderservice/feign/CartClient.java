@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.List;
 
-@FeignClient(name = "CartService",  contextId = "cartClient")
+@FeignClient(name = "CartService")
 public interface CartClient {
 
     @GetMapping("/cart/get") // ✅ Matches your controller

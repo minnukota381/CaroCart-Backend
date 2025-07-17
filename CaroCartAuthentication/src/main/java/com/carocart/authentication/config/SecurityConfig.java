@@ -40,7 +40,7 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // your permitAll and role-based matchers (unchanged)
+            	.requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers(
                     "/admins/signup",
                     "/admins/login",
@@ -73,7 +73,7 @@ public class SecurityConfig {
                     "/users/profile",
                     "/users/me"
                 ).authenticated()
-                .requestMatchers("/api/addresses/**").permitAll() // or authenticated()
+                .requestMatchers("/api/addresses/**").permitAll()
                 .requestMatchers("/vendors/me").authenticated()
                 .anyRequest().authenticated()
             )
@@ -83,7 +83,7 @@ public class SecurityConfig {
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED) // ✅ FIXED
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             )
             .httpBasic(httpBasic -> httpBasic.disable())
             .formLogin(form -> form.disable());

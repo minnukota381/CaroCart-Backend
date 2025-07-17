@@ -12,9 +12,11 @@ import java.util.Map;
 
 @FeignClient(name = "OrderService", configuration = FeignConfig.class)
 public interface OrderClient {
-
     @PostMapping("/orders/internal/place")
     ResponseEntity<OrderResponseDTO> createOrder(@RequestBody OrderRequestDTO orderRequest);
+//
+//    @PostMapping("/orders")
+//    ResponseEntity<OrderResponseDTO> createOrder(@RequestBody OrderRequestDTO orderRequest);
 
     @GetMapping("/orders/{orderId}")
     ResponseEntity<Map<String, Object>> getOrderById(@PathVariable("orderId") Long orderId);
@@ -22,6 +24,5 @@ public interface OrderClient {
     @PutMapping("/orders/update-payment-status/{orderId}")
     ResponseEntity<?> updatePaymentStatus(
         @PathVariable("orderId") Long orderId,
-        @RequestBody PaymentUpdateRequestDTO request
-    );
+        @RequestBody PaymentUpdateRequestDTO request);
 }
