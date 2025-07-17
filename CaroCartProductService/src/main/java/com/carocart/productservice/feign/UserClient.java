@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-@FeignClient(name = "CaroCartAuthentication",  contextId = "userClient")
+@FeignClient(name = "CaroCartAuthentication")
 public interface UserClient {
 
     @GetMapping("/users/me")

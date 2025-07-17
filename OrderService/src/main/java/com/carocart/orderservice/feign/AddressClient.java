@@ -9,7 +9,7 @@ import java.util.List;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
-@FeignClient(name = "CaroCartAddress", contextId = "addressClient")
+@FeignClient(name = "CaroCartAddress")
 public interface AddressClient {
 
     @GetMapping("/api/addresses/{id}")
