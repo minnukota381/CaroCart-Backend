@@ -59,14 +59,18 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Cart is empty. Cannot place order.");
         }
 
+        // -- FETCH THE FORMATTED GOOGLE ADDRESS from Address microservice --
         AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), token);
-        String formattedAddress = address.toFormattedString();
 
+        // LOG for debugging
+        System.out.println("Fetched address from AddressClient: " + address.getAddress());
+
+        // USE ONLY THE FORMATTED ADDRESS STRING (Google Maps string)
         Order order = new Order();
         order.setUserId(user.getId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
-        order.setShippingAddress(formattedAddress);
+        order.setShippingAddress(address.getAddress()); // <<--- Only this!
         order.setPaymentStatus("PENDING");
 
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
@@ -92,6 +96,49 @@ public class OrderServiceImpl implements OrderService {
 
         return new OrderResponse(savedOrder);
     }
+
+    @Override
+    @Transactional
+    public OrderResponse placeOrderInternal(OrderRequest orderRequest) {
+        List<OrderItemDTO> cartItems = orderRequest.getItems();
+        if (cartItems == null || cartItems.isEmpty()) {
+            throw new RuntimeException("Cart is empty. Cannot place order.");
+        }
+
+        // Always use shippingAddress field from OrderRequest for internal API
+        String formattedAddress = orderRequest.getShippingAddress() != null
+            ? orderRequest.getShippingAddress()
+            : "Unknown Address";
+
+        // LOG for debugging
+        System.out.println("Internal placeOrder: using shippingAddress = " + formattedAddress);
+
+        Order order = new Order();
+        order.setUserId(orderRequest.getUserId());
+        order.setOrderDate(LocalDateTime.now());
+        order.setStatus("PLACED");
+        order.setShippingAddress(formattedAddress); // Google Maps address should be passed in OrderRequest
+        order.setPaymentStatus("PAID");
+        order.setTotalAmount(orderRequest.getTotalAmount());
+
+        List<OrderItem> orderItems = cartItems.stream().map(item -> {
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProductId(item.getProductId());
+            orderItem.setProductName(item.getProductName() != null ? item.getProductName() : "Product");
+            orderItem.setQuantity(item.getQuantity());
+            orderItem.setPrice(item.getPrice());
+            orderItem.setTotalPrice(item.getPrice() * item.getQuantity());
+            orderItem.setOrder(order);
+            return orderItem;
+        }).collect(Collectors.toList());
+
+        order.setOrderItems(orderItems);
+
+        Order savedOrder = orderRepository.save(order);
+
+        return new OrderResponse(savedOrder);
+    }
+
 
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
         notificationClient.sendEmail(new EmailRequest(
@@ -245,47 +292,4 @@ public class OrderServiceImpl implements OrderService {
     public long getTotalOrdersCount() {
         return orderRepository.count();
     }
-    
-    @Override
-    @Transactional
-    public OrderResponse placeOrderInternal(OrderRequest orderRequest) {
-        List<OrderItemDTO> cartItems = orderRequest.getItems();
-        if (cartItems == null || cartItems.isEmpty()) {
-            throw new RuntimeException("Cart is empty. Cannot place order.");
-        }
-
-        String formattedAddress = orderRequest.getShippingAddress() != null
-            ? orderRequest.getShippingAddress()
-            : "Unknown Address";
-
-        Order order = new Order();
-        order.setUserId(orderRequest.getUserId());
-        order.setOrderDate(LocalDateTime.now());
-        order.setStatus("PLACED");
-        order.setShippingAddress(formattedAddress);
-        order.setPaymentStatus("PAID");
-        order.setTotalAmount(orderRequest.getTotalAmount());
-
-        // --- Create OrderItems ---
-        List<OrderItem> orderItems = cartItems.stream().map(item -> {
-            OrderItem orderItem = new OrderItem();
-            orderItem.setProductId(item.getProductId());
-            orderItem.setProductName(item.getProductName() != null ? item.getProductName() : "Product");
-            orderItem.setQuantity(item.getQuantity());
-            orderItem.setPrice(item.getPrice());
-            orderItem.setTotalPrice(item.getPrice() * item.getQuantity());
-            orderItem.setOrder(order);
-            return orderItem;
-        }).collect(Collectors.toList());
-
-        order.setOrderItems(orderItems);
-
-        Order savedOrder = orderRepository.save(order);
-
-        return new OrderResponse(savedOrder);
-    }
-
-
-
-
 }

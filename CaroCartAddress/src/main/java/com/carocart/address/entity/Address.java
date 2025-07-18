@@ -5,9 +5,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "addresses")
-
 public class Address {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -15,29 +13,21 @@ public class Address {
     private Long userId;
     private String fullName;
     private String phoneNumber;
-    private String alternatePhone;
-    private String pincode;
-    private String houseNumber;
-    private String street;
-    private String landmark;
-    private String city;
-    private String state;
-    private String country;
-    private String addressType;
+    private String address; // This is the formatted address from Google Maps
+    private Double latitude;
+    private Double longitude;
+    private String type; // Home/Work/Other
+    private String instructions;
     private Boolean isDefault;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    protected void onCreate() { createdAt = LocalDateTime.now(); }
 
     @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+    protected void onUpdate() { updatedAt = LocalDateTime.now(); }
 
 	public Long getId() {
 		return id;
@@ -46,8 +36,14 @@ public class Address {
 	public void setId(Long id) {
 		this.id = id;
 	}
-	
-	
+
+	public Long getUserId() {
+		return userId;
+	}
+
+	public void setUserId(Long userId) {
+		this.userId = userId;
+	}
 
 	public String getFullName() {
 		return fullName;
@@ -65,76 +61,44 @@ public class Address {
 		this.phoneNumber = phoneNumber;
 	}
 
-	public String getAlternatePhone() {
-		return alternatePhone;
+	public String getAddress() {
+		return address;
 	}
 
-	public void setAlternatePhone(String alternatePhone) {
-		this.alternatePhone = alternatePhone;
+	public void setAddress(String address) {
+		this.address = address;
 	}
 
-	public String getPincode() {
-		return pincode;
+	public Double getLatitude() {
+		return latitude;
 	}
 
-	public void setPincode(String pincode) {
-		this.pincode = pincode;
+	public void setLatitude(Double latitude) {
+		this.latitude = latitude;
 	}
 
-	public String getHouseNumber() {
-		return houseNumber;
+	public Double getLongitude() {
+		return longitude;
 	}
 
-	public void setHouseNumber(String houseNumber) {
-		this.houseNumber = houseNumber;
+	public void setLongitude(Double longitude) {
+		this.longitude = longitude;
 	}
 
-	public String getStreet() {
-		return street;
+	public String getType() {
+		return type;
 	}
 
-	public void setStreet(String street) {
-		this.street = street;
+	public void setType(String type) {
+		this.type = type;
 	}
 
-	public String getLandmark() {
-		return landmark;
+	public String getInstructions() {
+		return instructions;
 	}
 
-	public void setLandmark(String landmark) {
-		this.landmark = landmark;
-	}
-
-	public String getCity() {
-		return city;
-	}
-
-	public void setCity(String city) {
-		this.city = city;
-	}
-
-	public String getState() {
-		return state;
-	}
-
-	public void setState(String state) {
-		this.state = state;
-	}
-
-	public String getCountry() {
-		return country;
-	}
-
-	public void setCountry(String country) {
-		this.country = country;
-	}
-
-	public String getAddressType() {
-		return addressType;
-	}
-
-	public void setAddressType(String addressType) {
-		this.addressType = addressType;
+	public void setInstructions(String instructions) {
+		this.instructions = instructions;
 	}
 
 	public Boolean getIsDefault() {
@@ -161,11 +125,6 @@ public class Address {
 		this.updatedAt = updatedAt;
 	}
 
-	public Long getUserId() {
-		return userId;
-	}
-
-	public void setUserId(Long userId) {
-		this.userId = userId;
-	}
+    // Getters and setters...
+    
 }
