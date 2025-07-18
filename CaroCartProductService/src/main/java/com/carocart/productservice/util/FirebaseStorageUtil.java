@@ -8,8 +8,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Component
@@ -18,12 +20,27 @@ public class FirebaseStorageUtil {
     @PostConstruct
     public void init() throws IOException {
         if (FirebaseApp.getApps().isEmpty()) {
-            FileInputStream serviceAccount = new FileInputStream("src/main/resources/carocart-d4171-firebase-adminsdk-fbsvc-6bfc483193.json");
-            FirebaseOptions options = new FirebaseOptions.Builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                    .setStorageBucket("carocart-d4171.firebasestorage.app") // Replace with your actual bucket
-                    .build();
-            FirebaseApp.initializeApp(options);
+            String credentialsJson = System.getenv("FIREBASE_CREDENTIALS_JSON");
+            if (credentialsJson != null && !credentialsJson.isEmpty()) {
+                // Production/ECS: Read from env variable
+                ByteArrayInputStream credentialsStream = new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8));
+                FirebaseOptions options = new FirebaseOptions.Builder()
+                        .setCredentials(GoogleCredentials.fromStream(credentialsStream))
+                        .setStorageBucket("carocart-d4171.firebasestorage.app") // ✅ Correct bucket name!
+                        .build();
+                FirebaseApp.initializeApp(options);
+            } else {
+                // Local development: Use service account file
+                try (FileInputStream serviceAccount = new FileInputStream("src/main/resources/carocart-d4171-firebase-adminsdk-fbsvc-6bfc483193.json")) {
+                    FirebaseOptions options = new FirebaseOptions.Builder()
+                            .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                            .setStorageBucket("carocart-d4171.firebasestorage.app") // ✅ Correct bucket name!
+                            .build();
+                    FirebaseApp.initializeApp(options);
+                } catch (IOException e) {
+                    throw new RuntimeException("Firebase credentials not found in ENV or file!", e);
+                }
+            }
         }
     }
 

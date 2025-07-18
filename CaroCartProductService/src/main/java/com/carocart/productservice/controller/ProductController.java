@@ -111,18 +111,6 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
-    // ✅ Get product image (public)
-    @GetMapping("/image/{id}")
-    public ResponseEntity<byte[]> getProductImage(@PathVariable Long id) {
-        Product product = productService.getProductById(id);
-        if (product == null || product.getImage() == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_JPEG)
-                .body(product.getImage());
-    }
-
     // ✅ Get products by subcategory (public)
     @GetMapping("/subcategory/{subCategoryId}")
     public ResponseEntity<List<Product>> getProductsBySubCategory(@PathVariable Long subCategoryId) {

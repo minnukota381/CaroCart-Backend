@@ -16,9 +16,6 @@ public class SubCategoryDTO {
     // Optional: Cloud image URL
     private String imageUrl;
 
-    // Optional: For file upload (dev/BLOB)
-    private MultipartFile imageFile;
-
     // Getters & Setters
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -28,7 +25,4 @@ public class SubCategoryDTO {
 
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-
-    public MultipartFile getImageFile() { return imageFile; }
-    public void setImageFile(MultipartFile imageFile) { this.imageFile = imageFile; }
 }
