@@ -174,35 +174,37 @@ public class ProductServiceImpl implements ProductService {
         }).orElse(null);
     }
     
-    
     @Override
     public ProductDTO getProductDTOById(Long id) {
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        String imageUrl = "/products/image/" + product.getId();
+        // ❌ THIS IS WRONG:
+        // String imageUrl = "/products/image/" + product.getId();
+        // dto.setImageUrl(imageUrl);
 
         ProductDTO dto = new ProductDTO();
         dto.setId(product.getId());
         dto.setName(product.getName());
         dto.setDescription(product.getDescription());
         dto.setPrice(product.getPrice());
-        dto.setImageUrl(imageUrl);
+        // ✅ THE ONLY CORRECT LINE:
+        dto.setImageUrl(product.getImageUrl());
         dto.setStock(product.getStock());
         dto.setIsAvailable(Boolean.TRUE.equals(product.getIsAvailable()));
 
-        // ✅ Set vendor email if addedByRole is VENDOR
+        // ... Vendor mapping (unchanged) ...
         if ("VENDOR".equals(product.getAddedByRole()) && product.getAddedById() != null) {
             try {
                 VendorDTO vendor = vendorClient.getVendorById(product.getAddedById());
                 dto.setVendorEmail(vendor.getEmail());
             } catch (Exception e) {
-                dto.setVendorEmail(null); // fallback if not found or error
+                dto.setVendorEmail(null);
             }
         }
-
         return dto;
     }
+
 
     @Override
     public List<Product> getProductsBySubCategory(Long subCategoryId) {

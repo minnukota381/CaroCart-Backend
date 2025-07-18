@@ -1,7 +1,9 @@
 package com.carocart.productservice.controller;
 
 import com.carocart.productservice.dto.CategoryRequestDTO;
+import com.carocart.productservice.dto.CategoryResponseDTO;
 import com.carocart.productservice.dto.SubCategoryDTO;
+import com.carocart.productservice.dto.SubCategoryResponseDTO;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.service.CategoryService;
@@ -11,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/categories")
@@ -21,20 +24,20 @@ public class CategoryController {
 
     // Add Category (Admin, with imageUrl)
     @PostMapping("/admin/add")
-    public ResponseEntity<Category> addCategory(
+    public ResponseEntity<CategoryResponseDTO> addCategory(
             @Valid @RequestBody CategoryRequestDTO dto,
             @RequestHeader("Authorization") String token
     ) {
         Category category = new Category();
         category.setName(dto.getName());
-        category.setImageUrl(dto.getImageUrl()); // Use Firebase/S3 URL from frontend
+        category.setImageUrl(dto.getImageUrl()); // Firebase URL from frontend
         Category saved = categoryService.addCategory(category, token);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(toCategoryResponseDTO(saved));
     }
 
     // Update Category (Admin, with imageUrl)
     @PutMapping("/admin/update/{categoryId}")
-    public ResponseEntity<Category> updateCategory(
+    public ResponseEntity<CategoryResponseDTO> updateCategory(
             @PathVariable Long categoryId,
             @Valid @RequestBody CategoryRequestDTO dto,
             @RequestHeader("Authorization") String token
@@ -50,12 +53,12 @@ public class CategoryController {
             existing.setImageUrl(dto.getImageUrl());
         }
         Category saved = categoryService.saveCategory(existing, token);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(toCategoryResponseDTO(saved));
     }
 
     // Add Subcategory (Admin)
     @PostMapping("/admin/subcategory/add")
-    public ResponseEntity<SubCategory> addSubCategory(
+    public ResponseEntity<SubCategoryResponseDTO> addSubCategory(
             @Valid @RequestBody SubCategoryDTO dto,
             @RequestHeader("Authorization") String token) {
         SubCategory subCategory = new SubCategory();
@@ -66,19 +69,27 @@ public class CategoryController {
         }
         subCategory.setCategory(category);
         SubCategory savedSubCategory = categoryService.addSubCategory(subCategory, token);
-        return ResponseEntity.ok(savedSubCategory);
+        return ResponseEntity.ok(toSubCategoryResponseDTO(savedSubCategory));
     }
 
     // Get all categories (User/Admin)
     @GetMapping
-    public ResponseEntity<List<Category>> getAllCategories() {
-        return ResponseEntity.ok(categoryService.getAllCategories());
+    public ResponseEntity<List<CategoryResponseDTO>> getAllCategories() {
+        List<Category> categories = categoryService.getAllCategories();
+        List<CategoryResponseDTO> dtos = categories.stream()
+                .map(this::toCategoryResponseDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     // Get subcategories by category (User/Admin)
     @GetMapping("/{id}/subcategories")
-    public ResponseEntity<List<SubCategory>> getSubCategories(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getSubCategoriesByCategoryId(id));
+    public ResponseEntity<List<SubCategoryResponseDTO>> getSubCategories(@PathVariable Long id) {
+        List<SubCategory> subCategories = categoryService.getSubCategoriesByCategoryId(id);
+        List<SubCategoryResponseDTO> dtos = subCategories.stream()
+                .map(this::toSubCategoryResponseDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     // Delete Category (Admin)
@@ -99,4 +110,21 @@ public class CategoryController {
         return ResponseEntity.ok("Subcategory deleted successfully");
     }
 
+    // ===== Helper mapping methods =====
+
+    private CategoryResponseDTO toCategoryResponseDTO(Category cat) {
+        CategoryResponseDTO dto = new CategoryResponseDTO();
+        dto.setId(cat.getId());
+        dto.setName(cat.getName());
+        dto.setImageUrl(cat.getImageUrl());
+        return dto;
+    }
+
+    private SubCategoryResponseDTO toSubCategoryResponseDTO(SubCategory subCat) {
+        SubCategoryResponseDTO dto = new SubCategoryResponseDTO();
+        dto.setId(subCat.getId());
+        dto.setName(subCat.getName());
+        dto.setCategoryId(subCat.getCategory() != null ? subCat.getCategory().getId() : null);
+        return dto;
+    }
 }
