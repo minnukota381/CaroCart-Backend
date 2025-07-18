@@ -99,13 +99,8 @@ public class PaymentServiceImpl implements PaymentService {
             AddressResponseDTO addressDto = addressClient.getAddressById(request.getAddressId());
             if (addressDto != null) {
                 formattedAddress = addressDto.getFullName() + ", "
-                        + addressDto.getHouseNumber() + ", "
-                        + addressDto.getStreet() + ", "
-                        + (addressDto.getLandmark() != null ? addressDto.getLandmark() + ", " : "")
-                        + addressDto.getCity() + ", "
-                        + addressDto.getState() + " - "
-                        + addressDto.getPincode() + ". Phone: "
-                        + addressDto.getPhoneNumber() + (addressDto.getAddressType() != null ? " [" + addressDto.getAddressType() + "]" : "");
+                    + addressDto.getAddress()
+                    + ". Phone: " + addressDto.getPhoneNumber();
             }
         } catch (Exception ex) {
             System.out.println("Failed to fetch or format address: " + ex.getMessage());

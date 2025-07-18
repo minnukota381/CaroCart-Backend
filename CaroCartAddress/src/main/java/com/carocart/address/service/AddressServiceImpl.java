@@ -14,74 +14,84 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AddressServiceImpl implements AddressService {
-
     private final AddressRepository repository;
-    
     private final UserClient userClient;
 
     public AddressServiceImpl(AddressRepository repository, UserClient userClient) {
         this.repository = repository;
         this.userClient = userClient;
     }
+
     private AddressResponseDTO mapToDTO(Address address) {
         AddressResponseDTO dto = new AddressResponseDTO();
         dto.setId(address.getId());
         dto.setFullName(address.getFullName());
         dto.setPhoneNumber(address.getPhoneNumber());
-        dto.setAlternatePhone(address.getAlternatePhone());
-        dto.setPincode(address.getPincode());
-        dto.setHouseNumber(address.getHouseNumber());
-        dto.setStreet(address.getStreet());
-        dto.setLandmark(address.getLandmark());
-        dto.setCity(address.getCity());
-        dto.setState(address.getState());
-        dto.setCountry(address.getCountry());
-        dto.setAddressType(address.getAddressType());
+        dto.setAddress(address.getAddress());
+        dto.setLatitude(address.getLatitude());
+        dto.setLongitude(address.getLongitude());
+        dto.setType(address.getType());
+        dto.setInstructions(address.getInstructions());
         dto.setIsDefault(address.getIsDefault());
         return dto;
     }
 
-
     @Override
     public AddressResponseDTO createAddress(AddressRequestDTO dto, String token) {
-        // Call auth service and get the current user
         UserResponseDTO user = userClient.getCurrentUser(token);
 
+        // 1. Set all user's addresses to non-default
+        List<Address> userAddresses = repository.findByUserId(user.getId());
+        for (Address a : userAddresses) {
+            if (Boolean.TRUE.equals(a.getIsDefault())) {
+                a.setIsDefault(false);
+                repository.save(a); // update
+            }
+        }
+
+        // 2. Save new address as default
         Address address = new Address();
         address.setUserId(user.getId());
         address.setFullName(dto.getFullName());
         address.setPhoneNumber(dto.getPhoneNumber());
-        address.setAlternatePhone(dto.getAlternatePhone());
-        address.setPincode(dto.getPincode());
-        address.setHouseNumber(dto.getHouseNumber());
-        address.setStreet(dto.getStreet());
-        address.setLandmark(dto.getLandmark());
-        address.setCity(dto.getCity());
-        address.setState(dto.getState());
-        address.setCountry(dto.getCountry());
-        address.setAddressType(dto.getAddressType());
-        address.setIsDefault(dto.getIsDefault());
+        address.setAddress(dto.getAddress());
+        address.setLatitude(dto.getLatitude());
+        address.setLongitude(dto.getLongitude());
+        address.setType(dto.getType());
+        address.setInstructions(dto.getInstructions());
+        address.setIsDefault(true); // Always set new as default
 
         return mapToDTO(repository.save(address));
     }
 
+
     @Override
     public AddressResponseDTO updateAddress(Long id, AddressRequestDTO dto) {
         Address address = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Address not found"));
+            .orElseThrow(() -> new RuntimeException("Address not found"));
+
+        if (Boolean.TRUE.equals(dto.getIsDefault())) {
+            // Unset isDefault for all addresses of this user except this one
+            List<Address> userAddresses = repository.findByUserId(address.getUserId());
+            for (Address a : userAddresses) {
+                if (!a.getId().equals(address.getId()) && Boolean.TRUE.equals(a.getIsDefault())) {
+                    a.setIsDefault(false);
+                    repository.save(a);
+                }
+            }
+            address.setIsDefault(true);
+        } else {
+            address.setIsDefault(false);
+        }
 
         address.setFullName(dto.getFullName());
         address.setPhoneNumber(dto.getPhoneNumber());
-        address.setAlternatePhone(dto.getAlternatePhone());
-        address.setPincode(dto.getPincode());
-        address.setHouseNumber(dto.getHouseNumber());
-        address.setStreet(dto.getStreet());
-        address.setLandmark(dto.getLandmark());
-        address.setCity(dto.getCity());
-        address.setState(dto.getState());
-        address.setCountry(dto.getCountry());
-        address.setAddressType(dto.getAddressType());
-        address.setIsDefault(dto.getIsDefault());
+        address.setAddress(dto.getAddress());
+        address.setLatitude(dto.getLatitude());
+        address.setLongitude(dto.getLongitude());
+        address.setType(dto.getType());
+        address.setInstructions(dto.getInstructions());
+        // address.setIsDefault(dto.getIsDefault()); // Already handled above
 
         return mapToDTO(repository.save(address));
     }

@@ -1,102 +1,69 @@
 package com.carocart.address.DTO;
 
 public class AddressResponseDTO {
-	    private Long id;
-	    private String fullName;
-	    private String phoneNumber;
-	    private String alternatePhone;
-	    private String pincode;
-	    private String houseNumber;
-	    private String street;
-	    private String landmark;
-	    private String city;
-	    private String state;
-	    private String country;
-	    private String addressType;
-	    private Boolean isDefault;
-	
-
-
-    public Long getId() {
-        return id;
-    }
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-
-    public String getAlternatePhone() {
-		return alternatePhone;
+    private Long id;
+    private String fullName;
+    private String phoneNumber;
+    private String address;
+    private Double latitude;
+    private Double longitude;
+    private String type;
+    private String instructions;
+    private Boolean isDefault;
+    // Getters and setters...
+	public Long getId() {
+		return id;
 	}
-	public void setAlternatePhone(String alternatePhone) {
-		this.alternatePhone = alternatePhone;
+	public void setId(Long id) {
+		this.id = id;
 	}
-	public String getPincode() {
-		return pincode;
+	public String getFullName() {
+		return fullName;
 	}
-	public void setPincode(String pincode) {
-		this.pincode = pincode;
+	public void setFullName(String fullName) {
+		this.fullName = fullName;
 	}
-	public String getHouseNumber() {
-		return houseNumber;
+	public String getPhoneNumber() {
+		return phoneNumber;
 	}
-	public void setHouseNumber(String houseNumber) {
-		this.houseNumber = houseNumber;
+	public void setPhoneNumber(String phoneNumber) {
+		this.phoneNumber = phoneNumber;
 	}
-	public String getStreet() {
-		return street;
+	public String getAddress() {
+		return address;
 	}
-	public void setStreet(String street) {
-		this.street = street;
+	public void setAddress(String address) {
+		this.address = address;
 	}
-	public String getLandmark() {
-		return landmark;
+	public Double getLatitude() {
+		return latitude;
 	}
-	public void setLandmark(String landmark) {
-		this.landmark = landmark;
+	public void setLatitude(Double latitude) {
+		this.latitude = latitude;
 	}
-	public String getCity() {
-		return city;
+	public Double getLongitude() {
+		return longitude;
 	}
-	public void setCity(String city) {
-		this.city = city;
+	public void setLongitude(Double longitude) {
+		this.longitude = longitude;
 	}
-	public String getState() {
-		return state;
+	public String getType() {
+		return type;
 	}
-	public void setState(String state) {
-		this.state = state;
+	public void setType(String type) {
+		this.type = type;
 	}
-	public String getCountry() {
-		return country;
+	public String getInstructions() {
+		return instructions;
 	}
-	public void setCountry(String country) {
-		this.country = country;
+	public void setInstructions(String instructions) {
+		this.instructions = instructions;
 	}
-	public String getAddressType() {
-        return addressType;
-    }
-    public void setAddressType(String addressType) {
-        this.addressType = addressType;
-    }
-
-    public Boolean getIsDefault() {
-        return isDefault;
-    }
-    public void setIsDefault(Boolean isDefault) {
-        this.isDefault = isDefault;
-    }
+	public Boolean getIsDefault() {
+		return isDefault;
+	}
+	public void setIsDefault(Boolean isDefault) {
+		this.isDefault = isDefault;
+	}
+    
 }
