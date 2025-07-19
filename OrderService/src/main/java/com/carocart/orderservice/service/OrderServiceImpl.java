@@ -359,4 +359,29 @@ public class OrderServiceImpl implements OrderService {
         item.setApprovalStatus("APPROVED");
         orderItemRepository.save(item);
     }
+
+    @Override
+    @Transactional
+    public void rejectItemAsVendor(String token, Long itemId) {
+        VendorDTO vendor = vendorClient.getCurrentVendor(token);
+        OrderItem item = orderItemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+        if (!vendor.getEmail().equals(item.getVendorEmail())) {
+            throw new RuntimeException("Unauthorized");
+        }
+        item.setApprovalStatus("REJECTED");
+        orderItemRepository.save(item);
+    }
+
+    @Override
+    @Transactional
+    public void rejectItemAsAdmin(Long itemId) {
+        OrderItem item = orderItemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+        if (!"ADMIN".equals(item.getApprovalRequiredBy())) {
+            throw new RuntimeException("Not an admin item");
+        }
+        item.setApprovalStatus("REJECTED");
+        orderItemRepository.save(item);
+    }
 }

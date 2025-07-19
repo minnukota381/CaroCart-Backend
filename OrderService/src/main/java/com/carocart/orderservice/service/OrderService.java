@@ -31,5 +31,7 @@ public interface OrderService {
     java.util.List<com.carocart.orderservice.dto.OrderItemDTO> getPendingItemsForAdmin();
     void approveItemAsVendor(String token, Long itemId);
     void approveItemAsAdmin(Long itemId);
+    void rejectItemAsVendor(String token, Long itemId);
+    void rejectItemAsAdmin(Long itemId);
 
 }
