@@ -4,7 +4,9 @@ import com.carocart.orderservice.dto.*;
 import com.carocart.orderservice.entity.Order;
 import com.carocart.orderservice.entity.OrderItem;
 import com.carocart.orderservice.feign.*;
+import com.carocart.orderservice.feign.VendorClient;
 import com.carocart.orderservice.repository.OrderRepository;
+import com.carocart.orderservice.repository.OrderItemRepository;
 import com.carocart.orderservice.util.JwtUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
@@ -23,6 +25,8 @@ public class OrderServiceImpl implements OrderService {
     private final UserClient userClient;
     private final AddressClient addressClient;
     private final NotificationClient notificationClient;
+    private final VendorClient vendorClient;
+    private final OrderItemRepository orderItemRepository;
     private final JwtUtil jwtUtil;
 
     private String internalToken;
@@ -33,6 +37,8 @@ public class OrderServiceImpl implements OrderService {
                             UserClient userClient,
                             AddressClient addressClient,
                             NotificationClient notificationClient,
+                            VendorClient vendorClient,
+                            OrderItemRepository orderItemRepository,
                             JwtUtil jwtUtil) {
         this.orderRepository = orderRepository;
         this.cartClient = cartClient;
@@ -40,6 +46,8 @@ public class OrderServiceImpl implements OrderService {
         this.userClient = userClient;
         this.addressClient = addressClient;
         this.notificationClient = notificationClient;
+        this.vendorClient = vendorClient;
+        this.orderItemRepository = orderItemRepository;
         this.jwtUtil = jwtUtil;
     }
 
@@ -82,6 +90,13 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setPrice(product.getPrice());
             orderItem.setTotalPrice(product.getPrice() * item.getQuantity());
             orderItem.setOrder(order);
+            if (product.getVendorEmail() != null) {
+                orderItem.setApprovalRequiredBy("VENDOR");
+                orderItem.setVendorEmail(product.getVendorEmail());
+            } else {
+                orderItem.setApprovalRequiredBy("ADMIN");
+            }
+            orderItem.setApprovalStatus("PENDING");
             return orderItem;
         }).collect(Collectors.toList());
 
@@ -122,6 +137,7 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(orderRequest.getTotalAmount());
 
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
+            ProductDTO product = productClient.getProductById(item.getProductId());
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(item.getProductId());
             orderItem.setProductName(item.getProductName() != null ? item.getProductName() : "Product");
@@ -129,6 +145,13 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setPrice(item.getPrice());
             orderItem.setTotalPrice(item.getPrice() * item.getQuantity());
             orderItem.setOrder(order);
+            if (product.getVendorEmail() != null) {
+                orderItem.setApprovalRequiredBy("VENDOR");
+                orderItem.setVendorEmail(product.getVendorEmail());
+            } else {
+                orderItem.setApprovalRequiredBy("ADMIN");
+            }
+            orderItem.setApprovalStatus("PENDING");
             return orderItem;
         }).collect(Collectors.toList());
 
@@ -291,5 +314,49 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public long getTotalOrdersCount() {
         return orderRepository.count();
+    }
+
+    @Override
+    public List<OrderItemDTO> getPendingItemsForVendor(String token) {
+        VendorDTO vendor = vendorClient.getCurrentVendor(token);
+        return orderItemRepository
+                .findByVendorEmailAndApprovalStatus(vendor.getEmail(), "PENDING")
+                .stream()
+                .map(OrderItemDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OrderItemDTO> getPendingItemsForAdmin() {
+        return orderItemRepository
+                .findByApprovalRequiredByAndApprovalStatus("ADMIN", "PENDING")
+                .stream()
+                .map(OrderItemDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void approveItemAsVendor(String token, Long itemId) {
+        VendorDTO vendor = vendorClient.getCurrentVendor(token);
+        OrderItem item = orderItemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+        if (!vendor.getEmail().equals(item.getVendorEmail())) {
+            throw new RuntimeException("Unauthorized");
+        }
+        item.setApprovalStatus("APPROVED");
+        orderItemRepository.save(item);
+    }
+
+    @Override
+    @Transactional
+    public void approveItemAsAdmin(Long itemId) {
+        OrderItem item = orderItemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Item not found"));
+        if (!"ADMIN".equals(item.getApprovalRequiredBy())) {
+            throw new RuntimeException("Not an admin item");
+        }
+        item.setApprovalStatus("APPROVED");
+        orderItemRepository.save(item);
     }
 }

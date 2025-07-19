@@ -26,4 +26,10 @@ public interface OrderService {
     long getTotalOrdersCount();
     OrderResponse placeOrderInternal(OrderRequest orderRequest);
 
+    // --- Approval Handling ---
+    java.util.List<com.carocart.orderservice.dto.OrderItemDTO> getPendingItemsForVendor(String token);
+    java.util.List<com.carocart.orderservice.dto.OrderItemDTO> getPendingItemsForAdmin();
+    void approveItemAsVendor(String token, Long itemId);
+    void approveItemAsAdmin(Long itemId);
+
 }
