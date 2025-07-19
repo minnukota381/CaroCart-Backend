@@ -10,6 +10,9 @@ public class OrderItemDTO {
  private Integer quantity;
  private Double price;
  private Double totalPrice;
+ private String approvalRequiredBy;
+ private String approvalStatus;
+ private String vendorEmail;
 
  public OrderItemDTO() {}
 
@@ -29,4 +32,13 @@ public class OrderItemDTO {
 
  public Double getTotalPrice() { return totalPrice; }
  public void setTotalPrice(Double totalPrice) { this.totalPrice = totalPrice; }
+
+ public String getApprovalRequiredBy() { return approvalRequiredBy; }
+ public void setApprovalRequiredBy(String approvalRequiredBy) { this.approvalRequiredBy = approvalRequiredBy; }
+
+ public String getApprovalStatus() { return approvalStatus; }
+ public void setApprovalStatus(String approvalStatus) { this.approvalStatus = approvalStatus; }
+
+ public String getVendorEmail() { return vendorEmail; }
+ public void setVendorEmail(String vendorEmail) { this.vendorEmail = vendorEmail; }
 }

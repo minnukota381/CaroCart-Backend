@@ -143,4 +143,29 @@ public class OrderController {
         return ResponseEntity.ok(count);
     }
 
+    // -------- Approval Endpoints ---------
+    @GetMapping("/vendor/pending-items")
+    public ResponseEntity<List<com.carocart.orderservice.dto.OrderItemDTO>> getVendorPendingItems(
+            @RequestHeader("Authorization") String token) {
+        return ResponseEntity.ok(orderService.getPendingItemsForVendor(token));
+    }
+
+    @PutMapping("/vendor/items/{itemId}/approve")
+    public ResponseEntity<String> approveItemVendor(@RequestHeader("Authorization") String token,
+                                                   @PathVariable Long itemId) {
+        orderService.approveItemAsVendor(token, itemId);
+        return ResponseEntity.ok("Item approved");
+    }
+
+    @GetMapping("/admin/pending-items")
+    public ResponseEntity<List<com.carocart.orderservice.dto.OrderItemDTO>> getAdminPendingItems() {
+        return ResponseEntity.ok(orderService.getPendingItemsForAdmin());
+    }
+
+    @PutMapping("/admin/items/{itemId}/approve")
+    public ResponseEntity<String> approveItemAdmin(@PathVariable Long itemId) {
+        orderService.approveItemAsAdmin(itemId);
+        return ResponseEntity.ok("Item approved");
+    }
+
 }

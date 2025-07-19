@@ -26,6 +26,15 @@ public class OrderItem {
 
     private Double totalPrice;
 
+    // who needs to approve this item: "ADMIN" or "VENDOR"
+    private String approvalRequiredBy;
+
+    // current approval status: "PENDING", "APPROVED", "REJECTED"
+    private String approvalStatus;
+
+    // store vendor email to easily route approvals
+    private String vendorEmail;
+
 	public Long getId() {
 		return id;
 	}
@@ -74,13 +83,37 @@ public class OrderItem {
 		this.price = price;
 	}
 
-	public Double getTotalPrice() {
-		return totalPrice;
-	}
+        public Double getTotalPrice() {
+                return totalPrice;
+        }
 
-	public void setTotalPrice(Double totalPrice) {
-		this.totalPrice = totalPrice;
-	}
+        public void setTotalPrice(Double totalPrice) {
+                this.totalPrice = totalPrice;
+        }
+
+        public String getApprovalRequiredBy() {
+                return approvalRequiredBy;
+        }
+
+        public void setApprovalRequiredBy(String approvalRequiredBy) {
+                this.approvalRequiredBy = approvalRequiredBy;
+        }
+
+        public String getApprovalStatus() {
+                return approvalStatus;
+        }
+
+        public void setApprovalStatus(String approvalStatus) {
+                this.approvalStatus = approvalStatus;
+        }
+
+        public String getVendorEmail() {
+                return vendorEmail;
+        }
+
+        public void setVendorEmail(String vendorEmail) {
+                this.vendorEmail = vendorEmail;
+        }
 
     // getters and setters
     
