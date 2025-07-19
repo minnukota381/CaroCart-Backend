@@ -157,6 +157,13 @@ public class OrderController {
         return ResponseEntity.ok("Item approved");
     }
 
+    @PutMapping("/vendor/items/{itemId}/reject")
+    public ResponseEntity<String> rejectItemVendor(@RequestHeader("Authorization") String token,
+                                                  @PathVariable Long itemId) {
+        orderService.rejectItemAsVendor(token, itemId);
+        return ResponseEntity.ok("Item rejected");
+    }
+
     @GetMapping("/admin/pending-items")
     public ResponseEntity<List<com.carocart.orderservice.dto.OrderItemDTO>> getAdminPendingItems() {
         return ResponseEntity.ok(orderService.getPendingItemsForAdmin());
@@ -166,6 +173,12 @@ public class OrderController {
     public ResponseEntity<String> approveItemAdmin(@PathVariable Long itemId) {
         orderService.approveItemAsAdmin(itemId);
         return ResponseEntity.ok("Item approved");
+    }
+
+    @PutMapping("/admin/items/{itemId}/reject")
+    public ResponseEntity<String> rejectItemAdmin(@PathVariable Long itemId) {
+        orderService.rejectItemAsAdmin(itemId);
+        return ResponseEntity.ok("Item rejected");
     }
 
 }
