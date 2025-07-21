@@ -168,4 +168,20 @@ public class ProductController {
         long count = productService.countAllProducts();
         return ResponseEntity.ok(count);
     }
+    
+ // ✅ Get product by slug (used by React)
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<Product> getProductBySlug(@PathVariable String slug) {
+        Product product = productService.getProductBySlug(slug);
+        if (product == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(product);
+    }
+    @GetMapping("/generate-slugs")
+    public ResponseEntity<String> generateSlugs() {
+        productService.generateMissingSlugs();
+        return ResponseEntity.ok("Slug generation completed");
+    }
+
 }

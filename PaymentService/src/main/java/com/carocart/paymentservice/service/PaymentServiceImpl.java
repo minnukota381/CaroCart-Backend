@@ -125,6 +125,7 @@ public class PaymentServiceImpl implements PaymentService {
         // save payment record (same as before)
         Payment p = new Payment();
         p.setOrderId(created.getOrderId());
+        p.setUserId(request.getUserId());
         p.setAmount(request.getAmount());
         p.setPaymentMethod("RAZORPAY");
         p.setPaymentId(request.getRazorpayPaymentId());

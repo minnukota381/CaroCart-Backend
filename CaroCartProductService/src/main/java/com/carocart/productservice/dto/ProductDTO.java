@@ -10,6 +10,17 @@ public class ProductDTO {
     private boolean isAvailable;
 
     private String vendorEmail; // ✅ Add this
+    
+    private String slug;
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
 
     // Getters and Setters
 

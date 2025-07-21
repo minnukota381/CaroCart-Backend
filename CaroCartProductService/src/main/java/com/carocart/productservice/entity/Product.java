@@ -33,8 +33,10 @@ public class Product {
     @Column(name = "image", columnDefinition = "LONGBLOB")
     private byte[] image;
 
-    @Column(name = "image_url")
+    @Lob
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -42,6 +44,18 @@ public class Product {
     @JoinColumn(name = "sub_category_id")
     @JsonIgnoreProperties("products")  // Ignore 'products' inside subCategory to avoid recursion
     private SubCategory subCategory;
+    
+    @Column(unique = true)
+    private String slug;
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
     
     
     
