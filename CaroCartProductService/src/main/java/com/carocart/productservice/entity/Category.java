@@ -26,6 +26,16 @@ public class Category {
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("category")
     private List<SubCategory> subcategories;
+    
+    @Column(unique = true)
+    private String slug;
+
+    public String getSlug() {
+		return slug;
+	}
+	public void setSlug(String slug) {
+		this.slug = slug;
+	}
 
     // --- Getters & Setters ---
 

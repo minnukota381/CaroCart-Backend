@@ -30,5 +30,8 @@ public interface ProductService {
 	List<Product> getProductsByCategoryId(Long categoryId);
 
 	long countAllProducts();
+	
+	Product getProductBySlug(String slug);
+    public void generateMissingSlugs();
 
 }

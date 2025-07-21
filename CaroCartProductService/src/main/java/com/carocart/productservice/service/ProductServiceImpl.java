@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -100,6 +101,40 @@ public class ProductServiceImpl implements ProductService {
 
         productRepository.deleteById(id);
     }
+    
+    private String toSlug(String input) {
+        return input.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("-{2,}", "-")
+                .replaceAll("^-|-$", "");
+    }
+    
+    
+    
+    @Override
+    public Product getProductBySlug(String slug) {
+        return productRepository.findBySlug(slug).orElse(null);
+    }
+    public void generateMissingSlugs() {
+        List<Product> allProducts = productRepository.findAll();
+        int updatedCount = 0;
+
+        for (Product product : allProducts) {
+            if (product.getSlug() == null || product.getSlug().isEmpty()) {
+                String slug = toSlug(product.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8);
+                product.setSlug(slug);
+                updatedCount++;
+            }
+        }
+
+        if (updatedCount > 0) {
+            productRepository.saveAll(allProducts);
+            System.out.println("Updated slugs for " + updatedCount + " products.");
+        } else {
+            System.out.println("All products already have slugs.");
+        }
+    }
+
 
     @Override
     public Product addProduct(Product product, MultipartFile image, String token) throws IOException {
@@ -122,17 +157,22 @@ public class ProductServiceImpl implements ProductService {
             throw new RuntimeException("SubCategory must be provided");
         }
 
+        // Generate SEO-friendly slug
+        String slug = toSlug(product.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8);
+        product.setSlug(slug);
+
         // Firebase image upload
         if (image != null && !image.isEmpty()) {
             String imageUrl = firebaseStorageUtil.uploadFile(image);
             product.setImageUrl(imageUrl);
         }
 
-        // SKIP Firebase upload (handled by frontend), imageUrl already set in Product
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
+
         return productRepository.save(product);
     }
+
 
     @Override
     public Product updateProduct(Long id, Product updatedProduct, MultipartFile image, String token) throws IOException {
@@ -192,6 +232,8 @@ public class ProductServiceImpl implements ProductService {
         dto.setImageUrl(product.getImageUrl());
         dto.setStock(product.getStock());
         dto.setIsAvailable(Boolean.TRUE.equals(product.getIsAvailable()));
+        dto.setSlug(product.getSlug()); // ✅ Add this line
+
 
         // ... Vendor mapping (unchanged) ...
         if ("VENDOR".equals(product.getAddedByRole()) && product.getAddedById() != null) {

@@ -8,4 +8,6 @@ import com.carocart.productservice.entity.Category;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByNameIgnoreCase(String name);
+    Optional<Category> findBySlug(String slug);
+
 }

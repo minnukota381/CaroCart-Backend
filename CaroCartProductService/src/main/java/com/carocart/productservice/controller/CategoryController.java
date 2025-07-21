@@ -117,14 +117,74 @@ public class CategoryController {
         dto.setId(cat.getId());
         dto.setName(cat.getName());
         dto.setImageUrl(cat.getImageUrl());
+        dto.setSlug(cat.getSlug()); // ✅ Add this line
         return dto;
     }
+
 
     private SubCategoryResponseDTO toSubCategoryResponseDTO(SubCategory subCat) {
         SubCategoryResponseDTO dto = new SubCategoryResponseDTO();
         dto.setId(subCat.getId());
         dto.setName(subCat.getName());
-        dto.setCategoryId(subCat.getCategory() != null ? subCat.getCategory().getId() : null);
+        dto.setSlug(subCat.getSlug());
+        
+        if (subCat.getCategory() != null) {
+            dto.setCategoryId(subCat.getCategory().getId());
+            dto.setCategoryName(subCat.getCategory().getName());     // ✅
+            dto.setCategorySlug(subCat.getCategory().getSlug());     // ✅
+        }
+
         return dto;
     }
+
+    
+ // ⚠️ TEMPORARY: Generate missing slugs for categories
+    @GetMapping("/admin/generate-category-slugs")
+    public ResponseEntity<String> generateCategorySlugs(@RequestHeader("Authorization") String token) {
+        categoryService.generateMissingSlugsForCategories();
+        return ResponseEntity.ok("Category slugs generated (if missing).");
+    }
+
+    // ⚠️ TEMPORARY: Generate missing slugs for subcategories
+    @GetMapping("/admin/generate-subcategory-slugs")
+    public ResponseEntity<String> generateSubCategorySlugs(@RequestHeader("Authorization") String token) {
+        categoryService.generateMissingSlugsForSubCategories();
+        return ResponseEntity.ok("Subcategory slugs generated (if missing).");
+    }
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<?> getCategoryBySlug(@PathVariable String slug) {
+        if (slug.matches("\\d+")) {
+            // Handle legacy numeric slugs by redirecting
+            Long id = Long.parseLong(slug);
+            Category cat = categoryService.getCategoryById(id);
+            if (cat != null && cat.getSlug() != null) {
+                return ResponseEntity.status(301)
+                    .header("Location", "/categories/slug/" + cat.getSlug())
+                    .build();
+            }
+            return ResponseEntity.notFound().build();
+        }
+
+        Category category = categoryService.getCategoryBySlug(slug);
+        return category != null ? ResponseEntity.ok(category) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/subcategory/slug/{slug}")
+    public ResponseEntity<?> getSubCategoryBySlug(@PathVariable String slug) {
+        if (slug.matches("\\d+")) {
+            Long id = Long.parseLong(slug);
+            SubCategory sub = categoryService.getSubCategoryById(id);
+            if (sub != null && sub.getSlug() != null) {
+                return ResponseEntity.status(301)
+                    .header("Location", "/categories/subcategory/slug/" + sub.getSlug())
+                    .build();
+            }
+            return ResponseEntity.notFound().build();
+        }
+
+        SubCategory sub = categoryService.getSubCategoryBySlug(slug);
+        return sub != null ? ResponseEntity.ok(sub) : ResponseEntity.notFound().build();
+    }
+
+
 }
