@@ -33,6 +33,13 @@ public class SecurityConfig {
                 .requestMatchers("/orders/ready-for-delivery").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN")
                 // All other order endpoints require authentication
                 .requestMatchers("/orders/**").authenticated()
+                .requestMatchers(
+                	    "/swagger-ui.html",
+                	    "/swagger-ui/**",
+                	    "/v3/api-docs",
+                	    "/v3/api-docs/**"
+                	).permitAll()
+
                 // All else
                 .anyRequest().permitAll()
             )
