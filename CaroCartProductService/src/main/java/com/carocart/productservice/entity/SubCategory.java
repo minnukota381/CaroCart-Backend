@@ -1,6 +1,6 @@
 package com.carocart.productservice.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.*;
 import jakarta.persistence.*;
 import java.util.List;
 
@@ -22,14 +22,24 @@ public class SubCategory {
     @Column(name = "image", columnDefinition = "LONGBLOB")
     private byte[] image;
 
+//    @ManyToOne
+//    @JoinColumn(name = "category_id")
+//    @JsonIgnoreProperties("subcategories")
+//    private Category category;
+//
+//    @OneToMany(mappedBy = "subCategory", cascade = CascadeType.ALL)
+//    @JsonIgnoreProperties("subCategory")
+//    private List<Product> products;
+    
     @ManyToOne
     @JoinColumn(name = "category_id")
-    @JsonIgnoreProperties("subcategories")
+    @JsonIgnoreProperties("subcategories") // Must match field name in Category!
     private Category category;
 
     @OneToMany(mappedBy = "subCategory", cascade = CascadeType.ALL)
-    @JsonIgnoreProperties("subCategory")
+    @JsonIgnore // Prevent recursion
     private List<Product> products;
+
     
     @Column(unique = true)
     private String slug;

@@ -40,10 +40,16 @@ public class Product {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+//    @ManyToOne
+//    @JoinColumn(name = "sub_category_id")
+//    @JsonIgnoreProperties("products")  // Ignore 'products' inside subCategory to avoid recursion
+//    private SubCategory subCategory;
+    
     @ManyToOne
     @JoinColumn(name = "sub_category_id")
-    @JsonIgnoreProperties("products")  // Ignore 'products' inside subCategory to avoid recursion
+    @JsonIgnoreProperties("products") // Must match field name in SubCategory!
     private SubCategory subCategory;
+
     
     @Column(unique = true)
     private String slug;

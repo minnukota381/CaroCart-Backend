@@ -1,6 +1,6 @@
 package com.carocart.productservice.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.*;
 import jakarta.persistence.*;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
@@ -23,9 +23,14 @@ public class Category {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+//    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+//    @JsonIgnoreProperties("category")
+//    private List<SubCategory> subcategories;
+    
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnoreProperties("category")
+    @JsonIgnore // Safest: blocks recursion and OpenAPI errors
     private List<SubCategory> subcategories;
+
     
     @Column(unique = true)
     private String slug;
