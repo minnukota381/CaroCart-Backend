@@ -49,6 +49,12 @@ public class SecurityConfig {
                     "/vendors/signup/**",
                     "/vendors/login"
                 ).permitAll()
+                .requestMatchers(
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs",
+                        "/v3/api-docs/**"
+                    ).permitAll()
                 .requestMatchers("/admins/me").hasRole("ADMIN")
                 
                 .requestMatchers("/users/admin/users/all").hasRole("ADMIN")
