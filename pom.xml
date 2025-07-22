@@ -21,6 +21,7 @@
         <module>CaroCartNotifications</module>
         <module>CaroCartDeliveryService</module>
         <module>CaroCartAPIGateway</module>
+        <module>CaroCartHome</module>
     </modules>
     
     <properties>
