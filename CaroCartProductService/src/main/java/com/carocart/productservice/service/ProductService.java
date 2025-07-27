@@ -5,6 +5,7 @@ import com.carocart.productservice.entity.Product;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,5 +34,10 @@ public interface ProductService {
 	
 	Product getProductBySlug(String slug);
     public void generateMissingSlugs();
+    
+ // ProductService.java
+
+    List<Product> getProductsFromNearbyVendors(String type, double lat, double lng, double radiusKm, Long categoryId, Long subCategoryId);
+    Map<String, Map<String, List<Product>>> getProductsGroupedByCategoryAndSubCategory(Long vendorId);
 
 }

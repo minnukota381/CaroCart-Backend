@@ -384,4 +384,17 @@ public class OrderServiceImpl implements OrderService {
         item.setApprovalStatus("REJECTED");
         orderItemRepository.save(item);
     }
+    @Override
+    @Transactional
+    public void approveOrderByAdmin(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+        if ("APPROVED".equalsIgnoreCase(order.getStatus())) {
+            throw new RuntimeException("Order already approved.");
+        }
+        order.setStatus("APPROVED");
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+    }
+
 }

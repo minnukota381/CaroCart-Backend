@@ -180,5 +180,11 @@ public class OrderController {
         orderService.rejectItemAsAdmin(itemId);
         return ResponseEntity.ok("Item rejected");
     }
+    @PutMapping("/admin/orders/{orderId}/approve")
+    public ResponseEntity<String> approveOrderByAdmin(@PathVariable Long orderId) {
+        orderService.approveOrderByAdmin(orderId);
+        return ResponseEntity.ok("Order approved by Admin successfully.");
+    }
+
 
 }

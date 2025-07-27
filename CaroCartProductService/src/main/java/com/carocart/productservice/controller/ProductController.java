@@ -30,12 +30,10 @@ public class ProductController {
         @RequestHeader("Authorization") String token
     ) throws IOException {
 
-        // Validate price <= mrp
         if (productDTO.getPrice() > productDTO.getMrp()) {
             throw new IllegalArgumentException("Price must not exceed MRP");
         }
 
-        // Validate subcategory exists
         SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
                 .orElseThrow(() -> new IllegalArgumentException("Subcategory not found"));
 
@@ -50,14 +48,11 @@ public class ProductController {
         product.setUnit(productDTO.getUnit());
         product.setIsAvailable(productDTO.getIsAvailable());
         product.setSubCategory(subCategory);
-
-        // Set imageUrl (from Firebase, sent by frontend)
         product.setImageUrl(productDTO.getImageUrl());
 
         return ResponseEntity.ok(productService.addProduct(product, null, token));
     }
 
-    // === UPDATE PRODUCT ===
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Product> updateProduct(
             @PathVariable Long id,
@@ -82,8 +77,6 @@ public class ProductController {
         updatedProduct.setUnit(productDTO.getUnit());
         updatedProduct.setIsAvailable(productDTO.getIsAvailable());
         updatedProduct.setSubCategory(subCategory);
-
-        // Set new imageUrl (if changed)
         updatedProduct.setImageUrl(productDTO.getImageUrl());
 
         Product updated = productService.updateProduct(id, updatedProduct, null, token);
@@ -93,7 +86,6 @@ public class ProductController {
         return ResponseEntity.ok(updated);
     }
 
-    // ✅ Delete product (Admin or Vendor)
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteProduct(@PathVariable Long id,
                                                 @RequestHeader("Authorization") String token) {
@@ -101,7 +93,6 @@ public class ProductController {
         return ResponseEntity.ok("Product deleted successfully");
     }
 
-    // ✅ Get product by ID (public)
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         Product product = productService.getProductById(id);
@@ -111,31 +102,26 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
-    // ✅ Get products by subcategory (public)
     @GetMapping("/subcategory/{subCategoryId}")
     public ResponseEntity<List<Product>> getProductsBySubCategory(@PathVariable Long subCategoryId) {
         return ResponseEntity.ok(productService.getProductsBySubCategory(subCategoryId));
     }
 
-    // ✅ Used by CartService/OrderService (internal DTO)
     @GetMapping("/dto/{id}")
     public ResponseEntity<ProductDTO> getProductDTOById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductDTOById(id));
     }
 
-    // ✅ Vendor: View their own products
     @GetMapping("/vendor/my-products")
     public ResponseEntity<List<Product>> getVendorProducts(@RequestHeader("Authorization") String token) {
         return ResponseEntity.ok(productService.getProductsByVendor(token));
     }
 
-    // ✅ Get all products (public)
     @GetMapping("/all")
     public ResponseEntity<List<Product>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
-    // ✅ Search and filter products (public)
     @GetMapping("/search")
     public ResponseEntity<List<Product>> searchAndFilterProducts(
             @RequestParam(required = false) String keyword,
@@ -155,21 +141,18 @@ public class ProductController {
         return ResponseEntity.ok(results);
     }
 
-    // ✅ Get products by category ID
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<List<Product>> getProductsByCategoryId(@PathVariable Long categoryId) {
         List<Product> products = productService.getProductsByCategoryId(categoryId);
         return ResponseEntity.ok(products);
     }
 
-    // ✅ Get total products count
     @GetMapping("/count")
     public ResponseEntity<Long> getProductsCount() {
         long count = productService.countAllProducts();
         return ResponseEntity.ok(count);
     }
-    
- // ✅ Get product by slug (used by React)
+
     @GetMapping("/slug/{slug}")
     public ResponseEntity<Product> getProductBySlug(@PathVariable String slug) {
         Product product = productService.getProductBySlug(slug);
@@ -178,10 +161,30 @@ public class ProductController {
         }
         return ResponseEntity.ok(product);
     }
+
     @GetMapping("/generate-slugs")
     public ResponseEntity<String> generateSlugs() {
         productService.generateMissingSlugs();
         return ResponseEntity.ok("Slug generation completed");
+    }
+
+    @GetMapping("/nearby")
+    public ResponseEntity<List<Product>> getProductsFromNearbyVendors(
+        @RequestParam String type,           // "FOOD" or "GROCERY"
+        @RequestParam double lat,
+        @RequestParam double lng,
+        @RequestParam(defaultValue = "10") double radiusKm,
+        @RequestParam(required = false) Long categoryId,
+        @RequestParam(required = false) Long subCategoryId
+    ) {
+        List<Product> products = productService.getProductsFromNearbyVendors(type, lat, lng, radiusKm, categoryId, subCategoryId);
+        return ResponseEntity.ok(products);
+    }
+
+    // 🚀 NEW ENDPOINT: Group vendor's products by category and subcategory
+    @GetMapping("/vendor/{vendorId}/grouped")
+    public ResponseEntity<?> getVendorProductsGroupedByCategoryAndSubCategory(@PathVariable Long vendorId) {
+        return ResponseEntity.ok(productService.getProductsGroupedByCategoryAndSubCategory(vendorId));
     }
 
 }

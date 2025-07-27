@@ -14,5 +14,13 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     List<Product> findByAddedByRoleAndAddedById(String role, Long vendorId);
 	List<Product> findBySubCategory_Category_Id(Long categoryId);
 	Optional<Product> findBySlug(String slug);
+	
+	   List<Product> findByAddedByRoleAndAddedByIdIn(String addedByRole, List<Long> addedByIds);
+
+	    // Products by vendors AND subcategory
+	    List<Product> findByAddedByRoleAndAddedByIdInAndSubCategory_Id(String addedByRole, List<Long> addedByIds, Long subCategoryId);
+
+	    // Products by vendors AND category
+	    List<Product> findByAddedByRoleAndAddedByIdInAndSubCategory_Category_Id(String addedByRole, List<Long> addedByIds, Long categoryId);
 
 }

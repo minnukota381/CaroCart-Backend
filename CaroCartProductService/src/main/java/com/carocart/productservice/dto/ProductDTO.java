@@ -1,3 +1,4 @@
+// In your Product Service: com.carocart.productservice.dto.ProductDTO
 package com.carocart.productservice.dto;
 
 public class ProductDTO {
@@ -6,86 +7,96 @@ public class ProductDTO {
     private String description;
     private double price;
     private String imageUrl;
-    private int stock;  // added stock field
+    private int stock;
     private boolean isAvailable;
 
-    private String vendorEmail; // ✅ Add this
-    
+    private String vendorEmail;
+    private Long vendorId; // <--- ADD THIS FIELD
+
     private String slug;
 
-    public String getSlug() {
-        return slug;
+    // Getters and Setters for all fields, including vendorId
+    // ... existing getters/setters ...
+
+    public Long getVendorId() { // <--- ADD GETTER
+        return vendorId;
     }
 
-    public void setSlug(String slug) {
-        this.slug = slug;
+    public void setVendorId(Long vendorId) { // <--- ADD SETTER
+        this.vendorId = vendorId;
     }
 
-
-    // Getters and Setters
-
-    public Long getId() {
-        return id;
+    public String getVendorEmail() {
+        return vendorEmail;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setVendorEmail(String vendorEmail) {
+        this.vendorEmail = vendorEmail;
     }
 
-    public String getName() {
-        return name;
-    }
+	public Long getId() {
+		return id;
+	}
 
-    public void setName(String name) {
-        this.name = name;
-    }
+	public void setId(Long id) {
+		this.id = id;
+	}
 
-    public double getPrice() {
-        return price;
-    }
+	public String getName() {
+		return name;
+	}
 
-    public void setPrice(double price) {
-        this.price = price;
-    }
+	public void setName(String name) {
+		this.name = name;
+	}
 
-    public String getImageUrl() {
-        return imageUrl;
-    }
+	public String getDescription() {
+		return description;
+	}
 
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
+	public void setDescription(String description) {
+		this.description = description;
+	}
 
-    public String getDescription() {
-        return description;
-    }
+	public double getPrice() {
+		return price;
+	}
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+	public void setPrice(double price) {
+		this.price = price;
+	}
 
-    public int getStock() {
-        return stock;
-    }
+	public String getImageUrl() {
+		return imageUrl;
+	}
 
-    public void setStock(int stock) {
-        this.stock = stock;
-    }
+	public void setImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
+	}
+
+	public int getStock() {
+		return stock;
+	}
+
+	public void setStock(int stock) {
+		this.stock = stock;
+	}
 
 	public boolean isAvailable() {
 		return isAvailable;
 	}
 
-	public void setIsAvailable(boolean isAvailable) {
+	public void setAvailable(boolean isAvailable) {
 		this.isAvailable = isAvailable;
 	}
 
-	public String getVendorEmail() {
-		return vendorEmail;
+	public String getSlug() {
+		return slug;
 	}
 
-	public void setVendorEmail(String vendorEmail) {
-		this.vendorEmail = vendorEmail;
+	public void setSlug(String slug) {
+		this.slug = slug;
 	}
-	
+    
+    
 }
