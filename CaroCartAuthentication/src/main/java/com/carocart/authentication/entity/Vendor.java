@@ -3,7 +3,6 @@ package com.carocart.authentication.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,7 +13,11 @@ public class Vendor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Personal Info
+    @NotBlank(message = "First name is mandatory")
     private String firstName;
+
+    @NotBlank(message = "Last name is mandatory")
     private String lastName;
 
     @NotBlank(message = "Company name is mandatory")
@@ -38,19 +41,39 @@ public class Vendor {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private String businessType;
-    private String businessAddress;
-
-    @Column(name = "profile_image_url")
-    private String profileImageUrl;
-    
-    @Lob
-    @Basic(fetch = FetchType.LAZY)
-    @Column(name = "profile_image", columnDefinition = "LONGBLOB")
-    private byte[] profileImage;
-
     @Column(nullable = false)
     private String role = "VENDOR";
+
+    // Vendor Type: FOOD, GROCERY, etc.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private VendorType vendorType;
+
+    // Address Info (normalized for search & display)
+    @NotBlank(message = "Address Line 1 is required")
+    private String addressLine1;
+
+    private String addressLine2;
+
+    @NotBlank(message = "City is required")
+    private String city;
+
+    @NotBlank(message = "State is required")
+    private String state;
+
+    @NotBlank(message = "Pin code is required")
+    private String pinCode;
+
+    // Geolocation for spatial queries (required for proximity search)
+    @Column(nullable = false)
+    private Double latitude;
+
+    @Column(nullable = false)
+    private Double longitude;
+
+    // Profile image URL (Firebase/public link)
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
 
     // === Lifecycle hooks ===
     @PrePersist
@@ -98,24 +121,33 @@ public class Vendor {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public String getBusinessType() { return businessType; }
-    public void setBusinessType(String businessType) { this.businessType = businessType; }
-
-    public String getBusinessAddress() { return businessAddress; }
-    public void setBusinessAddress(String businessAddress) { this.businessAddress = businessAddress; }
-
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
 
-    public byte[] getProfileImage() { return profileImage; }
-    public void setProfileImage(byte[] profileImage) { this.profileImage = profileImage; }
+    public VendorType getVendorType() { return vendorType; }
+    public void setVendorType(VendorType vendorType) { this.vendorType = vendorType; }
 
-	public String getProfileImageUrl() {
-		return profileImageUrl;
-	}
+    public String getAddressLine1() { return addressLine1; }
+    public void setAddressLine1(String addressLine1) { this.addressLine1 = addressLine1; }
 
-	public void setProfileImageUrl(String profileImageUrl) {
-		this.profileImageUrl = profileImageUrl;
-	}
-    
+    public String getAddressLine2() { return addressLine2; }
+    public void setAddressLine2(String addressLine2) { this.addressLine2 = addressLine2; }
+
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    public String getState() { return state; }
+    public void setState(String state) { this.state = state; }
+
+    public String getPinCode() { return pinCode; }
+    public void setPinCode(String pinCode) { this.pinCode = pinCode; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+    public String getProfileImageUrl() { return profileImageUrl; }
+    public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
 }

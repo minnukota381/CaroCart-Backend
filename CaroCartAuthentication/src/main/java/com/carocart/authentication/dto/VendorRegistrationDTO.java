@@ -1,9 +1,9 @@
 package com.carocart.authentication.dto;
 
+import com.carocart.authentication.entity.VendorType;
 import jakarta.validation.constraints.*;
 
 public class VendorRegistrationDTO {
-
     @NotBlank(message = "First name is required")
     @Size(max = 30)
     private String firstName;
@@ -32,13 +32,33 @@ public class VendorRegistrationDTO {
     @Pattern(regexp = "^$|^[0-9A-Z]{15}$", message = "GST number must be 15 characters or empty")
     private String gstNumber;
 
-    @NotBlank(message = "Business type is required")
-    private String businessType;
+    // Vendor type: FOOD, GROCERY, etc.
+    @NotNull(message = "Vendor type is required")
+    private VendorType vendorType;
 
-    @NotBlank(message = "Business address is required")
-    private String businessAddress;
+    // Address fields
+    @NotBlank(message = "Address line 1 is required")
+    private String addressLine1;
 
-    // Getters and setters
+    private String addressLine2;
+
+    @NotBlank(message = "City is required")
+    private String city;
+
+    @NotBlank(message = "State is required")
+    private String state;
+
+    @NotBlank(message = "Pin code is required")
+    private String pinCode;
+
+    // Geolocation
+    @NotNull(message = "Latitude is required")
+    private Double latitude;
+
+    @NotNull(message = "Longitude is required")
+    private Double longitude;
+
+    // Getters and Setters
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
 
@@ -60,9 +80,27 @@ public class VendorRegistrationDTO {
     public String getGstNumber() { return gstNumber; }
     public void setGstNumber(String gstNumber) { this.gstNumber = gstNumber; }
 
-    public String getBusinessType() { return businessType; }
-    public void setBusinessType(String businessType) { this.businessType = businessType; }
+    public VendorType getVendorType() { return vendorType; }
+    public void setVendorType(VendorType vendorType) { this.vendorType = vendorType; }
 
-    public String getBusinessAddress() { return businessAddress; }
-    public void setBusinessAddress(String businessAddress) { this.businessAddress = businessAddress; }
+    public String getAddressLine1() { return addressLine1; }
+    public void setAddressLine1(String addressLine1) { this.addressLine1 = addressLine1; }
+
+    public String getAddressLine2() { return addressLine2; }
+    public void setAddressLine2(String addressLine2) { this.addressLine2 = addressLine2; }
+
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    public String getState() { return state; }
+    public void setState(String state) { this.state = state; }
+
+    public String getPinCode() { return pinCode; }
+    public void setPinCode(String pinCode) { this.pinCode = pinCode; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 }

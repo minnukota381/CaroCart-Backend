@@ -22,7 +22,7 @@ public class CartController {
     private CartService cartService;
 
     @GetMapping("/get")
-    public ResponseEntity<List<CartItemResponse>> getCartItemsByToken(
+    public ResponseEntity<List<CartItemDTO>> getCartItemsByToken(
             @RequestHeader("Authorization") String token) {
         return ResponseEntity.ok(cartService.getCartItemsByToken(token));
     }

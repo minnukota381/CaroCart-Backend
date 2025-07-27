@@ -33,5 +33,6 @@ public interface OrderService {
     void approveItemAsAdmin(Long itemId);
     void rejectItemAsVendor(String token, Long itemId);
     void rejectItemAsAdmin(Long itemId);
+    void approveOrderByAdmin(Long orderId);
 
 }

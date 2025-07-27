@@ -26,6 +26,7 @@ import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
 import com.carocart.productservice.util.FirebaseStorageUtil;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 
 @Service
@@ -214,36 +215,48 @@ public class ProductServiceImpl implements ProductService {
         }).orElse(null);
     }
     
+ // In your Product Service: com.carocart.productservice.service.ProductServiceImpl
+
     @Override
     public ProductDTO getProductDTOById(Long id) {
         Product product = productRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Product not found"));
-
-        // ❌ THIS IS WRONG:
-        // String imageUrl = "/products/image/" + product.getId();
-        // dto.setImageUrl(imageUrl);
 
         ProductDTO dto = new ProductDTO();
         dto.setId(product.getId());
         dto.setName(product.getName());
         dto.setDescription(product.getDescription());
         dto.setPrice(product.getPrice());
-        // ✅ THE ONLY CORRECT LINE:
         dto.setImageUrl(product.getImageUrl());
         dto.setStock(product.getStock());
-        dto.setIsAvailable(Boolean.TRUE.equals(product.getIsAvailable()));
-        dto.setSlug(product.getSlug()); // ✅ Add this line
+        dto.setAvailable(Boolean.TRUE.equals(product.getIsAvailable()));
+        dto.setSlug(product.getSlug());
 
-
-        // ... Vendor mapping (unchanged) ...
+        // CRUCIAL ADDITION: Set the vendorId from the Product entity
+        // The Product entity (com.carocart.productservice.entity.Product) must have getAddedById()
+        // which represents the vendor's ID if AddedByRole is "VENDOR".
         if ("VENDOR".equals(product.getAddedByRole()) && product.getAddedById() != null) {
+            dto.setVendorId(product.getAddedById()); // <--- SET VENDOR ID HERE!
             try {
                 VendorDTO vendor = vendorClient.getVendorById(product.getAddedById());
                 dto.setVendorEmail(vendor.getEmail());
             } catch (Exception e) {
                 dto.setVendorEmail(null);
+                // Log this exception: e.g., "Vendor not found for product {id} when fetching DTO"
             }
+        } else if ("ADMIN".equals(product.getAddedByRole())) {
+            // If an admin added it, there might not be a direct vendorId.
+            // You might want a default or null, or throw an error if all products must have an associated vendor.
+            // For your cart service's 'one vendor' logic, if an admin-added product is in the cart,
+            // its vendorId would be null if not explicitly set. You might need a rule for this.
+            // For now, setting it to null or omitting it might be okay if admin products don't adhere to the vendor rule.
+            dto.setVendorId(null); // Or handle as per your business logic for admin-added products
+            dto.setVendorEmail("admin@example.com"); // Example, if needed
+        } else {
+            dto.setVendorId(null); // Fallback for products with no clear vendor or admin
+            dto.setVendorEmail(null);
         }
+
         return dto;
     }
 
@@ -323,5 +336,48 @@ public class ProductServiceImpl implements ProductService {
     public long countAllProducts() {
         return productRepository.count();
     }
+
+    @Override
+    public List<Product> getProductsFromNearbyVendors(String type, double lat, double lng, double radiusKm, Long categoryId, Long subCategoryId) {
+        // 1. Get nearby vendors from Auth service
+        List<VendorDTO> vendors = vendorClient.getNearbyVendors(type, lat, lng, radiusKm);
+        if (vendors == null || vendors.isEmpty()) return new ArrayList<>();
+
+        List<Long> vendorIds = vendors.stream()
+                                      .map(VendorDTO::getId)
+                                      .toList();
+
+        // 2. Fetch products from these vendors (and category/subcategory filter)
+        if (subCategoryId != null) {
+            return productRepository.findByAddedByRoleAndAddedByIdInAndSubCategory_Id("VENDOR", vendorIds, subCategoryId);
+        } else if (categoryId != null) {
+            return productRepository.findByAddedByRoleAndAddedByIdInAndSubCategory_Category_Id("VENDOR", vendorIds, categoryId);
+        } else {
+            return productRepository.findByAddedByRoleAndAddedByIdIn("VENDOR", vendorIds);
+        }
+    }
+    
+    @Override
+    public Map<String, Map<String, List<Product>>> getProductsGroupedByCategoryAndSubCategory(Long vendorId) {
+        List<Product> products = productRepository.findByAddedByRoleAndAddedById("VENDOR", vendorId);
+
+        // Structure: {categoryName -> {subCategoryName -> [Product, ...]}}
+        Map<String, Map<String, List<Product>>> grouped = new java.util.HashMap<>();
+
+        for (Product p : products) {
+            String cat = p.getSubCategory() != null && p.getSubCategory().getCategory() != null
+                    ? p.getSubCategory().getCategory().getName()
+                    : "Uncategorized";
+            String sub = p.getSubCategory() != null
+                    ? p.getSubCategory().getName()
+                    : "Uncategorized";
+
+            grouped.computeIfAbsent(cat, k -> new java.util.HashMap<>())
+                   .computeIfAbsent(sub, k -> new java.util.ArrayList<>())
+                   .add(p);
+        }
+        return grouped;
+    }
+
 
 }
