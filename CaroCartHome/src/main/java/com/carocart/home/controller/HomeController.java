@@ -1,5 +1,6 @@
 package com.carocart.home.controller;
 
+import com.carocart.home.dto.HomeSectionResponseDTO;
 import com.carocart.home.entity.HomeSection;
 import com.carocart.home.service.HomeSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,4 +36,10 @@ public class HomeController {
     public void deleteSection(@PathVariable Long id) {
         service.deleteSection(id);
     }
+    
+    @GetMapping("/sections/with-data")
+    public List<HomeSectionResponseDTO> getSectionsWithData() {
+        return service.getSectionsWithResolvedData();
+    }
+
 }

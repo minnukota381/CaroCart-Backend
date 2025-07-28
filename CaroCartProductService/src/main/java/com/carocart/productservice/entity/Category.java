@@ -16,8 +16,9 @@ public class Category {
 
     private String name;
     
-    // For future S3 migration (optional, can be null now)
+    @Column(name = "image_url", length = 1024)  // or 2048 if you want to be future-proof
     private String imageUrl;
+
 
     @UpdateTimestamp
     @Column(name = "updated_at")

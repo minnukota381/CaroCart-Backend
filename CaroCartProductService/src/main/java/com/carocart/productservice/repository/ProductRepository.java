@@ -10,17 +10,19 @@ import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
+
     List<Product> findBySubCategoryId(Long subCategoryId);
-    List<Product> findByAddedByRoleAndAddedById(String role, Long vendorId);
-	List<Product> findBySubCategory_Category_Id(Long categoryId);
-	Optional<Product> findBySlug(String slug);
-	
-	   List<Product> findByAddedByRoleAndAddedByIdIn(String addedByRole, List<Long> addedByIds);
 
-	    // Products by vendors AND subcategory
-	    List<Product> findByAddedByRoleAndAddedByIdInAndSubCategory_Id(String addedByRole, List<Long> addedByIds, Long subCategoryId);
+    List<Product> findBySubCategory_Category_Id(Long categoryId);
 
-	    // Products by vendors AND category
-	    List<Product> findByAddedByRoleAndAddedByIdInAndSubCategory_Category_Id(String addedByRole, List<Long> addedByIds, Long categoryId);
+    Optional<Product> findBySlug(String slug);
 
+    // ✅ All methods now aligned with vendorId
+    List<Product> findByAddedByRoleAndVendorId(String role, Long vendorId);
+
+    List<Product> findByAddedByRoleAndVendorIdIn(String role, List<Long> vendorIds);
+
+    List<Product> findByAddedByRoleAndVendorIdInAndSubCategory_Id(String role, List<Long> vendorIds, Long subCategoryId);
+
+    List<Product> findByAddedByRoleAndVendorIdInAndSubCategory_Category_Id(String role, List<Long> vendorIds, Long categoryId);
 }
