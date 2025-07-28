@@ -24,14 +24,14 @@ public class Product {
     private int stock;
     private String unit;
     private Boolean isAvailable;
-    private String addedByRole; // "ADMIN" or "VENDOR"
-    private Long addedById;
-    private String vendorName; // Set if added by vendor
+    private String addedByRole;
+    private Long vendorId;
+    private String vendorName;
 
-    
-    @Lob
-    @Column(name = "image", columnDefinition = "LONGBLOB")
-    private byte[] image;
+//    
+//    @Lob
+//    @Column(name = "image", columnDefinition = "LONGBLOB")
+//    private byte[] image;
 
     @Lob
     @Column(name = "image_url", columnDefinition = "TEXT")
@@ -73,14 +73,6 @@ public class Product {
 		this.addedByRole = addedByRole;
 	}
 
-	public Long getAddedById() {
-		return addedById;
-	}
-
-	public void setAddedById(Long addedById) {
-		this.addedById = addedById;
-	}
-
 	public String getVendorName() {
 		return vendorName;
 	}
@@ -89,13 +81,13 @@ public class Product {
 		this.vendorName = vendorName;
 	}
 
-	public byte[] getImage() {
-        return image;
-    }
-
-    public void setImage(byte[] image) {
-        this.image = image;
-    }
+//	public byte[] getImage() {
+//        return image;
+//    }
+//
+//    public void setImage(byte[] image) {
+//        this.image = image;
+//    }
 
 	public Long getId() {
 		return id;
@@ -207,6 +199,14 @@ public class Product {
 
 	public void setImageUrl(String imageUrl) {
 		this.imageUrl = imageUrl;
+	}
+
+	public Long getVendorId() {
+		return vendorId;
+	}
+
+	public void setVendorId(Long vendorId) {
+		this.vendorId = vendorId;
 	}
 
     

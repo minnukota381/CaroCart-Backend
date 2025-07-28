@@ -1,8 +1,8 @@
-package com.carocart.home.ServiceImpl;
+package com.carocart.home.service;
 
 import com.carocart.home.entity.Banner;
 import com.carocart.home.repository.BannerRepository;
-import com.carocart.home.service.BannerService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
