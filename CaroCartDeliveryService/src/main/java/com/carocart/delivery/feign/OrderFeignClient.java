@@ -1,6 +1,8 @@
 package com.carocart.delivery.feign;
 
 import com.carocart.delivery.dto.DeliveryOrderDTO;
+import com.carocart.delivery.dto.DeliveryStatusUpdateDTO;
+
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,4 +25,12 @@ import java.util.List;
 
 	    @PutMapping("/orders/{orderId}/delivery-status")
 	    void updateDeliveryStatus(@PathVariable Long orderId, @RequestParam String status);
+	    @PostMapping("/orders/{orderId}/out-for-delivery")
+	    DeliveryOrderDTO markOrderOutForDelivery(@PathVariable("orderId") Long orderId,
+	                                             @RequestHeader("Authorization") String token);
+
+	    @PostMapping("/orders/{orderId}/deliver")
+	    void markOrderAsDelivered(@PathVariable("orderId") Long orderId,
+	                              @RequestBody DeliveryStatusUpdateDTO dto,
+	                              @RequestHeader("Authorization") String token);
 	}

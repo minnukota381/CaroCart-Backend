@@ -1,10 +1,12 @@
 package com.carocart.delivery.config;
 
-import com.carocart.delivery.config.JwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -16,19 +18,33 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
+    	http
+        .cors(cors -> {}) // ✅ enable CORS in security filter chain
+        .csrf(csrf -> csrf.disable())
+            .formLogin(form -> form.disable())
+            .httpBasic(basic -> basic.disable())
             .authorizeHttpRequests(authz -> authz
-                // Allow register and login endpoints without authentication
-                .requestMatchers(
-                    "/deliveryboys/register",
-                    "/deliveryboys/login"
-                ).permitAll()
-                // Require authentication for all other requests
+                // Explicitly allow all HTTP methods on these endpoints:
+                .requestMatchers("/deliveryboys/register").permitAll()
+                .requestMatchers("/deliveryboys/login").permitAll()
+                .requestMatchers("/deliveryboys/forgot-password").permitAll()
+                .requestMatchers("/deliveryboys/verify-otp").permitAll()
+                .requestMatchers("/deliveryboys/reset-password").permitAll()
+                .requestMatchers("/api/upload", "/api/upload/**").permitAll()
                 .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) ->
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
+                )
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }

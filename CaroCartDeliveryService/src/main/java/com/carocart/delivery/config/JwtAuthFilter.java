@@ -21,13 +21,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String path = request.getServletPath();
 
-        // Skip JWT validation for public endpoints
-        if (path.equals("/deliveryboys/register") || path.equals("/deliveryboys/login")) {
+        // Use contains to avoid path issues caused by Gateway or proxy
+        if (path.contains("/register") || path.contains("/login") ||
+            path.contains("/forgot-password") || path.contains("/verify-otp") || path.contains("/reset-password")) {
             filterChain.doFilter(request, response);
             return;
         }
