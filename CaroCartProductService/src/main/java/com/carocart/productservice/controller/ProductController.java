@@ -196,5 +196,6 @@ public class ProductController {
     public ResponseEntity<?> getVendorProductsGroupedByCategoryAndSubCategory(@PathVariable Long vendorId) {
         return ResponseEntity.ok(productService.getProductsGroupedByCategoryAndSubCategory(vendorId));
     }
-
+    
+    
 }
