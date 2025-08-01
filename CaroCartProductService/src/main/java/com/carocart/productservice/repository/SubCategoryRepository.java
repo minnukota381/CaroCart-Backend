@@ -12,5 +12,8 @@ import com.carocart.productservice.entity.SubCategory;
 public interface SubCategoryRepository extends JpaRepository<SubCategory, Long> {
     List<SubCategory> findByCategoryId(Long categoryId);
     Optional<SubCategory> findBySlug(String slug);
+    
+    List<SubCategory> findTop5ByNameIgnoreCaseContaining(String name);
+
 
 }

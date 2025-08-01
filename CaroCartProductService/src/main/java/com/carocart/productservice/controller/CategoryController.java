@@ -185,6 +185,17 @@ public class CategoryController {
         SubCategory sub = categoryService.getSubCategoryBySlug(slug);
         return sub != null ? ResponseEntity.ok(sub) : ResponseEntity.notFound().build();
     }
+    
+ // Get all categories served by a specific vendor
+    @GetMapping("/vendor/{vendorId}")
+    public ResponseEntity<List<CategoryResponseDTO>> getCategoriesByVendor(@PathVariable Long vendorId) {
+        List<Category> categories = categoryService.getCategoriesByVendorId(vendorId);
+        List<CategoryResponseDTO> dtos = categories.stream()
+            .map(this::toCategoryResponseDTO)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
 
 
 }
