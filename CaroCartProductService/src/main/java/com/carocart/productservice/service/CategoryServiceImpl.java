@@ -5,6 +5,7 @@ import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.feign.AdminClient;
 import com.carocart.productservice.repository.CategoryRepository;
+import com.carocart.productservice.repository.ProductRepository;
 import com.carocart.productservice.repository.SubCategoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,9 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private SubCategoryRepository subCategoryRepo;
+    
+    @Autowired
+    private ProductRepository productRepo;
 
     @Autowired
     private AdminClient adminClient;
@@ -158,6 +162,11 @@ public class CategoryServiceImpl implements CategoryService {
             }
         }
         if (updated > 0) subCategoryRepo.saveAll(all);
+    }
+    
+    @Override
+    public List<Category> getCategoriesByVendorId(Long vendorId) {
+        return productRepo.findDistinctCategoriesByVendorId(vendorId);
     }
 
 }

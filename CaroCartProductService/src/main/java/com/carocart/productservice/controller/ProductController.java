@@ -2,6 +2,7 @@ package com.carocart.productservice.controller;
 
 import com.carocart.productservice.dto.ProductDTO;
 import com.carocart.productservice.dto.ProductRequestDTO;
+import com.carocart.productservice.dto.SearchResultDTO;
 import com.carocart.productservice.entity.Product;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.repository.SubCategoryRepository;
@@ -146,6 +147,15 @@ public class ProductController {
         List<Product> products = productService.getProductsByCategoryId(categoryId);
         return ResponseEntity.ok(products);
     }
+    
+    @GetMapping("/unified-search")
+    public ResponseEntity<SearchResultDTO> unifiedSearch(@RequestParam("query") String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        SearchResultDTO result = productService.unifiedSearch(query.trim());
+        return ResponseEntity.ok(result);
+    }
 
     @GetMapping("/count")
     public ResponseEntity<Long> getProductsCount() {
@@ -186,5 +196,6 @@ public class ProductController {
     public ResponseEntity<?> getVendorProductsGroupedByCategoryAndSubCategory(@PathVariable Long vendorId) {
         return ResponseEntity.ok(productService.getProductsGroupedByCategoryAndSubCategory(vendorId));
     }
-
+    
+    
 }
