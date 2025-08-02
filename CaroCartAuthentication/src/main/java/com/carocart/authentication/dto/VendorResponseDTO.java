@@ -11,8 +11,6 @@ public class VendorResponseDTO {
     private String companyName;
     private String contactNumber;
     private String gstNumber;
-
-    // Vendor type
     private VendorType vendorType;
 
     // Address fields
@@ -28,6 +26,9 @@ public class VendorResponseDTO {
 
     // Profile image URL (Firebase/public link)
     private String profileImageUrl;
+
+    // === THIS IS MANDATORY FOR STATUS ===
+    private boolean approved; // <-- Add this field!
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -80,4 +81,7 @@ public class VendorResponseDTO {
 
     public String getProfileImageUrl() { return profileImageUrl; }
     public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
+
+    public boolean isApproved() { return approved; }
+    public void setApproved(boolean approved) { this.approved = approved; }
 }

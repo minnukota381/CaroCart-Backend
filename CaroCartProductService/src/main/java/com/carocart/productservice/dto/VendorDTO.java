@@ -6,8 +6,17 @@ public class VendorDTO {
     private String lastName;
     private String email;
     private String role; // should be "VENDOR"
+    private String vendorType; // "FOOD" or "GROCERY"
 
-    // Optional helper
+    public String getVendorType() {
+		return vendorType;
+	}
+
+	public void setVendorType(String vendorType) {
+		this.vendorType = vendorType;
+	}
+
+	// Optional helper
     public String getFullName() {
         return firstName + " " + lastName;
     }
