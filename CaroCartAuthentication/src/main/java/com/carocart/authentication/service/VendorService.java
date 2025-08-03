@@ -231,7 +231,6 @@ public class VendorService {
         vendor.setRole("VENDOR");
         return vendor;
     }
-
     public static VendorResponseDTO toResponseDTO(Vendor vendor) {
         VendorResponseDTO dto = new VendorResponseDTO();
         dto.setId(vendor.getId());
@@ -251,6 +250,8 @@ public class VendorService {
         dto.setLatitude(vendor.getLatitude());
         dto.setLongitude(vendor.getLongitude());
         dto.setProfileImageUrl(vendor.getProfileImageUrl());
+        dto.setApproved(vendor.isApproved());  // <--- Add this line
         return dto;
     }
+
 }
