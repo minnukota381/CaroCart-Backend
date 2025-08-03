@@ -3,6 +3,7 @@ package com.carocart.productservice.dto;
 import jakarta.validation.constraints.*;
 
 public class ProductRequestDTO {
+    // --- SHARED FIELDS ---
     @NotBlank(message = "Product name is required")
     @Size(max = 100, message = "Product name too long")
     private String name;
@@ -10,10 +11,6 @@ public class ProductRequestDTO {
     @NotBlank(message = "Description is required")
     @Size(max = 2000, message = "Description too long")
     private String description;
-
-    @NotBlank(message = "Brand is required")
-    @Size(max = 60, message = "Brand too long")
-    private String brand;
 
     @Positive(message = "Price must be greater than zero")
     private double price;
@@ -36,17 +33,35 @@ public class ProductRequestDTO {
 
     private Boolean isAvailable = true;
     private String imageUrl;
-    // Image will be handled in the controller as MultipartFile, not here
+    // ProductType must be provided: GROCERY or FOOD
+    @NotNull(message = "Product type is required")
+    private String productType; // Could use enum or String, depends on how you handle in controller
 
-    // Getters and setters
+    // --- GROCERY-SPECIFIC FIELDS ---
+    private String brand;
+    private String packSize;
+    private String manufacturer;
+    private String fssaiLicenseNo;
+    private String countryOfOrigin;
+    private String ingredients;
+    private String nutritionInfo;
+    private String returnPolicy;
+
+    // --- FOOD-SPECIFIC FIELDS ---
+    private String foodCategory; // e.g., Main Course, Starter
+    private Boolean veg;
+    private String restaurantName;
+    private String customizationOptions; // JSON string
+    private String addOns; // JSON string
+    private Boolean bestseller;
+
+    // --- Getters and Setters ---
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-
-    public String getBrand() { return brand; }
-    public void setBrand(String brand) { this.brand = brand; }
 
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
@@ -68,11 +83,54 @@ public class ProductRequestDTO {
 
     public Boolean getIsAvailable() { return isAvailable; }
     public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
-	public String getImageUrl() {
-		return imageUrl;
-	}
-	public void setImageUrl(String imageUrl) {
-		this.imageUrl = imageUrl;
-	}
-    
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getProductType() { return productType; }
+    public void setProductType(String productType) { this.productType = productType; }
+
+    // Grocery-specific
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = brand; }
+
+    public String getPackSize() { return packSize; }
+    public void setPackSize(String packSize) { this.packSize = packSize; }
+
+    public String getManufacturer() { return manufacturer; }
+    public void setManufacturer(String manufacturer) { this.manufacturer = manufacturer; }
+
+    public String getFssaiLicenseNo() { return fssaiLicenseNo; }
+    public void setFssaiLicenseNo(String fssaiLicenseNo) { this.fssaiLicenseNo = fssaiLicenseNo; }
+
+    public String getCountryOfOrigin() { return countryOfOrigin; }
+    public void setCountryOfOrigin(String countryOfOrigin) { this.countryOfOrigin = countryOfOrigin; }
+
+    public String getIngredients() { return ingredients; }
+    public void setIngredients(String ingredients) { this.ingredients = ingredients; }
+
+    public String getNutritionInfo() { return nutritionInfo; }
+    public void setNutritionInfo(String nutritionInfo) { this.nutritionInfo = nutritionInfo; }
+
+    public String getReturnPolicy() { return returnPolicy; }
+    public void setReturnPolicy(String returnPolicy) { this.returnPolicy = returnPolicy; }
+
+    // Food-specific
+    public String getFoodCategory() { return foodCategory; }
+    public void setFoodCategory(String foodCategory) { this.foodCategory = foodCategory; }
+
+    public Boolean getVeg() { return veg; }
+    public void setVeg(Boolean veg) { this.veg = veg; }
+
+    public String getRestaurantName() { return restaurantName; }
+    public void setRestaurantName(String restaurantName) { this.restaurantName = restaurantName; }
+
+    public String getCustomizationOptions() { return customizationOptions; }
+    public void setCustomizationOptions(String customizationOptions) { this.customizationOptions = customizationOptions; }
+
+    public String getAddOns() { return addOns; }
+    public void setAddOns(String addOns) { this.addOns = addOns; }
+
+    public Boolean getBestseller() { return bestseller; }
+    public void setBestseller(Boolean bestseller) { this.bestseller = bestseller; }
 }
