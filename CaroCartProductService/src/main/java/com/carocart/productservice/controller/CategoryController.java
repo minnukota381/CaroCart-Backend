@@ -6,6 +6,7 @@ import com.carocart.productservice.dto.SubCategoryDTO;
 import com.carocart.productservice.dto.SubCategoryResponseDTO;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
+import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.service.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -194,7 +195,21 @@ public class CategoryController {
             .map(this::toCategoryResponseDTO)
             .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
-    }
+    }// At the bottom of your CategoryController
+
+@Autowired
+private SubCategoryRepository subCategoryRepository;
+
+@GetMapping("/subcategories/all")
+public ResponseEntity<List<SubCategoryResponseDTO>> getAllSubCategories() {
+    List<SubCategory> subCategories = subCategoryRepository.findAll();
+    List<SubCategoryResponseDTO> dtos = subCategories.stream()
+        .map(this::toSubCategoryResponseDTO)
+        .collect(Collectors.toList());
+    return ResponseEntity.ok(dtos);
+}
+
+    
 
 
 
