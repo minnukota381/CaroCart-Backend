@@ -145,10 +145,21 @@ public class ProductServiceImpl implements ProductService {
             product.setAddedByRole("ADMIN");
             product.setVendorId(null);
             product.setVendorName(null);
+            // Admin can add any type of product
         } else if (isVendor(vendor)) {
             product.setAddedByRole("VENDOR");
             product.setVendorId(vendor.getId());
             product.setVendorName(vendor.getFullName());
+
+            if (product.getProductType() == null) {
+                throw new IllegalArgumentException("Product type is required");
+            }
+            if (!product.getProductType().name().equalsIgnoreCase(vendor.getVendorType())) {
+                throw new IllegalArgumentException(
+                    "Vendor of type " + vendor.getVendorType() +
+                    " can only add products of type " + vendor.getVendorType()
+                );
+            }
         } else {
             throw new RuntimeException("Unauthorized: Only admin or vendor can add products");
         }
@@ -167,6 +178,8 @@ public class ProductServiceImpl implements ProductService {
 
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
+
+        // All type-specific fields are already set by the controller
 
         return productRepository.save(product);
     }
