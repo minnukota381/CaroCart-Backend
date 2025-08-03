@@ -1,6 +1,8 @@
 package com.carocart.authentication.entity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import org.hibernate.annotations.CreationTimestamp;
 import jakarta.persistence.*;
 
 @Entity
@@ -26,6 +28,10 @@ public class User {
 
     @Column(nullable = false)
     private String role = "USER";
+
+    @CreationTimestamp
+    @Column(name = "registered_at", nullable = false, updatable = false)
+    private LocalDateTime registeredAt;
 
     // --- Getters and Setters ---
 
@@ -55,4 +61,7 @@ public class User {
 
     public LocalDate getDob() { return dob; }
     public void setDob(LocalDate dob) { this.dob = dob; }
+
+    public LocalDateTime getRegisteredAt() { return registeredAt; }
+    public void setRegisteredAt(LocalDateTime registeredAt) { this.registeredAt = registeredAt; }
 }
