@@ -8,6 +8,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @EnableFeignClients
 public class CaroCartDeliveryServiceApplication {
     public static void main(String[] args) {
+    	System.out.println("Tomcat max file count: " + System.getProperty("org.apache.tomcat.util.http.fileupload.FileUploadBase.maxFileCount"));
         SpringApplication.run(CaroCartDeliveryServiceApplication.class, args);
     }
 }

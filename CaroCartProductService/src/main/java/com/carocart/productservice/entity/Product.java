@@ -12,22 +12,27 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // --- SHARED FIELDS ---
+    // --- Common Fields ---
     @Column(nullable = false)
     private String name;
 
-    @Column(length = 2048)
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
     private String description;
 
+    private String brand;
     private double price;
     private double mrp;
     private double discount;
     private int stock;
     private String unit;
     private Boolean isAvailable;
-    private String addedByRole; // e.g., "VENDOR"
+    private String addedByRole;
     private Long vendorId;
     private String vendorName;
+
+    @Column(name = "vendor_email")
+    private String vendorEmail;
 
     @Lob
     @Column(name = "image_url", columnDefinition = "TEXT")
@@ -46,10 +51,9 @@ public class Product {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ProductType productType; // GROCERY or FOOD
+    private ProductType productType;
 
-    // --- GROCERY-SPECIFIC FIELDS ---
-    private String brand;
+    // --- Grocery Fields ---
     private String packSize;
     private String manufacturer;
     private String fssaiLicenseNo;
@@ -58,16 +62,15 @@ public class Product {
     private String nutritionInfo;
     private String returnPolicy;
 
-    // --- FOOD-SPECIFIC FIELDS ---
-    private String foodCategory; // e.g. Main Course, Starter (renamed from category to avoid confusion)
+    // --- Food Fields ---
+    private String foodCategory;
     private Boolean veg;
     private String restaurantName;
-    private String customizationOptions; // Could be JSON string
-    private String addOns; // Could be JSON string
+    private String customizationOptions;
+    private String addOns;
     private Boolean bestseller;
 
-    // --- Getters and Setters (generated, omit deprecated code) ---
-
+    // --- Getters and Setters ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -76,6 +79,9 @@ public class Product {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = brand; }
 
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
@@ -104,6 +110,9 @@ public class Product {
     public String getVendorName() { return vendorName; }
     public void setVendorName(String vendorName) { this.vendorName = vendorName; }
 
+    public String getVendorEmail() { return vendorEmail; }
+    public void setVendorEmail(String vendorEmail) { this.vendorEmail = vendorEmail; }
+
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
@@ -122,10 +131,7 @@ public class Product {
     public ProductType getProductType() { return productType; }
     public void setProductType(ProductType productType) { this.productType = productType; }
 
-    // Grocery-specific getters/setters
-    public String getBrand() { return brand; }
-    public void setBrand(String brand) { this.brand = brand; }
-
+    // --- Grocery Setters/Getters ---
     public String getPackSize() { return packSize; }
     public void setPackSize(String packSize) { this.packSize = packSize; }
 
@@ -147,7 +153,7 @@ public class Product {
     public String getReturnPolicy() { return returnPolicy; }
     public void setReturnPolicy(String returnPolicy) { this.returnPolicy = returnPolicy; }
 
-    // Food-specific getters/setters
+    // --- Food Setters/Getters ---
     public String getFoodCategory() { return foodCategory; }
     public void setFoodCategory(String foodCategory) { this.foodCategory = foodCategory; }
 

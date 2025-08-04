@@ -27,19 +27,20 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 // Public endpoint
                 .requestMatchers("/orders/debug/token").permitAll()
+                // Allow available-for-delivery to ADMIN and DELIVERY (adjust as needed)
+                .requestMatchers("/orders/orderitems/available-for-delivery").hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY")
                 // Admin endpoints
                 .requestMatchers("/orders/admin/orders/**").hasAuthority("ROLE_ADMIN")
                 // Delivery endpoints
-                .requestMatchers("/orders/ready-for-delivery").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN")
+                .requestMatchers("/orders/ready-for-delivery").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN", "ROLE_DELIVERY_BOY")
                 // All other order endpoints require authentication
                 .requestMatchers("/orders/**").authenticated()
                 .requestMatchers(
-                	    "/swagger-ui.html",
-                	    "/swagger-ui/**",
-                	    "/v3/api-docs",
-                	    "/v3/api-docs/**"
-                	).permitAll()
-
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/v3/api-docs",
+                    "/v3/api-docs/**"
+                ).permitAll()
                 // All else
                 .anyRequest().permitAll()
             )

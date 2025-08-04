@@ -17,6 +17,9 @@ public class OrderResponse {
     private LocalDateTime orderDate;
     private LocalDateTime updatedAt;
     private List<OrderItemDTO> items;
+    private Long deliveryBoyId;
+    private String deliveryStatus;
+
 
     // --- Constructors ---
     public OrderResponse() {}
@@ -36,6 +39,7 @@ public class OrderResponse {
         this.orderDate = orderDate;
         this.updatedAt = updatedAt;
         this.items = items;
+       
     }
 
     // Entity-to-DTO constructor (if needed)
@@ -53,6 +57,9 @@ public class OrderResponse {
         this.paymentId = order.getPaymentId();
         this.orderDate = order.getOrderDate();
         this.updatedAt = order.getUpdatedAt();
+        this.deliveryBoyId = order.getDeliveryBoyId();
+        this.deliveryStatus = order.getDeliveryStatus();
+
         if (order.getOrderItems() != null) {
             this.items = order.getOrderItems().stream()
                 .map(OrderItemDTO::new)
@@ -93,4 +100,21 @@ public class OrderResponse {
 
     public List<OrderItemDTO> getItems() { return items; }
     public void setItems(List<OrderItemDTO> items) { this.items = items; }
+
+	public Long getDeliveryBoyId() {
+		return deliveryBoyId;
+	}
+
+	public void setDeliveryBoyId(Long deliveryBoyId) {
+		this.deliveryBoyId = deliveryBoyId;
+	}
+
+	public String getDeliveryStatus() {
+		return deliveryStatus;
+	}
+
+	public void setDeliveryStatus(String deliveryStatus) {
+		this.deliveryStatus = deliveryStatus;
+	}
+    
 }

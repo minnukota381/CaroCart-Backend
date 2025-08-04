@@ -4,94 +4,46 @@ public class ProductDTO {
     private Long id;
     private String name;
     private String description;
-    private double price;
+    private Double price;
     private String imageUrl;
-    private int stock;
-    private boolean isAvailable;
+    private Integer stock;
+    private Boolean available;
     private String slug;
+    private Long vendorId;
+    private String vendorEmail; // <-- Add this
+    private String vendorName;  // <-- (optional, for frontend display)
 
-    private Long vendorId;      // ✅ Needed for enforcing "one-vendor-per-cart" rule
-    private String vendorEmail; // Optional, for display purposes
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    // Getters & Setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public Long getId() {
-        return id;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Double getPrice() { return price; }
+    public void setPrice(Double price) { this.price = price; }
 
-    public String getName() {
-        return name;
-    }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public Integer getStock() { return stock; }
+    public void setStock(Integer stock) { this.stock = stock; }
 
-    public String getDescription() {
-        return description;
-    }
+    public Boolean getAvailable() { return available; }
+    public void setAvailable(Boolean available) { this.available = available; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
 
-    public double getPrice() {
-        return price;
-    }
+    public Long getVendorId() { return vendorId; }
+    public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
 
-    public void setPrice(double price) {
-        this.price = price;
-    }
+    public String getVendorEmail() { return vendorEmail; }
+    public void setVendorEmail(String vendorEmail) { this.vendorEmail = vendorEmail; }
 
-    public String getImageUrl() {
-        return imageUrl;
-    }
-
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
-    }
-
-    public int getStock() {
-        return stock;
-    }
-
-    public void setStock(int stock) {
-        this.stock = stock;
-    }
-
-    public boolean isAvailable() {
-        return isAvailable;
-    }
-
-    public void setAvailable(boolean isAvailable) {
-        this.isAvailable = isAvailable;
-    }
-
-    public String getSlug() {
-        return slug;
-    }
-
-    public void setSlug(String slug) {
-        this.slug = slug;
-    }
-
-    public Long getVendorId() {
-        return vendorId;
-    }
-
-    public void setVendorId(Long vendorId) {
-        this.vendorId = vendorId;
-    }
-
-    public String getVendorEmail() {
-        return vendorEmail;
-    }
-
-    public void setVendorEmail(String vendorEmail) {
-        this.vendorEmail = vendorEmail;
-    }
+    public String getVendorName() { return vendorName; }
+    public void setVendorName(String vendorName) { this.vendorName = vendorName; }
 }

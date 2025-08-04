@@ -1,11 +1,6 @@
 package com.carocart.productservice.service;
 
-import com.carocart.productservice.dto.AdminResponseDTO;
-import com.carocart.productservice.dto.CategoryResponseDTO;
-import com.carocart.productservice.dto.ProductDTO;
-import com.carocart.productservice.dto.SearchResultDTO;
-import com.carocart.productservice.dto.SubCategoryResponseDTO;
-import com.carocart.productservice.dto.VendorDTO;
+import com.carocart.productservice.dto.*;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.Product;
 import com.carocart.productservice.entity.SubCategory;
@@ -15,77 +10,58 @@ import com.carocart.productservice.repository.CategoryRepository;
 import com.carocart.productservice.repository.ProductRepository;
 import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.util.FirebaseStorageUtil;
-
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import jakarta.persistence.criteria.Predicate;
-import org.springframework.web.multipart.MultipartFile;
+import java.util.*;
 
 @Service
 public class ProductServiceImpl implements ProductService {
 
-    @Autowired
-    private ProductRepository productRepository;
-    
-    @Autowired
-    private CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
+    private final SubCategoryRepository subCategoryRepository;
+    private final VendorClient vendorClient;
+    private final AdminClient adminClient;
+    private final FirebaseStorageUtil firebaseStorageUtil;
 
     @Autowired
-    private SubCategoryRepository subCategoryRepository;
-
-
-    @Autowired
-    private AdminClient adminClient;
-
-    @Autowired
-    private VendorClient vendorClient;
-
-    @Autowired
-    private FirebaseStorageUtil firebaseStorageUtil;
-    
-    
+    public ProductServiceImpl(
+            ProductRepository productRepository,
+            CategoryRepository categoryRepository,
+            SubCategoryRepository subCategoryRepository,
+            VendorClient vendorClient,
+            AdminClient adminClient,
+            FirebaseStorageUtil firebaseStorageUtil
+    ) {
+        this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
+        this.subCategoryRepository = subCategoryRepository;
+        this.vendorClient = vendorClient;
+        this.adminClient = adminClient;
+        this.firebaseStorageUtil = firebaseStorageUtil;
+    }
 
     private boolean isAdmin(AdminResponseDTO admin) {
         return admin != null && "ADMIN".equals(admin.getRole());
     }
 
-    private boolean isVendor(VendorDTO vendor) {
+    private boolean isVendor(VendorResponseDTO vendor) {
         return vendor != null && "VENDOR".equals(vendor.getRole());
     }
 
     private AdminResponseDTO tryGetAdmin(String token) {
-        try {
-            return adminClient.getCurrentAdmin(token);
-        } catch (Exception e) {
-            return null;
-        }
+        try { return adminClient.getCurrentAdmin(token); } catch (Exception e) { return null; }
     }
 
-    private VendorDTO tryGetVendor(String token) {
-        try {
-            return vendorClient.getCurrentVendor(token);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private void validateAdmin(String token) {
-        AdminResponseDTO admin = adminClient.getCurrentAdmin(token);
-        if (!isAdmin(admin)) {
-            throw new RuntimeException("Unauthorized: Admin role required");
-        }
+    private VendorResponseDTO tryGetVendor(String token) {
+        try { return vendorClient.getCurrentVendor(token); } catch (Exception e) { return null; }
     }
 
     private String toSlug(String input) {
@@ -96,90 +72,41 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
-    }
-
-    @Override
-    public Page<Product> getAllProducts(Pageable pageable) {
-        return productRepository.findAll(pageable);
-    }
-
-    @Override
-    public Product getProductById(Long id) {
-        return productRepository.findById(id).orElse(null);
-    }
-
-    @Override
-    public Product getProductBySlug(String slug) {
-        return productRepository.findBySlug(slug).orElse(null);
-    }
-
-    @Override
-    public void generateMissingSlugs() {
-        List<Product> allProducts = productRepository.findAll();
-        int updatedCount = 0;
-
-        for (Product product : allProducts) {
-            if (product.getSlug() == null || product.getSlug().isEmpty()) {
-                String slug = toSlug(product.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8);
-                product.setSlug(slug);
-                updatedCount++;
-            }
-        }
-
-        if (updatedCount > 0) {
-            productRepository.saveAll(allProducts);
-            System.out.println("Updated slugs for " + updatedCount + " products.");
-        } else {
-            System.out.println("All products already have slugs.");
-        }
-    }
-
-    @Override
     public Product addProduct(Product product, MultipartFile image, String token) throws IOException {
         AdminResponseDTO admin = tryGetAdmin(token);
-        VendorDTO vendor = tryGetVendor(token);
+        VendorResponseDTO vendor = tryGetVendor(token);
 
         if (isAdmin(admin)) {
             product.setAddedByRole("ADMIN");
             product.setVendorId(null);
             product.setVendorName(null);
-            // Admin can add any type of product
+            product.setVendorEmail(null);
         } else if (isVendor(vendor)) {
             product.setAddedByRole("VENDOR");
             product.setVendorId(vendor.getId());
-            product.setVendorName(vendor.getFullName());
+            product.setVendorName(vendor.getFirstName() + " " + vendor.getLastName());
+            product.setVendorEmail(vendor.getEmail());
 
             if (product.getProductType() == null) {
                 throw new IllegalArgumentException("Product type is required");
             }
             if (!product.getProductType().name().equalsIgnoreCase(vendor.getVendorType())) {
-                throw new IllegalArgumentException(
-                    "Vendor of type " + vendor.getVendorType() +
-                    " can only add products of type " + vendor.getVendorType()
-                );
+                throw new IllegalArgumentException("Vendor of type " + vendor.getVendorType() +
+                        " can only add products of type " + vendor.getVendorType());
             }
         } else {
             throw new RuntimeException("Unauthorized: Only admin or vendor can add products");
         }
 
-        if (product.getSubCategory() == null) {
-            throw new RuntimeException("SubCategory must be provided");
-        }
+        if (product.getSubCategory() == null) throw new RuntimeException("SubCategory must be provided");
 
-        String slug = toSlug(product.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8);
-        product.setSlug(slug);
-
+        product.setSlug(toSlug(product.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8));
         if (image != null && !image.isEmpty()) {
-            String imageUrl = firebaseStorageUtil.uploadFile(image);
-            product.setImageUrl(imageUrl);
+            product.setImageUrl(firebaseStorageUtil.uploadFile(image));
         }
 
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
-
-        // All type-specific fields are already set by the controller
 
         return productRepository.save(product);
     }
@@ -187,16 +114,13 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Product updateProduct(Long id, Product updatedProduct, MultipartFile image, String token) throws IOException {
         AdminResponseDTO admin = tryGetAdmin(token);
-        VendorDTO vendor = tryGetVendor(token);
+        VendorResponseDTO vendor = tryGetVendor(token);
 
         return productRepository.findById(id).map(product -> {
-            boolean isOwner = isAdmin(admin)
-                    || (isVendor(vendor) && "VENDOR".equals(product.getAddedByRole())
-                    && vendor.getId().equals(product.getVendorId()));
-
-            if (!isOwner) {
-                throw new RuntimeException("Unauthorized: Not allowed to update this product");
-            }
+            boolean isOwner = isAdmin(admin) ||
+                    (isVendor(vendor) && "VENDOR".equals(product.getAddedByRole())
+                            && vendor.getId().equals(product.getVendorId()));
+            if (!isOwner) throw new RuntimeException("Unauthorized: Not allowed to update this product");
 
             product.setName(updatedProduct.getName());
             product.setDescription(updatedProduct.getDescription());
@@ -209,6 +133,23 @@ public class ProductServiceImpl implements ProductService {
             product.setIsAvailable(updatedProduct.getIsAvailable());
             product.setUpdatedAt(LocalDateTime.now());
             product.setSubCategory(updatedProduct.getSubCategory());
+            product.setProductType(updatedProduct.getProductType());
+
+            // Set food/grocery-specific fields
+            product.setPackSize(updatedProduct.getPackSize());
+            product.setManufacturer(updatedProduct.getManufacturer());
+            product.setFssaiLicenseNo(updatedProduct.getFssaiLicenseNo());
+            product.setCountryOfOrigin(updatedProduct.getCountryOfOrigin());
+            product.setIngredients(updatedProduct.getIngredients());
+            product.setNutritionInfo(updatedProduct.getNutritionInfo());
+            product.setReturnPolicy(updatedProduct.getReturnPolicy());
+
+            product.setFoodCategory(updatedProduct.getFoodCategory());
+            product.setVeg(updatedProduct.getVeg());
+            product.setRestaurantName(updatedProduct.getRestaurantName());
+            product.setCustomizationOptions(updatedProduct.getCustomizationOptions());
+            product.setAddOns(updatedProduct.getAddOns());
+            product.setBestseller(updatedProduct.getBestseller());
 
             if (image != null && !image.isEmpty()) {
                 try {
@@ -226,27 +167,61 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void deleteProduct(Long id, String token) {
         AdminResponseDTO admin = tryGetAdmin(token);
-        VendorDTO vendor = tryGetVendor(token);
+        VendorResponseDTO vendor = tryGetVendor(token);
 
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        boolean isOwner = isAdmin(admin)
-                || (isVendor(vendor) && "VENDOR".equals(product.getAddedByRole())
-                && vendor.getId().equals(product.getVendorId()));
+        boolean isOwner = isAdmin(admin) ||
+                (isVendor(vendor) && "VENDOR".equals(product.getAddedByRole())
+                        && vendor.getId().equals(product.getVendorId()));
 
-        if (!isOwner) {
-            throw new RuntimeException("Unauthorized: Not allowed to delete this product");
-        }
+        if (!isOwner) throw new RuntimeException("Unauthorized: Not allowed to delete this product");
 
         productRepository.deleteById(id);
+    }
+
+    @Override
+    public Product getProductById(Long id) {
+        return productRepository.findById(id).orElse(null);
+    }
+
+    @Override
+    public Product getProductBySlug(String slug) {
+        return productRepository.findBySlug(slug).orElse(null);
+    }
+
+    @Override
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
+    }
+
+    @Override
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable);
+    }
+
+    @Override
+    public void generateMissingSlugs() {
+        List<Product> allProducts = productRepository.findAll();
+        int updatedCount = 0;
+        for (Product product : allProducts) {
+            if (product.getSlug() == null || product.getSlug().isEmpty()) {
+                product.setSlug(toSlug(product.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8));
+                updatedCount++;
+            }
+        }
+        if (updatedCount > 0) productRepository.saveAll(allProducts);
     }
 
     @Override
     public ProductDTO getProductDTOById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
+        return toProductDTO(product);
+    }
 
+    private ProductDTO toProductDTO(Product product) {
         ProductDTO dto = new ProductDTO();
         dto.setId(product.getId());
         dto.setName(product.getName());
@@ -256,20 +231,17 @@ public class ProductServiceImpl implements ProductService {
         dto.setStock(product.getStock());
         dto.setAvailable(Boolean.TRUE.equals(product.getIsAvailable()));
         dto.setSlug(product.getSlug());
+        dto.setVendorId(product.getVendorId());
+        dto.setVendorName(product.getVendorName());
 
-        if ("VENDOR".equals(product.getAddedByRole()) && product.getVendorId() != null) {
-            dto.setVendorId(product.getVendorId());
+        if (product.getVendorId() != null) {
             try {
-                VendorDTO vendor = vendorClient.getVendorById(product.getVendorId());
+                VendorResponseDTO vendor = vendorClient.getVendorById(product.getVendorId());
                 dto.setVendorEmail(vendor.getEmail());
             } catch (Exception e) {
-                dto.setVendorEmail(null);
+                dto.setVendorEmail(product.getVendorEmail());
             }
-        } else {
-            dto.setVendorId(null);
-            dto.setVendorEmail("admin@example.com");
         }
-
         return dto;
     }
 
@@ -280,19 +252,18 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> getProductsByVendor(String token) {
-        VendorDTO vendor = tryGetVendor(token);
-        if (!isVendor(vendor)) {
-            throw new RuntimeException("Unauthorized: Only vendors can access this.");
-        }
+        VendorResponseDTO vendor = tryGetVendor(token);
+        if (!isVendor(vendor)) throw new RuntimeException("Unauthorized: Only vendors can access this.");
         return productRepository.findByAddedByRoleAndVendorId("VENDOR", vendor.getId());
     }
 
     @Override
-    public List<Product> getProductsFromNearbyVendors(String type, double lat, double lng, double radiusKm, Long categoryId, Long subCategoryId) {
-        List<VendorDTO> vendors = vendorClient.getNearbyVendors(type, lat, lng, radiusKm);
+    public List<Product> getProductsFromNearbyVendors(String type, double lat, double lng, double radiusKm,
+                                                       Long categoryId, Long subCategoryId) {
+        List<VendorResponseDTO> vendors = vendorClient.getNearbyVendors(type, lat, lng, radiusKm);
         if (vendors == null || vendors.isEmpty()) return new ArrayList<>();
 
-        List<Long> vendorIds = vendors.stream().map(VendorDTO::getId).toList();
+        List<Long> vendorIds = vendors.stream().map(VendorResponseDTO::getId).toList();
 
         if (subCategoryId != null) {
             return productRepository.findByAddedByRoleAndVendorIdInAndSubCategory_Id("VENDOR", vendorIds, subCategoryId);
@@ -306,22 +277,22 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Map<String, Map<String, List<Product>>> getProductsGroupedByCategoryAndSubCategory(Long vendorId) {
         List<Product> products = productRepository.findByAddedByRoleAndVendorId("VENDOR", vendorId);
-
-        Map<String, Map<String, List<Product>>> grouped = new java.util.HashMap<>();
-
+        Map<String, Map<String, List<Product>>> grouped = new HashMap<>();
         for (Product p : products) {
-            String cat = p.getSubCategory() != null && p.getSubCategory().getCategory() != null
+            String cat = (p.getSubCategory() != null && p.getSubCategory().getCategory() != null)
                     ? p.getSubCategory().getCategory().getName()
                     : "Uncategorized";
-            String sub = p.getSubCategory() != null
-                    ? p.getSubCategory().getName()
-                    : "Uncategorized";
-
-            grouped.computeIfAbsent(cat, k -> new java.util.HashMap<>())
-                    .computeIfAbsent(sub, k -> new java.util.ArrayList<>())
+            String sub = (p.getSubCategory() != null) ? p.getSubCategory().getName() : "Uncategorized";
+            grouped.computeIfAbsent(cat, k -> new HashMap<>())
+                    .computeIfAbsent(sub, k -> new ArrayList<>())
                     .add(p);
         }
         return grouped;
+    }
+
+    @Override
+    public List<Product> getProductsByCategoryId(Long categoryId) {
+        return productRepository.findBySubCategory_Category_Id(categoryId);
     }
 
     @Override
@@ -330,7 +301,6 @@ public class ProductServiceImpl implements ProductService {
                                                  Boolean discounted, String sortBy, String sortDir) {
         Specification<Product> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
             if (keyword != null && !keyword.isEmpty()) {
                 predicates.add(cb.like(cb.lower(root.get("name")), "%" + keyword.toLowerCase() + "%"));
             }
@@ -347,15 +317,11 @@ public class ProductServiceImpl implements ProductService {
                 predicates.add(cb.le(root.get("price"), maxPrice));
             }
             if (Boolean.TRUE.equals(inStock)) {
-                predicates.add(cb.and(
-                        cb.greaterThan(root.get("stock"), 0),
-                        cb.isTrue(root.get("isAvailable"))
-                ));
+                predicates.add(cb.and(cb.greaterThan(root.get("stock"), 0), cb.isTrue(root.get("isAvailable"))));
             }
             if (Boolean.TRUE.equals(discounted)) {
                 predicates.add(cb.gt(root.get("discount"), 0));
             }
-
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
@@ -367,44 +333,31 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<Product> getProductsByCategoryId(Long categoryId) {
-        return productRepository.findBySubCategory_Category_Id(categoryId);
-    }
-
-    @Override
     public long countAllProducts() {
         return productRepository.count();
     }
-    
+
     @Override
     public SearchResultDTO unifiedSearch(String query) {
         SearchResultDTO result = new SearchResultDTO();
 
-        // 1. Products (top 8 by name, brand, or description)
         List<Product> products = productRepository
-            .findTop8ByNameIgnoreCaseContainingOrBrandIgnoreCaseContainingOrDescriptionIgnoreCaseContaining(
-                query, query, query);
+                .findTop8ByNameIgnoreCaseContainingOrBrandIgnoreCaseContainingOrDescriptionIgnoreCaseContaining(
+                        query, query, query);
+        result.setProducts(products.stream().map(this::toProductDTO).toList());
 
-        List<ProductDTO> productDTOs = products.stream()
-            .map(this::toProductDTO)
-            .toList();
-        result.setProducts(productDTOs);
-
-        // 2. Categories (top 5)
         List<Category> categories = categoryRepository.findTop5ByNameIgnoreCaseContaining(query);
-        List<CategoryResponseDTO> catDTOs = categories.stream().map(cat -> {
+        result.setCategories(categories.stream().map(cat -> {
             CategoryResponseDTO dto = new CategoryResponseDTO();
             dto.setId(cat.getId());
             dto.setName(cat.getName());
             dto.setImageUrl(cat.getImageUrl());
             dto.setSlug(cat.getSlug());
             return dto;
-        }).toList();
-        result.setCategories(catDTOs);
+        }).toList());
 
-        // 3. SubCategories (top 5, with categoryName/categorySlug)
         List<SubCategory> subCats = subCategoryRepository.findTop5ByNameIgnoreCaseContaining(query);
-        List<SubCategoryResponseDTO> subCatDTOs = subCats.stream().map(sub -> {
+        result.setSubCategories(subCats.stream().map(sub -> {
             SubCategoryResponseDTO dto = new SubCategoryResponseDTO();
             dto.setId(sub.getId());
             dto.setName(sub.getName());
@@ -415,34 +368,15 @@ public class ProductServiceImpl implements ProductService {
                 dto.setCategorySlug(sub.getCategory().getSlug());
             }
             return dto;
-        }).toList();
-        result.setSubCategories(subCatDTOs);
+        }).toList());
 
-        // 4. Brands (from products)
-        List<String> brands = products.stream()
-            .map(Product::getBrand)
-            .filter(b -> b != null && !b.isEmpty())
-            .distinct()
-            .limit(5)
-            .toList();
-        result.setBrands(brands);
+        result.setBrands(products.stream()
+                .map(Product::getBrand)
+                .filter(b -> b != null && !b.isEmpty())
+                .distinct()
+                .limit(5)
+                .toList());
 
         return result;
     }
-    
-    private ProductDTO toProductDTO(Product product) {
-        ProductDTO dto = new ProductDTO();
-        dto.setId(product.getId());
-        dto.setName(product.getName());
-        dto.setDescription(product.getDescription());
-        dto.setPrice(product.getPrice());
-        dto.setImageUrl(product.getImageUrl());
-        dto.setStock(product.getStock());
-        dto.setAvailable(Boolean.TRUE.equals(product.getIsAvailable()));
-        dto.setSlug(product.getSlug());
-        dto.setVendorId(product.getVendorId());
-        // Optionally set vendorEmail if you want
-        return dto;
-    }
-
 }

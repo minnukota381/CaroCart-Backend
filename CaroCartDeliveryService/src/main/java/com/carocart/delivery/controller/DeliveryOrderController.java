@@ -1,8 +1,9 @@
 package com.carocart.delivery.controller;
 
-import com.carocart.delivery.dto.DeliveryOrderDTO;
+import com.carocart.delivery.dto.DeliveryOrderItemDTO;
 import com.carocart.delivery.service.DeliveryOrderService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,27 +17,40 @@ public class DeliveryOrderController {
     private DeliveryOrderService deliveryOrderService;
 
     @GetMapping("/available")
-    public List<DeliveryOrderDTO> getAvailableOrders() {
-        return deliveryOrderService.getAvailableOrders();
+    public List<DeliveryOrderItemDTO> getAvailableOrderItems() {
+        return deliveryOrderService.getAvailableOrderItems();
     }
 
-    @PostMapping("/{orderId}/claim")
-    public void claimOrder(@PathVariable Long orderId, Authentication authentication) {
+    @PutMapping("/assign/{orderItemId}")
+    public ResponseEntity<String> assignOrderItem(
+            @PathVariable Long orderItemId,
+            Authentication authentication
+    ) {
         Long deliveryBoyId = (Long) authentication.getPrincipal();
-        deliveryOrderService.claimOrder(orderId, deliveryBoyId);
+        deliveryOrderService.assignOrderItem(orderItemId, deliveryBoyId);
+        return ResponseEntity.ok("Order item assigned to you");
     }
 
     @GetMapping("/assigned")
-    public List<DeliveryOrderDTO> getAssignedOrders(Authentication authentication) {
+    public List<DeliveryOrderItemDTO> getAssignedOrderItems(Authentication authentication) {
         Long deliveryBoyId = (Long) authentication.getPrincipal();
-        return deliveryOrderService.getAssignedOrders(deliveryBoyId);
+        return deliveryOrderService.getAssignedOrderItems(deliveryBoyId);
     }
 
-    @PutMapping("/{orderId}/status")
-    public void updateStatus(@PathVariable Long orderId,
-                             @RequestParam String status,
-                             Authentication authentication) {
+    @PutMapping("/{orderItemId}/status")
+    public ResponseEntity<String> updateOrderItemStatus(
+            @PathVariable Long orderItemId,
+            @RequestParam String status,
+            Authentication authentication
+    ) {
         Long deliveryBoyId = (Long) authentication.getPrincipal();
-        deliveryOrderService.updateDeliveryStatus(orderId, deliveryBoyId, status);
+        deliveryOrderService.updateOrderItemStatus(orderItemId, deliveryBoyId, status);
+        return ResponseEntity.ok("Order item status updated");
+    }
+
+    @GetMapping("/history")
+    public List<DeliveryOrderItemDTO> getDeliveredOrderItems(Authentication authentication) {
+        Long deliveryBoyId = (Long) authentication.getPrincipal();
+        return deliveryOrderService.getDeliveredOrderItems(deliveryBoyId);
     }
 }

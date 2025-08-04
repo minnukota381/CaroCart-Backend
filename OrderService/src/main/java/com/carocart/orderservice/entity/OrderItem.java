@@ -2,6 +2,7 @@ package com.carocart.orderservice.entity;
 
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
@@ -13,109 +14,127 @@ public class OrderItem {
     @ManyToOne
     @JoinColumn(name = "order_id")
     @JsonBackReference
-
     private Order order;
 
     private Long productId;
-
     private String productName;
-
     private Integer quantity;
-
-    private Double price; // unit price
-
+    private Double price;         // unit price
     private Double totalPrice;
 
-    // who needs to approve this item: "ADMIN" or "VENDOR"
+    // "ADMIN" or "VENDOR"
     private String approvalRequiredBy;
+    
+    @Column(name = "delivery_boy_id")
+    private Long deliveryBoyId;
 
-    // current approval status: "PENDING", "APPROVED", "REJECTED"
-    private String approvalStatus;
+    @Column(name = "delivery_status")
+    private String deliveryStatus;
 
-    // store vendor email to easily route approvals
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status")
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+
+    @Column(name = "vendor_email")
     private String vendorEmail;
 
-	public Long getId() {
-		return id;
+    // ---------------- Getters & Setters ----------------
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Order getOrder() {
+        return order;
+    }
+
+    public void setOrder(Order order) {
+        this.order = order;
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+    public String getProductName() {
+        return productName;
+    }
+
+    public void setProductName(String productName) {
+        this.productName = productName;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+
+    public Double getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(Double totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    public String getApprovalRequiredBy() {
+        return approvalRequiredBy;
+    }
+
+    public void setApprovalRequiredBy(String approvalRequiredBy) {
+        this.approvalRequiredBy = approvalRequiredBy;
+    }
+
+    public ApprovalStatus getApprovalStatus() {
+        return approvalStatus;
+    }
+
+    public void setApprovalStatus(ApprovalStatus approvalStatus) {
+        this.approvalStatus = approvalStatus;
+    }
+
+    public String getVendorEmail() {
+        return vendorEmail;
+    }
+
+    public void setVendorEmail(String vendorEmail) {
+        this.vendorEmail = vendorEmail;
+    }
+
+	public Long getDeliveryBoyId() {
+		return deliveryBoyId;
 	}
 
-	public void setId(Long id) {
-		this.id = id;
+	public void setDeliveryBoyId(Long deliveryBoyId) {
+		this.deliveryBoyId = deliveryBoyId;
 	}
 
-	public Order getOrder() {
-		return order;
+	public String getDeliveryStatus() {
+		return deliveryStatus;
 	}
 
-	public void setOrder(Order order) {
-		this.order = order;
+	public void setDeliveryStatus(String deliveryStatus) {
+		this.deliveryStatus = deliveryStatus;
 	}
-
-	public Long getProductId() {
-		return productId;
-	}
-
-	public void setProductId(Long productId) {
-		this.productId = productId;
-	}
-
-	public String getProductName() {
-		return productName;
-	}
-
-	public void setProductName(String productName) {
-		this.productName = productName;
-	}
-
-	public Integer getQuantity() {
-		return quantity;
-	}
-
-	public void setQuantity(Integer quantity) {
-		this.quantity = quantity;
-	}
-
-	public Double getPrice() {
-		return price;
-	}
-
-	public void setPrice(Double price) {
-		this.price = price;
-	}
-
-        public Double getTotalPrice() {
-                return totalPrice;
-        }
-
-        public void setTotalPrice(Double totalPrice) {
-                this.totalPrice = totalPrice;
-        }
-
-        public String getApprovalRequiredBy() {
-                return approvalRequiredBy;
-        }
-
-        public void setApprovalRequiredBy(String approvalRequiredBy) {
-                this.approvalRequiredBy = approvalRequiredBy;
-        }
-
-        public String getApprovalStatus() {
-                return approvalStatus;
-        }
-
-        public void setApprovalStatus(String approvalStatus) {
-                this.approvalStatus = approvalStatus;
-        }
-
-        public String getVendorEmail() {
-                return vendorEmail;
-        }
-
-        public void setVendorEmail(String vendorEmail) {
-                this.vendorEmail = vendorEmail;
-        }
-
-    // getters and setters
-    
     
 }

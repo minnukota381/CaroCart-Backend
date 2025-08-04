@@ -28,19 +28,34 @@ public class JwtUtil {
         key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    // Generate JWT token
-    public String generateToken(Long userId, String role, String name) {
+    public String generateToken(Long userId, String role, String email) {
         return Jwts.builder()
+                .setSubject(email) // ✅ this sets the "sub" field used in extractUsername()
                 .claim("userId", userId)
                 .claim("role", role)
-                .claim("name", name)
+                .claim("name", email) // optional
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    // Parse and return Claims from token
+
+    public String extractUsername(String token) {
+        Claims claims = getClaims(token);
+        return claims.getSubject(); // ✅ returns userId string now
+    }
+
+    public Long extractUserId(String token) {
+        Claims claims = getClaims(token);
+        Object userIdObj = claims.get("userId");
+        if (userIdObj == null) return null;
+        if (userIdObj instanceof Integer) return ((Integer) userIdObj).longValue();
+        if (userIdObj instanceof Long) return (Long) userIdObj;
+        if (userIdObj instanceof String) return Long.parseLong((String) userIdObj);
+        throw new IllegalArgumentException("Invalid userId in token");
+    }
+
     public Claims getClaims(String token) {
         String realToken = token.startsWith("Bearer ") ? token.substring(7) : token;
         return Jwts.parserBuilder()
@@ -50,7 +65,6 @@ public class JwtUtil {
                 .getBody();
     }
 
-    // Validate token (including expiration)
     public boolean isTokenValid(String token) {
         try {
             Claims claims = getClaims(token);

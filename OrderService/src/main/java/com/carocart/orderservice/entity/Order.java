@@ -30,7 +30,31 @@ public class Order {
 
     @Column(name = "payment_id")
     private String paymentId;
+    
+    @Column(name = "vendor_id")
+    private Long vendorId;
 
+    public Long getDeliveryBoyId() {
+		return deliveryBoyId;
+	}
+
+	public void setDeliveryBoyId(Long deliveryBoyId) {
+		this.deliveryBoyId = deliveryBoyId;
+	}
+
+	public String getDeliveryStatus() {
+		return deliveryStatus;
+	}
+
+	public void setDeliveryStatus(String deliveryStatus) {
+		this.deliveryStatus = deliveryStatus;
+	}
+
+	@Column(name = "delivery_boy_id")
+    private Long deliveryBoyId;
+
+    @Column(name = "delivery_status")
+    private String deliveryStatus; // e.g., UNASSIGNED, ASSIGNED, OUT_FOR_DELIVERY, DELIVERED
 
     
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
@@ -134,6 +158,14 @@ public class Order {
 
 	public void setPaymentId(String paymentId) {
 		this.paymentId = paymentId;
+	}
+
+	public Long getVendorId() {
+		return vendorId;
+	}
+
+	public void setVendorId(Long vendorId) {
+		this.vendorId = vendorId;
 	}
 
 
