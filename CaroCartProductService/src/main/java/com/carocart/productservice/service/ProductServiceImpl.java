@@ -1,12 +1,19 @@
 package com.carocart.productservice.service;
 
 import com.carocart.productservice.dto.AdminResponseDTO;
+import com.carocart.productservice.dto.CategoryResponseDTO;
 import com.carocart.productservice.dto.ProductDTO;
+import com.carocart.productservice.dto.SearchResultDTO;
+import com.carocart.productservice.dto.SubCategoryResponseDTO;
 import com.carocart.productservice.dto.VendorDTO;
+import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.Product;
+import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.feign.AdminClient;
 import com.carocart.productservice.feign.VendorClient;
+import com.carocart.productservice.repository.CategoryRepository;
 import com.carocart.productservice.repository.ProductRepository;
+import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.util.FirebaseStorageUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +38,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ProductRepository productRepository;
+    
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private SubCategoryRepository subCategoryRepository;
+
 
     @Autowired
     private AdminClient adminClient;
@@ -40,6 +54,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private FirebaseStorageUtil firebaseStorageUtil;
+    
+    
 
     private boolean isAdmin(AdminResponseDTO admin) {
         return admin != null && "ADMIN".equals(admin.getRole());
@@ -129,10 +145,21 @@ public class ProductServiceImpl implements ProductService {
             product.setAddedByRole("ADMIN");
             product.setVendorId(null);
             product.setVendorName(null);
+            // Admin can add any type of product
         } else if (isVendor(vendor)) {
             product.setAddedByRole("VENDOR");
             product.setVendorId(vendor.getId());
             product.setVendorName(vendor.getFullName());
+
+            if (product.getProductType() == null) {
+                throw new IllegalArgumentException("Product type is required");
+            }
+            if (!product.getProductType().name().equalsIgnoreCase(vendor.getVendorType())) {
+                throw new IllegalArgumentException(
+                    "Vendor of type " + vendor.getVendorType() +
+                    " can only add products of type " + vendor.getVendorType()
+                );
+            }
         } else {
             throw new RuntimeException("Unauthorized: Only admin or vendor can add products");
         }
@@ -151,6 +178,8 @@ public class ProductServiceImpl implements ProductService {
 
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
+
+        // All type-specific fields are already set by the controller
 
         return productRepository.save(product);
     }
@@ -346,4 +375,74 @@ public class ProductServiceImpl implements ProductService {
     public long countAllProducts() {
         return productRepository.count();
     }
+    
+    @Override
+    public SearchResultDTO unifiedSearch(String query) {
+        SearchResultDTO result = new SearchResultDTO();
+
+        // 1. Products (top 8 by name, brand, or description)
+        List<Product> products = productRepository
+            .findTop8ByNameIgnoreCaseContainingOrBrandIgnoreCaseContainingOrDescriptionIgnoreCaseContaining(
+                query, query, query);
+
+        List<ProductDTO> productDTOs = products.stream()
+            .map(this::toProductDTO)
+            .toList();
+        result.setProducts(productDTOs);
+
+        // 2. Categories (top 5)
+        List<Category> categories = categoryRepository.findTop5ByNameIgnoreCaseContaining(query);
+        List<CategoryResponseDTO> catDTOs = categories.stream().map(cat -> {
+            CategoryResponseDTO dto = new CategoryResponseDTO();
+            dto.setId(cat.getId());
+            dto.setName(cat.getName());
+            dto.setImageUrl(cat.getImageUrl());
+            dto.setSlug(cat.getSlug());
+            return dto;
+        }).toList();
+        result.setCategories(catDTOs);
+
+        // 3. SubCategories (top 5, with categoryName/categorySlug)
+        List<SubCategory> subCats = subCategoryRepository.findTop5ByNameIgnoreCaseContaining(query);
+        List<SubCategoryResponseDTO> subCatDTOs = subCats.stream().map(sub -> {
+            SubCategoryResponseDTO dto = new SubCategoryResponseDTO();
+            dto.setId(sub.getId());
+            dto.setName(sub.getName());
+            dto.setSlug(sub.getSlug());
+            if (sub.getCategory() != null) {
+                dto.setCategoryId(sub.getCategory().getId());
+                dto.setCategoryName(sub.getCategory().getName());
+                dto.setCategorySlug(sub.getCategory().getSlug());
+            }
+            return dto;
+        }).toList();
+        result.setSubCategories(subCatDTOs);
+
+        // 4. Brands (from products)
+        List<String> brands = products.stream()
+            .map(Product::getBrand)
+            .filter(b -> b != null && !b.isEmpty())
+            .distinct()
+            .limit(5)
+            .toList();
+        result.setBrands(brands);
+
+        return result;
+    }
+    
+    private ProductDTO toProductDTO(Product product) {
+        ProductDTO dto = new ProductDTO();
+        dto.setId(product.getId());
+        dto.setName(product.getName());
+        dto.setDescription(product.getDescription());
+        dto.setPrice(product.getPrice());
+        dto.setImageUrl(product.getImageUrl());
+        dto.setStock(product.getStock());
+        dto.setAvailable(Boolean.TRUE.equals(product.getIsAvailable()));
+        dto.setSlug(product.getSlug());
+        dto.setVendorId(product.getVendorId());
+        // Optionally set vendorEmail if you want
+        return dto;
+    }
+
 }
