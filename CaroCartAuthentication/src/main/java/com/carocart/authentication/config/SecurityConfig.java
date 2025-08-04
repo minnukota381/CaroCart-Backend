@@ -1,6 +1,5 @@
 package com.carocart.authentication.config;
 
-import com.carocart.authentication.entity.User;
 import com.carocart.authentication.repository.UserRepository;
 import com.carocart.authentication.service.JwtAuthenticationFilter;
 import com.carocart.authentication.util.JwtUtil;
@@ -16,9 +15,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-// import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
-// import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -40,55 +37,46 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
+                // Public Health & Docs
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                .requestMatchers(
-                    "/admins/signup",
-                    "/admins/login",
-                    "/users/login",
-                    "/users/signup",
-                    "/vendors/signup/**",
-                    "/vendors/login",
-                    "/vendors/nearby",
-                    "/vendors/nearby/**"
-                ).permitAll()
-                .requestMatchers(
-                        "/swagger-ui.html",
-                        "/swagger-ui/**",
-                        "/v3/api-docs",
-                        "/v3/api-docs/**"
-                    ).permitAll()
-                .requestMatchers("/admins/me").hasRole("ADMIN")
-                
-                .requestMatchers("/users/admin/users/all").hasRole("ADMIN")
-                .requestMatchers("/users/admin/users/count").hasRole("ADMIN")
-                .requestMatchers("/users/admin/users/{id}").hasRole("ADMIN")
-                .requestMatchers("/users/{id}").hasAnyRole("USER", "ADMIN")
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
 
+                // Public Auth Endpoints
+                .requestMatchers(
+                    "/admins/signup", "/admins/login",
+                    "/users/signup", "/users/login",
+                    "/vendors/signup/**", "/vendors/login",
+                    "/vendors/nearby", "/vendors/nearby/**"
+                ).permitAll()
+
+                // --- ADMIN ONLY ---
+                .requestMatchers("/admins/me").hasRole("ADMIN")
+                .requestMatchers("/users/admin/users/**").hasRole("ADMIN")
                 .requestMatchers("/vendors/admin/**").hasRole("ADMIN")
                 .requestMatchers("/vendors/admin/vendors/count").hasRole("ADMIN")
 
+                // --- USER ACCESS ---
+                .requestMatchers("/users/me", "/users/me/update-location").authenticated()
+                .requestMatchers("/users/{id}").hasAnyRole("USER", "ADMIN", "SYSTEM")
+                .requestMatchers("/users/**").hasAnyRole("USER", "ADMIN", "SYSTEM")
+
+                // --- VENDOR ACCESS ---
+                .requestMatchers("/vendors/me").hasAnyRole("VENDOR", "ADMIN")
+                .requestMatchers("/vendors/{id}").hasAnyRole("VENDOR", "ADMIN", "SYSTEM")
+                .requestMatchers("/vendors/email/**").hasAnyRole("VENDOR", "ADMIN", "SYSTEM")
+
+                // --- PROFILE Images ---
                 .requestMatchers(
-                    "/admins/profile/upload-image",
-                    "/admins/profile/image",
-                    "/admins/profile",
-                    "/admins/me"
-                ).hasRole("ADMIN")
-                .requestMatchers(
-                    "/users/profile/upload-image",
-                    "/users/profile/image",
-                    "/users/profile/image-url",
-                    "/users/profile",
-                    "/users/me"
+                    "/admins/profile/**",
+                    "/users/profile/**"
                 ).authenticated()
+
+                // --- Address Service (Public/Internal) ---
                 .requestMatchers("/api/addresses/**").permitAll()
-                .requestMatchers("/vendors/me").authenticated()
-                .requestMatchers(HttpMethod.GET, "/vendors/*").permitAll()
+
+                // --- Catch All ---
                 .anyRequest().authenticated()
             )
-            // --- OAUTH2 TEMPORARILY DISABLED ---
-            // .oauth2Login(oauth2 -> oauth2
-            //     .successHandler(oAuth2SuccessHandler())
-            // )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -104,31 +92,30 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // OAuth2 Success Handler - Temporarily not used
-    // @Bean
-    // public AuthenticationSuccessHandler oAuth2SuccessHandler() {
-    //     return (request, response, authentication) -> {
-    //         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-    //         String email = oAuth2User.getAttribute("email");
-    //
-    //         Optional<User> userOpt = userRepository.findByEmail(email);
-    //
-    //         if (userOpt.isPresent()) {
-    //             User user = userOpt.get();
-    //             // Include user.getId() in the token
-    //             String jwt = jwtUtil.generateToken(
-    //                 user.getId(), // <-- pass the id here
-    //                 user.getEmail(),
-    //                 user.getRole(),
-    //                 user.getFirstName(),
-    //                 user.getLastName()
-    //             );
-    //             // Redirect with JWT to frontend
-    //             response.sendRedirect("http://localhost:5173/oauth-success?token=" + jwt);
-    //         } else {
-    //             // Handle user not found (maybe register automatically or show error)
-    //             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not found");
-    //         }
-    //     };
-    // }
+    // Uncomment and configure if using OAuth2 login in future
+    /*
+    @Bean
+    public AuthenticationSuccessHandler oAuth2SuccessHandler() {
+        return (request, response, authentication) -> {
+            OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+            String email = oAuth2User.getAttribute("email");
+
+            Optional<User> userOpt = userRepository.findByEmail(email);
+
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                String jwt = jwtUtil.generateToken(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getRole(),
+                    user.getFirstName(),
+                    user.getLastName()
+                );
+                response.sendRedirect("http://localhost:5173/oauth-success?token=" + jwt);
+            } else {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not found");
+            }
+        };
+    }
+    */
 }
