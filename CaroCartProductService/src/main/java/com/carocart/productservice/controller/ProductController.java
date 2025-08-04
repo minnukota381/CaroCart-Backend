@@ -7,7 +7,7 @@ import com.carocart.productservice.entity.Product;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.service.ProductService;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,12 +19,15 @@ import java.util.List;
 @RequestMapping("/products")
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+    private final ProductService productService;
+    private final SubCategoryRepository subCategoryRepository;
 
-    @Autowired
-    private SubCategoryRepository subCategoryRepository;
+    public ProductController(ProductService productService, SubCategoryRepository subCategoryRepository) {
+        this.productService = productService;
+        this.subCategoryRepository = subCategoryRepository;
+    }
 
+    // --- Create Product ---
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Product> addProduct(
         @RequestBody ProductRequestDTO productDTO,
@@ -50,7 +53,6 @@ public class ProductController {
         product.setSubCategory(subCategory);
         product.setImageUrl(productDTO.getImageUrl());
 
-        // Set productType from string to enum
         product.setProductType(
             com.carocart.productservice.entity.ProductType.valueOf(productDTO.getProductType().toUpperCase())
         );
@@ -75,12 +77,13 @@ public class ProductController {
         return ResponseEntity.ok(productService.addProduct(product, null, token));
     }
 
-
+    // --- Update Product ---
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Product> updateProduct(
-            @PathVariable Long id,
-            @RequestBody ProductRequestDTO productDTO,
-            @RequestHeader("Authorization") String token) throws IOException {
+        @PathVariable Long id,
+        @RequestBody ProductRequestDTO productDTO,
+        @RequestHeader("Authorization") String token
+    ) throws IOException {
 
         if (productDTO.getPrice() > productDTO.getMrp()) {
             throw new IllegalArgumentException("Price must not exceed MRP");
@@ -130,6 +133,7 @@ public class ProductController {
         return ResponseEntity.ok(updated);
     }
 
+    // --- Delete Product ---
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteProduct(@PathVariable Long id,
                                                 @RequestHeader("Authorization") String token) {
@@ -137,6 +141,7 @@ public class ProductController {
         return ResponseEntity.ok("Product deleted successfully");
     }
 
+    // --- Get Product by ID ---
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         Product product = productService.getProductById(id);
@@ -146,26 +151,59 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
-    @GetMapping("/subcategory/{subCategoryId}")
-    public ResponseEntity<List<Product>> getProductsBySubCategory(@PathVariable Long subCategoryId) {
-        return ResponseEntity.ok(productService.getProductsBySubCategory(subCategoryId));
-    }
-
+    // --- Get Product DTO ---
     @GetMapping("/dto/{id}")
     public ResponseEntity<ProductDTO> getProductDTOById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductDTOById(id));
     }
 
-    @GetMapping("/vendor/my-products")
-    public ResponseEntity<List<Product>> getVendorProducts(@RequestHeader("Authorization") String token) {
-        return ResponseEntity.ok(productService.getProductsByVendor(token));
-    }
-
+    // --- Get All Products ---
     @GetMapping("/all")
     public ResponseEntity<List<Product>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
+    // --- Vendor's Products ---
+    @GetMapping("/vendor/my-products")
+    public ResponseEntity<List<Product>> getVendorProducts(@RequestHeader("Authorization") String token) {
+        return ResponseEntity.ok(productService.getProductsByVendor(token));
+    }
+
+    // --- Grouped by Category/Subcategory for a Vendor ---
+    @GetMapping("/vendor/{vendorId}/grouped")
+    public ResponseEntity<?> getVendorProductsGroupedByCategoryAndSubCategory(@PathVariable Long vendorId) {
+        return ResponseEntity.ok(productService.getProductsGroupedByCategoryAndSubCategory(vendorId));
+    }
+
+    // --- By SubCategory ---
+    @GetMapping("/subcategory/{subCategoryId}")
+    public ResponseEntity<List<Product>> getProductsBySubCategory(@PathVariable Long subCategoryId) {
+        return ResponseEntity.ok(productService.getProductsBySubCategory(subCategoryId));
+    }
+
+    // --- By Category ---
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<List<Product>> getProductsByCategoryId(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(productService.getProductsByCategoryId(categoryId));
+    }
+
+    // --- Slug Based ---
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<Product> getProductBySlug(@PathVariable String slug) {
+        Product product = productService.getProductBySlug(slug);
+        if (product == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(product);
+    }
+
+    @GetMapping("/generate-slugs")
+    public ResponseEntity<String> generateSlugs() {
+        productService.generateMissingSlugs();
+        return ResponseEntity.ok("Slug generation completed");
+    }
+
+    // --- Search & Filter ---
     @GetMapping("/search")
     public ResponseEntity<List<Product>> searchAndFilterProducts(
             @RequestParam(required = false) String keyword,
@@ -185,12 +223,7 @@ public class ProductController {
         return ResponseEntity.ok(results);
     }
 
-    @GetMapping("/category/{categoryId}")
-    public ResponseEntity<List<Product>> getProductsByCategoryId(@PathVariable Long categoryId) {
-        List<Product> products = productService.getProductsByCategoryId(categoryId);
-        return ResponseEntity.ok(products);
-    }
-    
+    // --- Unified Search (Blinkit-style) ---
     @GetMapping("/unified-search")
     public ResponseEntity<SearchResultDTO> unifiedSearch(@RequestParam("query") String query) {
         if (query == null || query.trim().isEmpty()) {
@@ -200,27 +233,13 @@ public class ProductController {
         return ResponseEntity.ok(result);
     }
 
+    // --- Count ---
     @GetMapping("/count")
     public ResponseEntity<Long> getProductsCount() {
-        long count = productService.countAllProducts();
-        return ResponseEntity.ok(count);
+        return ResponseEntity.ok(productService.countAllProducts());
     }
 
-    @GetMapping("/slug/{slug}")
-    public ResponseEntity<Product> getProductBySlug(@PathVariable String slug) {
-        Product product = productService.getProductBySlug(slug);
-        if (product == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(product);
-    }
-
-    @GetMapping("/generate-slugs")
-    public ResponseEntity<String> generateSlugs() {
-        productService.generateMissingSlugs();
-        return ResponseEntity.ok("Slug generation completed");
-    }
-
+    // --- Nearby ---
     @GetMapping("/nearby")
     public ResponseEntity<List<Product>> getProductsFromNearbyVendors(
         @RequestParam String type,           // "FOOD" or "GROCERY"
@@ -233,12 +252,4 @@ public class ProductController {
         List<Product> products = productService.getProductsFromNearbyVendors(type, lat, lng, radiusKm, categoryId, subCategoryId);
         return ResponseEntity.ok(products);
     }
-
-    // 🚀 NEW ENDPOINT: Group vendor's products by category and subcategory
-    @GetMapping("/vendor/{vendorId}/grouped")
-    public ResponseEntity<?> getVendorProductsGroupedByCategoryAndSubCategory(@PathVariable Long vendorId) {
-        return ResponseEntity.ok(productService.getProductsGroupedByCategoryAndSubCategory(vendorId));
-    }
-    
-    
 }

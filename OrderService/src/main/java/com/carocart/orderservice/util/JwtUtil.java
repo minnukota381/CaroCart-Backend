@@ -2,13 +2,12 @@ package com.carocart.orderservice.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.SignatureAlgorithm;
-
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.PostConstruct;
 import java.security.Key;
 import java.util.Date;
 
@@ -39,6 +38,22 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String generateInternalToken() {
+        String token = Jwts.builder()
+            .setSubject("internal-service")
+            .claim("role", "SYSTEM")
+            .claim("userId", 0)
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
+            .signWith(key, SignatureAlgorithm.HS256)
+            .compact();
+
+        System.out.println("✅ Generated internal JWT: " + token); // add this
+        return token;
+    }
+
+
+
     public boolean validateToken(String token) {
         try {
             Claims claims = extractAllClaims(token);
@@ -64,7 +79,7 @@ public class JwtUtil {
         return extractAllClaims(token).get("lastName", String.class);
     }
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()

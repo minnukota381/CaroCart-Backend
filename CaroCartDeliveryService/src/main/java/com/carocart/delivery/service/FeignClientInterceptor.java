@@ -11,7 +11,6 @@ public class FeignClientInterceptor implements RequestInterceptor {
     private final String internalToken;
 
     public FeignClientInterceptor(JwtUtil jwtUtil) {
-        // Generate internal JWT token with ADMIN role
         this.internalToken = "Bearer " + jwtUtil.generateToken(0L, "ADMIN", "System");
     }
 
@@ -20,3 +19,4 @@ public class FeignClientInterceptor implements RequestInterceptor {
         template.header("Authorization", internalToken);
     }
 }
+

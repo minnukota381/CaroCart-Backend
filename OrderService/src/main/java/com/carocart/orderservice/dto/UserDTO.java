@@ -1,5 +1,3 @@
-// package: com.carocart.orderservice.dto
-
 package com.carocart.orderservice.dto;
 
 public class UserDTO {
@@ -9,15 +7,20 @@ public class UserDTO {
     private String lastName;
     private String email;
     private String mobileNumber;
+    private Double latitude;
+    private Double longitude;
 
     public UserDTO() {}
 
-    public UserDTO(Long id, String firstName, String lastName, String email, String mobileNumber) {
+    public UserDTO(Long id, String firstName, String lastName, String email, String mobileNumber,
+                   Double latitude, Double longitude) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
         this.mobileNumber = mobileNumber;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     // Getters and setters
@@ -60,5 +63,21 @@ public class UserDTO {
 
     public void setMobileNumber(String mobileNumber) {
         this.mobileNumber = mobileNumber;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 }

@@ -1,9 +1,20 @@
 package com.carocart.orderservice.repository;
 
+import com.carocart.orderservice.entity.ApprovalStatus;
 import com.carocart.orderservice.entity.OrderItem;
+
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
-    java.util.List<OrderItem> findByVendorEmailAndApprovalStatus(String vendorEmail, String approvalStatus);
-    java.util.List<OrderItem> findByApprovalRequiredByAndApprovalStatus(String approvalRequiredBy, String approvalStatus);
+    List<OrderItem> findByVendorEmailAndApprovalStatus(String vendorEmail, String approvalStatus); // Needed for old logic
+    List<OrderItem> findByVendorEmailAndApprovalStatus(String vendorEmail, ApprovalStatus approvalStatus);
+    List<OrderItem> findByVendorEmail(String vendorEmail);
+    List<OrderItem> findByApprovalStatusAndDeliveryBoyIdIsNull(ApprovalStatus approvalStatus);
+    List<OrderItem> findByDeliveryBoyId(Long deliveryBoyId);
+    List<OrderItem> findByDeliveryBoyIdAndDeliveryStatus(Long deliveryBoyId, String deliveryStatus);
+    List<OrderItem> findByOrderId(Long orderId);
+
 }
+

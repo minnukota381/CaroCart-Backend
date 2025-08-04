@@ -9,12 +9,15 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 @FeignClient(name = "CaroCartAuthentication")
 public interface UserClient {
-
     @GetMapping("/users/me")
     UserDTO getCurrentUser(@RequestHeader("Authorization") String token);
 
     @GetMapping("/users/{id}")
     UserDTO getCurrentUserById(@RequestHeader("Authorization") String token, @PathVariable("id") Long id);
+    @GetMapping("/users/{id}")
+    UserDTO getUserById(@RequestHeader("Authorization") String token, @PathVariable("id") Long id);
+
 }
+
 
 

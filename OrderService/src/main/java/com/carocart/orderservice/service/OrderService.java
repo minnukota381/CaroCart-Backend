@@ -1,38 +1,49 @@
 package com.carocart.orderservice.service;
 
+import com.carocart.orderservice.dto.OrderItemDTO;
 import com.carocart.orderservice.dto.OrderRequest;
 import com.carocart.orderservice.dto.OrderResponse;
+import com.carocart.orderservice.entity.Order;
 
 import java.util.List;
+import java.util.Map;
 
 public interface OrderService {
+    List<OrderItemDTO> getAllItemsForVendor(String token);
+    List<OrderResponse> getOrdersAvailableForDelivery(String token);
+    void assignOrderToDeliveryBoy(String token, Long orderId);
+    void updateOrderDeliveryStatus(String token, Long orderId, String status);
+    Map<String, Object> getAssignedDeliveryBoyLocation(Long orderId);
 
-    // --- User Functionality ---
+    // User
     OrderResponse placeOrder(String token, OrderRequest orderRequest);
     List<OrderResponse> getOrdersForUser(String token);
     OrderResponse getOrderById(String token, Long orderId);
     void cancelOrder(String token, Long orderId);
 
-    // --- Admin Functionality ---
+    // Admin
     List<OrderResponse> getAllOrders();
     OrderResponse getOrderByIdForAdmin(Long orderId);
     void cancelOrderByAdmin(Long orderId);
 
-    // --- Payment Updates ---
-    void updatePaymentStatus(Long orderId, String paymentId, String status);  // For online/UPI/card payments
-    void markAsCod(Long orderId); // For Cash on Delivery
+    // Payment
+    void updatePaymentStatus(Long orderId, String paymentId, String status);
+    void markAsCod(Long orderId);
     void markOrderAsShipped(Long orderId);
-    
     long getTotalOrdersCount();
     OrderResponse placeOrderInternal(OrderRequest orderRequest);
+    Order getOrderEntity(Long orderId);
 
-    // --- Approval Handling ---
-    java.util.List<com.carocart.orderservice.dto.OrderItemDTO> getPendingItemsForVendor(String token);
-    java.util.List<com.carocart.orderservice.dto.OrderItemDTO> getPendingItemsForAdmin();
+    // Approval - Only Vendor
+    List<OrderItemDTO> getPendingItemsForVendor(String token);
     void approveItemAsVendor(String token, Long itemId);
-    void approveItemAsAdmin(Long itemId);
     void rejectItemAsVendor(String token, Long itemId);
-    void rejectItemAsAdmin(Long itemId);
-    void approveOrderByAdmin(Long orderId);
+    void approveOrderItem(Long itemId, String vendorEmail);
+    void rejectOrderItem(Long itemId, String vendorEmail);
+    List<OrderItemDTO> getAvailableOrderItemsForDelivery();
+    void assignOrderItemToDeliveryBoy(Long orderItemId, Long deliveryBoyId);
+    void updateOrderItemDeliveryStatus(Long orderItemId, String status);
 
+    // ✅ Internal token for Feign use
+    String getInternalToken();
 }

@@ -201,4 +201,16 @@ public class VendorController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
+ // --- GET VENDOR BY EMAIL (for Feign) ---
+    @GetMapping("/email/{email}")
+    public ResponseEntity<VendorResponseDTO> getVendorByEmail(@PathVariable String email) {
+        Vendor vendor = vendorService.getVendorByEmail(email);
+        if (vendor == null || !vendor.isApproved()) {
+            return ResponseEntity.status(404).body(null);
+        }
+        return ResponseEntity.ok(VendorService.toResponseDTO(vendor));
+    }
+    
 }
+
+
