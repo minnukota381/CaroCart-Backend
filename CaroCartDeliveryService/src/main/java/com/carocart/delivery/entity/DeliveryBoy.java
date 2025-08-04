@@ -52,6 +52,20 @@ public class DeliveryBoy {
     private String passwordHash;
     private Boolean active = true;
     private String status = "PENDING";
+    
+    @Column(name = "current_lat")
+    private Double currentLat;
+
+    @Column(name = "current_lng")
+    private Double currentLng;
+
+    // ...getters and setters...
+    public Double getCurrentLat() { return currentLat; }
+    public void setCurrentLat(Double currentLat) { this.currentLat = currentLat; }
+    public Double getCurrentLng() { return currentLng; }
+    public void setCurrentLng(Double currentLng) { this.currentLng = currentLng; }
+
+ // Add at the end of your DeliveryBoy entity:
 	public Long getId() {
 		return id;
 	}

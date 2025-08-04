@@ -217,6 +217,21 @@ public class DeliveryBoyServiceImpl implements DeliveryBoyService {
         dto.setUpiId(entity.getUpiId());
         dto.setEmail(entity.getEmail());
         dto.setStatus(entity.getStatus());
+        dto.setCurrentLat(entity.getCurrentLat());
+        dto.setCurrentLng(entity.getCurrentLng());
+
         return dto;
     }
+    
+    @Override
+    public void updateCurrentLocation(Long deliveryBoyId, Double lat, Double lng) {
+        DeliveryBoy boy = repo.findById(deliveryBoyId)
+            .orElseThrow(() -> new RuntimeException("Not found"));
+        boy.setCurrentLat(lat);
+        boy.setCurrentLng(lng);
+        repo.save(boy);
+    }
+
+
+
 }

@@ -1,36 +1,24 @@
 package com.carocart.delivery.feign;
 
-import com.carocart.delivery.dto.DeliveryOrderDTO;
-import com.carocart.delivery.dto.DeliveryStatusUpdateDTO;
-
+import com.carocart.delivery.dto.OrderItemDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
-@FeignClient(
-	    name = "order-service",
-	      // Use this property from application.properties
-	    configuration = com.carocart.delivery.config.FeignClientConfig.class
-	)
-	public interface OrderFeignClient {
-	    @GetMapping("/orders/ready-for-delivery")
-	    List<DeliveryOrderDTO> getReadyForDeliveryOrders();
+@FeignClient(name = "OrderService")
+public interface OrderFeignClient {
+    @GetMapping("/orders/orderitems/available-for-delivery")
+    List<OrderItemDTO> getAvailableOrderItems();
 
-	    @PutMapping("/orders/{orderId}/assign-delivery")
-	    void assignOrderToDeliveryBoy(@PathVariable Long orderId, @RequestParam Long deliveryBoyId);
+    @PutMapping("/orders/orderitems/{orderItemId}/assign-delivery")
+    void assignOrderItemToDeliveryBoy(@PathVariable Long orderItemId, @RequestParam Long deliveryBoyId);
 
-	    @GetMapping("/orders/assigned/{deliveryBoyId}")
-	    List<DeliveryOrderDTO> getAssignedOrders(@PathVariable Long deliveryBoyId);
+    @GetMapping("/orders/orderitems/assigned/{deliveryBoyId}")
+    List<OrderItemDTO> getAssignedOrderItems(@PathVariable Long deliveryBoyId);
 
-	    @PutMapping("/orders/{orderId}/delivery-status")
-	    void updateDeliveryStatus(@PathVariable Long orderId, @RequestParam String status);
-	    @PostMapping("/orders/{orderId}/out-for-delivery")
-	    DeliveryOrderDTO markOrderOutForDelivery(@PathVariable("orderId") Long orderId,
-	                                             @RequestHeader("Authorization") String token);
+    @PutMapping("/orders/orderitems/{orderItemId}/delivery-status")
+    void updateDeliveryStatus(@PathVariable Long orderItemId, @RequestParam String status);
 
-	    @PostMapping("/orders/{orderId}/deliver")
-	    void markOrderAsDelivered(@PathVariable("orderId") Long orderId,
-	                              @RequestBody DeliveryStatusUpdateDTO dto,
-	                              @RequestHeader("Authorization") String token);
-	}
+    @GetMapping("/orders/orderitems/delivered/{deliveryBoyId}")
+    List<OrderItemDTO> getDeliveredOrderItems(@PathVariable Long deliveryBoyId);
+}

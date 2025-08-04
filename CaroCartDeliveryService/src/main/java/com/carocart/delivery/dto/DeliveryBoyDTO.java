@@ -28,6 +28,10 @@ public class DeliveryBoyDTO {
     private String passbookUrl;
     private String email;
     private String status;
+    private Double currentLat;
+    private Double currentLng;
+    // getters/setters
+
     // getters and setters
 	public Long getId() {
 		return id;
@@ -186,6 +190,18 @@ public class DeliveryBoyDTO {
 	}
 	public void setRcUrl(String rcUrl) {
 		this.rcUrl = rcUrl;
+	}
+	public Double getCurrentLat() {
+		return currentLat;
+	}
+	public void setCurrentLat(Double currentLat) {
+		this.currentLat = currentLat;
+	}
+	public Double getCurrentLng() {
+		return currentLng;
+	}
+	public void setCurrentLng(Double currentLng) {
+		this.currentLng = currentLng;
 	}
     
 }

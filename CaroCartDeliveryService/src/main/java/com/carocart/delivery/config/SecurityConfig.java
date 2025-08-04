@@ -18,19 +18,37 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    	http
-        .cors(cors -> {}) // ✅ enable CORS in security filter chain
-        .csrf(csrf -> csrf.disable())
+        http
+            .cors(cors -> {}) // Enable CORS
+            .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
             .authorizeHttpRequests(authz -> authz
-                // Explicitly allow all HTTP methods on these endpoints:
-                .requestMatchers("/deliveryboys/register").permitAll()
-                .requestMatchers("/deliveryboys/login").permitAll()
-                .requestMatchers("/deliveryboys/forgot-password").permitAll()
-                .requestMatchers("/deliveryboys/verify-otp").permitAll()
-                .requestMatchers("/deliveryboys/reset-password").permitAll()
-                .requestMatchers("/api/upload", "/api/upload/**").permitAll()
+                // Public endpoints
+                .requestMatchers(
+                    "/deliveryboys/register",
+                    "/deliveryboys/login",
+                    "/deliveryboys/forgot-password",
+                    "/deliveryboys/verify-otp",
+                    "/deliveryboys/reset-password",
+                    "/api/upload"
+                ).permitAll()
+
+                // Admin-only endpoints
+                .requestMatchers("/deliveryboys/status/**").hasRole("ADMIN")
+                .requestMatchers("/deliveryboys/{id}/status").hasRole("ADMIN")
+
+                // Vendor and System calls to fetch delivery boy location
+                .requestMatchers("/deliveryboys/{id}/location").hasAnyRole("DELIVERY_BOY", "ADMIN", "SYSTEM")
+
+                // Delivery boy's private data (JWT secured)
+                .requestMatchers("/deliveryboys/me", "/deliveryboys/me/**", "/delivery/orders/**")
+                    .hasRole("DELIVERY_BOY")
+
+                // Internal Feign call by OrderService or Admin
+                .requestMatchers("/deliveryboys/{id}").hasAnyRole("ADMIN", "SYSTEM", "DELIVERY_BOY")
+
+                // All other endpoints must be authenticated
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
