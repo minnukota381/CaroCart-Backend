@@ -1,6 +1,7 @@
 package com.carocart.productservice.service;
 
 import com.carocart.productservice.dto.ProductDTO;
+import com.carocart.productservice.dto.SearchResultDTO;
 import com.carocart.productservice.entity.Product;
 
 import java.io.IOException;
@@ -39,5 +40,8 @@ public interface ProductService {
 
     List<Product> getProductsFromNearbyVendors(String type, double lat, double lng, double radiusKm, Long categoryId, Long subCategoryId);
     Map<String, Map<String, List<Product>>> getProductsGroupedByCategoryAndSubCategory(Long vendorId);
+
+    
+    SearchResultDTO unifiedSearch(String query);
 
 }

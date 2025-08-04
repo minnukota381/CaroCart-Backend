@@ -2,6 +2,7 @@ package com.carocart.productservice.controller;
 
 import com.carocart.productservice.dto.ProductDTO;
 import com.carocart.productservice.dto.ProductRequestDTO;
+import com.carocart.productservice.dto.SearchResultDTO;
 import com.carocart.productservice.entity.Product;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.repository.SubCategoryRepository;
@@ -29,7 +30,6 @@ public class ProductController {
         @RequestBody ProductRequestDTO productDTO,
         @RequestHeader("Authorization") String token
     ) throws IOException {
-
         if (productDTO.getPrice() > productDTO.getMrp()) {
             throw new IllegalArgumentException("Price must not exceed MRP");
         }
@@ -50,8 +50,31 @@ public class ProductController {
         product.setSubCategory(subCategory);
         product.setImageUrl(productDTO.getImageUrl());
 
+        // Set productType from string to enum
+        product.setProductType(
+            com.carocart.productservice.entity.ProductType.valueOf(productDTO.getProductType().toUpperCase())
+        );
+
+        // Grocery fields
+        product.setPackSize(productDTO.getPackSize());
+        product.setManufacturer(productDTO.getManufacturer());
+        product.setFssaiLicenseNo(productDTO.getFssaiLicenseNo());
+        product.setCountryOfOrigin(productDTO.getCountryOfOrigin());
+        product.setIngredients(productDTO.getIngredients());
+        product.setNutritionInfo(productDTO.getNutritionInfo());
+        product.setReturnPolicy(productDTO.getReturnPolicy());
+
+        // Food fields
+        product.setFoodCategory(productDTO.getFoodCategory());
+        product.setVeg(productDTO.getVeg());
+        product.setRestaurantName(productDTO.getRestaurantName());
+        product.setCustomizationOptions(productDTO.getCustomizationOptions());
+        product.setAddOns(productDTO.getAddOns());
+        product.setBestseller(productDTO.getBestseller());
+
         return ResponseEntity.ok(productService.addProduct(product, null, token));
     }
+
 
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Product> updateProduct(
@@ -78,6 +101,27 @@ public class ProductController {
         updatedProduct.setIsAvailable(productDTO.getIsAvailable());
         updatedProduct.setSubCategory(subCategory);
         updatedProduct.setImageUrl(productDTO.getImageUrl());
+
+        updatedProduct.setProductType(
+            com.carocart.productservice.entity.ProductType.valueOf(productDTO.getProductType().toUpperCase())
+        );
+
+        // Grocery fields
+        updatedProduct.setPackSize(productDTO.getPackSize());
+        updatedProduct.setManufacturer(productDTO.getManufacturer());
+        updatedProduct.setFssaiLicenseNo(productDTO.getFssaiLicenseNo());
+        updatedProduct.setCountryOfOrigin(productDTO.getCountryOfOrigin());
+        updatedProduct.setIngredients(productDTO.getIngredients());
+        updatedProduct.setNutritionInfo(productDTO.getNutritionInfo());
+        updatedProduct.setReturnPolicy(productDTO.getReturnPolicy());
+
+        // Food fields
+        updatedProduct.setFoodCategory(productDTO.getFoodCategory());
+        updatedProduct.setVeg(productDTO.getVeg());
+        updatedProduct.setRestaurantName(productDTO.getRestaurantName());
+        updatedProduct.setCustomizationOptions(productDTO.getCustomizationOptions());
+        updatedProduct.setAddOns(productDTO.getAddOns());
+        updatedProduct.setBestseller(productDTO.getBestseller());
 
         Product updated = productService.updateProduct(id, updatedProduct, null, token);
         if (updated == null) {
@@ -146,6 +190,15 @@ public class ProductController {
         List<Product> products = productService.getProductsByCategoryId(categoryId);
         return ResponseEntity.ok(products);
     }
+    
+    @GetMapping("/unified-search")
+    public ResponseEntity<SearchResultDTO> unifiedSearch(@RequestParam("query") String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        SearchResultDTO result = productService.unifiedSearch(query.trim());
+        return ResponseEntity.ok(result);
+    }
 
     @GetMapping("/count")
     public ResponseEntity<Long> getProductsCount() {
@@ -186,5 +239,6 @@ public class ProductController {
     public ResponseEntity<?> getVendorProductsGroupedByCategoryAndSubCategory(@PathVariable Long vendorId) {
         return ResponseEntity.ok(productService.getProductsGroupedByCategoryAndSubCategory(vendorId));
     }
-
+    
+    
 }

@@ -6,6 +6,7 @@ import com.carocart.productservice.dto.SubCategoryDTO;
 import com.carocart.productservice.dto.SubCategoryResponseDTO;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
+import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.service.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -185,6 +186,31 @@ public class CategoryController {
         SubCategory sub = categoryService.getSubCategoryBySlug(slug);
         return sub != null ? ResponseEntity.ok(sub) : ResponseEntity.notFound().build();
     }
+    
+ // Get all categories served by a specific vendor
+    @GetMapping("/vendor/{vendorId}")
+    public ResponseEntity<List<CategoryResponseDTO>> getCategoriesByVendor(@PathVariable Long vendorId) {
+        List<Category> categories = categoryService.getCategoriesByVendorId(vendorId);
+        List<CategoryResponseDTO> dtos = categories.stream()
+            .map(this::toCategoryResponseDTO)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }// At the bottom of your CategoryController
+
+@Autowired
+private SubCategoryRepository subCategoryRepository;
+
+@GetMapping("/subcategories/all")
+public ResponseEntity<List<SubCategoryResponseDTO>> getAllSubCategories() {
+    List<SubCategory> subCategories = subCategoryRepository.findAll();
+    List<SubCategoryResponseDTO> dtos = subCategories.stream()
+        .map(this::toSubCategoryResponseDTO)
+        .collect(Collectors.toList());
+    return ResponseEntity.ok(dtos);
+}
+
+    
+
 
 
 }

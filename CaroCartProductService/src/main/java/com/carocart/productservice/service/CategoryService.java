@@ -23,5 +23,7 @@ public interface CategoryService {
     void generateMissingSlugsForCategories();
     void generateMissingSlugsForSubCategories();
 
+    List<Category> getCategoriesByVendorId(Long vendorId);
+
 
 }

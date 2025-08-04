@@ -29,6 +29,9 @@ public class VendorResponseDTO {
     // Profile image URL (Firebase/public link)
     private String profileImageUrl;
 
+    // Approved status
+    private Boolean approved; // <--- ADD THIS
+
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -80,4 +83,7 @@ public class VendorResponseDTO {
 
     public String getProfileImageUrl() { return profileImageUrl; }
     public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
+
+    public Boolean getApproved() { return approved; }
+    public void setApproved(Boolean approved) { this.approved = approved; }
 }

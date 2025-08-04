@@ -1,8 +1,7 @@
 package com.carocart.productservice.entity;
 
-import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,202 +12,157 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // --- SHARED FIELDS ---
+    @Column(nullable = false)
     private String name;
-    @Lob
-    @Column(columnDefinition = "LONGTEXT")
+
+    @Column(length = 2048)
     private String description;
-    private String brand;
+
     private double price;
     private double mrp;
     private double discount;
     private int stock;
     private String unit;
     private Boolean isAvailable;
-    private String addedByRole;
+    private String addedByRole; // e.g., "VENDOR"
     private Long vendorId;
     private String vendorName;
-
-//    
-//    @Lob
-//    @Column(name = "image", columnDefinition = "LONGBLOB")
-//    private byte[] image;
 
     @Lob
     @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-//    @ManyToOne
-//    @JoinColumn(name = "sub_category_id")
-//    @JsonIgnoreProperties("products")  // Ignore 'products' inside subCategory to avoid recursion
-//    private SubCategory subCategory;
-    
-    @ManyToOne
-    @JoinColumn(name = "sub_category_id")
-    @JsonIgnoreProperties("products") // Must match field name in SubCategory!
-    private SubCategory subCategory;
-
-    
     @Column(unique = true)
     private String slug;
 
-    public String getSlug() {
-        return slug;
-    }
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    public void setSlug(String slug) {
-        this.slug = slug;
-    }
+    @ManyToOne
+    @JoinColumn(name = "sub_category_id")
+    @JsonIgnoreProperties("products")
+    private SubCategory subCategory;
 
-    
-    
-    
-    public String getAddedByRole() {
-		return addedByRole;
-	}
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ProductType productType; // GROCERY or FOOD
 
-	public void setAddedByRole(String addedByRole) {
-		this.addedByRole = addedByRole;
-	}
+    // --- GROCERY-SPECIFIC FIELDS ---
+    private String brand;
+    private String packSize;
+    private String manufacturer;
+    private String fssaiLicenseNo;
+    private String countryOfOrigin;
+    private String ingredients;
+    private String nutritionInfo;
+    private String returnPolicy;
 
-	public String getVendorName() {
-		return vendorName;
-	}
+    // --- FOOD-SPECIFIC FIELDS ---
+    private String foodCategory; // e.g. Main Course, Starter (renamed from category to avoid confusion)
+    private Boolean veg;
+    private String restaurantName;
+    private String customizationOptions; // Could be JSON string
+    private String addOns; // Could be JSON string
+    private Boolean bestseller;
 
-	public void setVendorName(String vendorName) {
-		this.vendorName = vendorName;
-	}
+    // --- Getters and Setters (generated, omit deprecated code) ---
 
-//	public byte[] getImage() {
-//        return image;
-//    }
-//
-//    public void setImage(byte[] image) {
-//        this.image = image;
-//    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-	public Long getId() {
-		return id;
-	}
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-	public String getName() {
-		return name;
-	}
+    public double getPrice() { return price; }
+    public void setPrice(double price) { this.price = price; }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public double getMrp() { return mrp; }
+    public void setMrp(double mrp) { this.mrp = mrp; }
 
-	public String getDescription() {
-		return description;
-	}
+    public double getDiscount() { return discount; }
+    public void setDiscount(double discount) { this.discount = discount; }
 
-	public void setDescription(String description) {
-		this.description = description;
-	}
+    public int getStock() { return stock; }
+    public void setStock(int stock) { this.stock = stock; }
 
-	public String getBrand() {
-		return brand;
-	}
+    public String getUnit() { return unit; }
+    public void setUnit(String unit) { this.unit = unit; }
 
-	public void setBrand(String brand) {
-		this.brand = brand;
-	}
+    public Boolean getIsAvailable() { return isAvailable; }
+    public void setIsAvailable(Boolean isAvailable) { this.isAvailable = isAvailable; }
 
-	public double getPrice() {
-		return price;
-	}
+    public String getAddedByRole() { return addedByRole; }
+    public void setAddedByRole(String addedByRole) { this.addedByRole = addedByRole; }
 
-	public void setPrice(double price) {
-		this.price = price;
-	}
+    public Long getVendorId() { return vendorId; }
+    public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
 
-	public double getMrp() {
-		return mrp;
-	}
+    public String getVendorName() { return vendorName; }
+    public void setVendorName(String vendorName) { this.vendorName = vendorName; }
 
-	public void setMrp(double mrp) {
-		this.mrp = mrp;
-	}
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
-	public double getDiscount() {
-		return discount;
-	}
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
 
-	public void setDiscount(double discount) {
-		this.discount = discount;
-	}
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-	public int getStock() {
-		return stock;
-	}
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-	public void setStock(int stock) {
-		this.stock = stock;
-	}
+    public SubCategory getSubCategory() { return subCategory; }
+    public void setSubCategory(SubCategory subCategory) { this.subCategory = subCategory; }
 
-	public String getUnit() {
-		return unit;
-	}
+    public ProductType getProductType() { return productType; }
+    public void setProductType(ProductType productType) { this.productType = productType; }
 
-	public void setUnit(String unit) {
-		this.unit = unit;
-	}
+    // Grocery-specific getters/setters
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = brand; }
 
-	public Boolean getIsAvailable() {
-		return isAvailable;
-	}
+    public String getPackSize() { return packSize; }
+    public void setPackSize(String packSize) { this.packSize = packSize; }
 
-	public void setIsAvailable(Boolean isAvailable) {
-		this.isAvailable = isAvailable;
-	}
+    public String getManufacturer() { return manufacturer; }
+    public void setManufacturer(String manufacturer) { this.manufacturer = manufacturer; }
 
-	public LocalDateTime getCreatedAt() {
-		return createdAt;
-	}
+    public String getFssaiLicenseNo() { return fssaiLicenseNo; }
+    public void setFssaiLicenseNo(String fssaiLicenseNo) { this.fssaiLicenseNo = fssaiLicenseNo; }
 
-	public void setCreatedAt(LocalDateTime createdAt) {
-		this.createdAt = createdAt;
-	}
+    public String getCountryOfOrigin() { return countryOfOrigin; }
+    public void setCountryOfOrigin(String countryOfOrigin) { this.countryOfOrigin = countryOfOrigin; }
 
-	public LocalDateTime getUpdatedAt() {
-		return updatedAt;
-	}
+    public String getIngredients() { return ingredients; }
+    public void setIngredients(String ingredients) { this.ingredients = ingredients; }
 
-	public void setUpdatedAt(LocalDateTime updatedAt) {
-		this.updatedAt = updatedAt;
-	}
+    public String getNutritionInfo() { return nutritionInfo; }
+    public void setNutritionInfo(String nutritionInfo) { this.nutritionInfo = nutritionInfo; }
 
-	public SubCategory getSubCategory() {
-		return subCategory;
-	}
+    public String getReturnPolicy() { return returnPolicy; }
+    public void setReturnPolicy(String returnPolicy) { this.returnPolicy = returnPolicy; }
 
-	public void setSubCategory(SubCategory subCategory) {
-		this.subCategory = subCategory;
-	}
+    // Food-specific getters/setters
+    public String getFoodCategory() { return foodCategory; }
+    public void setFoodCategory(String foodCategory) { this.foodCategory = foodCategory; }
 
-	public String getImageUrl() {
-		return imageUrl;
-	}
+    public Boolean getVeg() { return veg; }
+    public void setVeg(Boolean veg) { this.veg = veg; }
 
-	public void setImageUrl(String imageUrl) {
-		this.imageUrl = imageUrl;
-	}
+    public String getRestaurantName() { return restaurantName; }
+    public void setRestaurantName(String restaurantName) { this.restaurantName = restaurantName; }
 
-	public Long getVendorId() {
-		return vendorId;
-	}
+    public String getCustomizationOptions() { return customizationOptions; }
+    public void setCustomizationOptions(String customizationOptions) { this.customizationOptions = customizationOptions; }
 
-	public void setVendorId(Long vendorId) {
-		this.vendorId = vendorId;
-	}
+    public String getAddOns() { return addOns; }
+    public void setAddOns(String addOns) { this.addOns = addOns; }
 
-    
-    // Getters and setters
+    public Boolean getBestseller() { return bestseller; }
+    public void setBestseller(Boolean bestseller) { this.bestseller = bestseller; }
 }
