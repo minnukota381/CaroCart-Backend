@@ -6,8 +6,8 @@ public class VendorResponseDTO {
     private String firstName;
     private String lastName;
     private String role;
-
-    // ... add any other fields you need
+    private String vendorType; // "FOOD" or "GROCERY"
+    private Boolean approved; // optional but useful for checks
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -31,6 +31,18 @@ public class VendorResponseDTO {
 	}
 	public void setRole(String role) {
 		this.role = role;
+	}
+	public String getVendorType() {
+		return vendorType;
+	}
+	public void setVendorType(String vendorType) {
+		this.vendorType = vendorType;
+	}
+	public Boolean getApproved() {
+		return approved;
+	}
+	public void setApproved(Boolean approved) {
+		this.approved = approved;
 	}
 
 }
