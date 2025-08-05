@@ -16,7 +16,6 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
-    @Lob
     @Column(columnDefinition = "LONGTEXT")
     private String description;
 
