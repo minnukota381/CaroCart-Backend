@@ -3,7 +3,6 @@ package com.carocart.orderservice.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// DTO for API responses sent to frontend after order placement, fetching orders, etc.
 public class OrderResponse {
 
     private Long orderId;
@@ -11,15 +10,15 @@ public class OrderResponse {
     private String shippingAddress;
     private Long addressId;
     private Double totalAmount;
-    private String status;         // e.g. PLACED, SHIPPED, DELIVERED, CANCELLED
-    private String paymentStatus;  // e.g. PAID, PENDING, COD, REFUNDED
-    private String paymentId;      // Razorpay/cash/upi/payment txn id
+    private String status;
+    private String paymentStatus;
+    private String paymentId;
     private LocalDateTime orderDate;
     private LocalDateTime updatedAt;
     private List<OrderItemDTO> items;
     private Long deliveryBoyId;
     private String deliveryStatus;
-
+    private Long vendorId;  // ✅ Included
 
     // --- Constructors ---
     public OrderResponse() {}
@@ -39,18 +38,13 @@ public class OrderResponse {
         this.orderDate = orderDate;
         this.updatedAt = updatedAt;
         this.items = items;
-       
     }
 
-    // Entity-to-DTO constructor (if needed)
+    // ✅ Entity-to-DTO constructor
     public OrderResponse(com.carocart.orderservice.entity.Order order) {
         this.orderId = order.getId();
         this.userId = order.getUserId();
         this.shippingAddress = order.getShippingAddress();
-        // If addressId exists as a field in your entity, map here. Else leave null.
-        try {
-            this.addressId = (Long) order.getClass().getDeclaredMethod("getAddressId").invoke(order);
-        } catch (Exception ignored) {}
         this.totalAmount = order.getTotalAmount();
         this.status = order.getStatus();
         this.paymentStatus = order.getPaymentStatus();
@@ -59,11 +53,17 @@ public class OrderResponse {
         this.updatedAt = order.getUpdatedAt();
         this.deliveryBoyId = order.getDeliveryBoyId();
         this.deliveryStatus = order.getDeliveryStatus();
+        this.vendorId = order.getVendorId(); // ✅ MISSING BEFORE
+
+        // Optional: handle addressId via reflection (if dynamic)
+        try {
+            this.addressId = (Long) order.getClass().getDeclaredMethod("getAddressId").invoke(order);
+        } catch (Exception ignored) {}
 
         if (order.getOrderItems() != null) {
             this.items = order.getOrderItems().stream()
-                .map(OrderItemDTO::new)
-                .toList();
+                    .map(OrderItemDTO::new)
+                    .toList();
         }
     }
 
@@ -101,20 +101,12 @@ public class OrderResponse {
     public List<OrderItemDTO> getItems() { return items; }
     public void setItems(List<OrderItemDTO> items) { this.items = items; }
 
-	public Long getDeliveryBoyId() {
-		return deliveryBoyId;
-	}
+    public Long getDeliveryBoyId() { return deliveryBoyId; }
+    public void setDeliveryBoyId(Long deliveryBoyId) { this.deliveryBoyId = deliveryBoyId; }
 
-	public void setDeliveryBoyId(Long deliveryBoyId) {
-		this.deliveryBoyId = deliveryBoyId;
-	}
+    public String getDeliveryStatus() { return deliveryStatus; }
+    public void setDeliveryStatus(String deliveryStatus) { this.deliveryStatus = deliveryStatus; }
 
-	public String getDeliveryStatus() {
-		return deliveryStatus;
-	}
-
-	public void setDeliveryStatus(String deliveryStatus) {
-		this.deliveryStatus = deliveryStatus;
-	}
-    
+    public Long getVendorId() { return vendorId; }
+    public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
 }
