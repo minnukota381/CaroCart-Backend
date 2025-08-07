@@ -16,6 +16,7 @@ public class OrderRequest {
 	    private List<OrderItemDTO> items;
 	    @JsonProperty("totalAmount")
 	    private Double totalAmount;
+	    private Long vendorId; 
 
  public OrderRequest() {}
 
@@ -35,4 +36,13 @@ public class OrderRequest {
 
  public Double getTotalAmount() { return totalAmount; }
  public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
+
+public Long getVendorId() {
+	return vendorId;
+}
+
+public void setVendorId(Long vendorId) {
+	this.vendorId = vendorId;
+}
+ 
 }
