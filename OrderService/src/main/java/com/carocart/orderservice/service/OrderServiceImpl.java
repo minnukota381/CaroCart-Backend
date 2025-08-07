@@ -70,34 +70,46 @@ public class OrderServiceImpl implements OrderService {
         System.out.println("✅ Internal token initialized: " + systemJwtToken);
     }
 
-
-
-
     @Override
     @Transactional
     public OrderResponse placeOrder(String token, OrderRequest orderRequest) {
+        // Step 1: Get user and cart
         UserDTO user = userClient.getCurrentUser(token);
         List<CartItemDTO> cartItems = cartClient.getUserCart(token);
         if (cartItems == null || cartItems.isEmpty()) {
             throw new RuntimeException("Cart is empty. Cannot place order.");
         }
 
-        // -- FETCH THE FORMATTED GOOGLE ADDRESS from Address microservice --
+        // Step 2: Get shipping address
         AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), token);
+        System.out.println("📦 Shipping address: " + address.getAddress());
 
-        // LOG for debugging
-        System.out.println("Fetched address from AddressClient: " + address.getAddress());
-
-        // USE ONLY THE FORMATTED ADDRESS STRING (Google Maps string)
+        // Step 3: Initialize Order
         Order order = new Order();
         order.setUserId(user.getId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
-        order.setShippingAddress(address.getAddress()); // <<--- Only this!
+        order.setShippingAddress(address.getAddress());
         order.setPaymentStatus("PENDING");
 
+        // Step 4: Fetch vendorId from first product in cart
+        try {
+            Long firstProductId = cartItems.get(0).getProductId();
+            ProductDTO firstProduct = productClient.getProductById(firstProductId);
+            if (firstProduct.getVendorId() == null) {
+                throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
+            }
+            order.setVendorId(firstProduct.getVendorId());
+            System.out.println("✅ Vendor ID fetched: " + firstProduct.getVendorId());
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching vendor ID from product: " + e.getMessage());
+            throw new RuntimeException("Unable to determine vendor for this order.");
+        }
+
+        // Step 5: Build order items
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
+
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(product.getId());
             orderItem.setProductName(product.getName());
@@ -105,25 +117,33 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setPrice(product.getPrice());
             orderItem.setTotalPrice(product.getPrice() * item.getQuantity());
             orderItem.setOrder(order);
+
             if (product.getVendorEmail() != null) {
                 orderItem.setApprovalRequiredBy("VENDOR");
                 orderItem.setVendorEmail(product.getVendorEmail());
             } else {
                 orderItem.setApprovalRequiredBy("ADMIN");
             }
+
             orderItem.setApprovalStatus(ApprovalStatus.PENDING);
             return orderItem;
         }).collect(Collectors.toList());
 
+        // Step 6: Finalize order
         double totalAmount = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
         order.setOrderItems(orderItems);
         order.setTotalAmount(totalAmount);
 
+        // Step 7: Save order
         Order savedOrder = orderRepository.save(order);
+
+        // Step 8: Clear cart
         cartClient.clearCart(token);
 
+        // Step 9: Send notifications
         sendOrderPlacedEmails(savedOrder, user, orderItems);
 
+        // Step 10: Return response
         return new OrderResponse(savedOrder);
     }
 
@@ -147,9 +167,11 @@ public class OrderServiceImpl implements OrderService {
         order.setUserId(orderRequest.getUserId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
-        order.setShippingAddress(formattedAddress); // Google Maps address should be passed in OrderRequest
+        order.setShippingAddress(formattedAddress);
         order.setPaymentStatus("PAID");
         order.setTotalAmount(orderRequest.getTotalAmount());
+        order.setVendorId(orderRequest.getVendorId());
+
 
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());

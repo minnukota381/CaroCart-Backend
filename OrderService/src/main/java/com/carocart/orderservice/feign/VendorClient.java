@@ -1,6 +1,5 @@
 package com.carocart.orderservice.feign;
 
-import com.carocart.orderservice.dto.VendorDTO;
 import com.carocart.orderservice.dto.VendorResponseDTO;
 
 import org.springframework.cloud.openfeign.FeignClient;
