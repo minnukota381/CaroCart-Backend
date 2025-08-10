@@ -1,5 +1,6 @@
 package com.carocart.productservice.controller;
 
+import com.carocart.productservice.dto.ProductAdminRowDTO;
 import com.carocart.productservice.dto.ProductDTO;
 import com.carocart.productservice.dto.ProductRequestDTO;
 import com.carocart.productservice.dto.SearchResultDTO;
@@ -7,6 +8,7 @@ import com.carocart.productservice.entity.Product;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.service.ProductService;
+import org.springframework.data.domain.Page;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -252,4 +254,31 @@ public class ProductController {
         List<Product> products = productService.getProductsFromNearbyVendors(type, lat, lng, radiusKm, categoryId, subCategoryId);
         return ResponseEntity.ok(products);
     }
+    
+    @GetMapping("/admin")
+    public ResponseEntity<Page<ProductAdminRowDTO>> searchProductsAdmin(
+        @RequestParam(required = false) String q,
+        @RequestParam(required = false) String vendorType,
+        @RequestParam(required = false) Long vendorId,
+        @RequestParam(required = false) Long categoryId,
+        @RequestParam(required = false) Long subCategoryId,
+        @RequestParam(defaultValue = "ALL") String availability,
+        @RequestParam(defaultValue = "ALL") String stockView,
+        @RequestParam(required = false) Double minPrice,
+        @RequestParam(required = false) Double maxPrice,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "updatedAt") String sortBy,
+        @RequestParam(defaultValue = "DESC") String sortDir,
+        @RequestParam(defaultValue = "10") int lowStockThreshold
+    ) {
+        return ResponseEntity.ok(
+            productService.searchProductsAdmin(
+                q, vendorType, vendorId, categoryId, subCategoryId,
+                availability, stockView, minPrice, maxPrice,
+                page, size, sortBy, sortDir, lowStockThreshold
+            )
+        );
+    }
+
 }

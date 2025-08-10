@@ -17,6 +17,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.carocart.productservice.dto.ProductAdminRowDTO;
+import com.carocart.productservice.entity.ProductType;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.jpa.domain.Specification;
+
+
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -379,4 +385,99 @@ public class ProductServiceImpl implements ProductService {
 
         return result;
     }
+    
+    
+    @Override
+    public Page<ProductAdminRowDTO> searchProductsAdmin(
+            String q, String vendorType, Long vendorId, Long categoryId, Long subCategoryId,
+            String availability, String stockView, Double minPrice, Double maxPrice,
+            int page, int size, String sortBy, String sortDir, int lowStockThreshold
+    ) {
+        Specification<Product> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (q != null && !q.trim().isEmpty()) {
+                String likeQuery = "%" + q.toLowerCase() + "%";
+                predicates.add(cb.or(
+                    cb.like(cb.lower(root.get("name")), likeQuery),
+                    cb.like(cb.lower(root.get("brand")), likeQuery),
+                    cb.like(cb.lower(root.get("description")), likeQuery)
+                ));
+            }
+
+            if (vendorType != null && !"ALL".equalsIgnoreCase(vendorType)) {
+                predicates.add(cb.equal(root.get("productType"), ProductType.valueOf(vendorType.toUpperCase())));
+            }
+
+            if (vendorId != null) {
+                predicates.add(cb.equal(root.get("vendorId"), vendorId));
+            }
+
+            if (categoryId != null) {
+                predicates.add(cb.equal(root.get("subCategory").get("category").get("id"), categoryId));
+            }
+
+            if (subCategoryId != null) {
+                predicates.add(cb.equal(root.get("subCategory").get("id"), subCategoryId));
+            }
+
+            if ("YES".equalsIgnoreCase(availability)) {
+                predicates.add(cb.isTrue(root.get("isAvailable")));
+            } else if ("NO".equalsIgnoreCase(availability)) {
+                predicates.add(cb.isFalse(root.get("isAvailable")));
+            }
+
+            if ("LOW".equalsIgnoreCase(stockView)) {
+                predicates.add(cb.and(
+                    cb.greaterThan(root.get("stock"), 0),
+                    cb.lessThan(root.get("stock"), lowStockThreshold)
+                ));
+            } else if ("OUT".equalsIgnoreCase(stockView)) {
+                predicates.add(cb.equal(root.get("stock"), 0));
+            }
+
+            if (minPrice != null) {
+                predicates.add(cb.ge(root.get("price"), minPrice));
+            }
+
+            if (maxPrice != null) {
+                predicates.add(cb.le(root.get("price"), maxPrice));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+
+        return productPage.map(p -> {
+            ProductAdminRowDTO dto = new ProductAdminRowDTO();
+            dto.setId(p.getId());
+            dto.setName(p.getName());
+            dto.setImageUrl(p.getImageUrl());
+            dto.setPrice(p.getPrice());
+            dto.setMrp(p.getMrp());
+            dto.setDiscount(p.getDiscount());
+            dto.setStock(p.getStock());
+            dto.setIsAvailable(p.getIsAvailable());
+            dto.setVendorId(p.getVendorId());
+            dto.setVendorName(p.getVendorName());
+            dto.setVendorType(p.getProductType() != null ? p.getProductType().name() : null);
+            dto.setCategoryName(
+                p.getSubCategory() != null && p.getSubCategory().getCategory() != null
+                    ? p.getSubCategory().getCategory().getName()
+                    : null
+            );
+            dto.setSubCategoryName(
+                p.getSubCategory() != null ? p.getSubCategory().getName() : null
+            );
+            dto.setUpdatedAt(p.getUpdatedAt());
+            return dto;
+        });
+    }
+
 }
