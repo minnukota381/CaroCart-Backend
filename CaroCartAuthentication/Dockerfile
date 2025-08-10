@@ -9,5 +9,9 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:17-jdk-jammy
 WORKDIR /app
 COPY --from=build /app/target/CaroCartAuthentication-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=prod"]
+
+# Cloud Run will set $PORT (default is 8080)
+EXPOSE 8080
+
+# Pass the dynamic PORT to Spring Boot
+ENTRYPOINT ["sh", "-c", "java -jar app.jar --server.port=${PORT} --spring.profiles.active=prod"]

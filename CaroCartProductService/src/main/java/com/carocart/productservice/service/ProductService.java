@@ -1,5 +1,6 @@
 package com.carocart.productservice.service;
 
+import com.carocart.productservice.dto.ProductAdminRowDTO;
 import com.carocart.productservice.dto.ProductDTO;
 import com.carocart.productservice.dto.SearchResultDTO;
 import com.carocart.productservice.entity.Product;
@@ -43,5 +44,12 @@ public interface ProductService {
 
     
     SearchResultDTO unifiedSearch(String query);
+    
+    Page<ProductAdminRowDTO> searchProductsAdmin(
+    	    String q, String vendorType, Long vendorId, Long categoryId, Long subCategoryId,
+    	    String availability, String stockView, Double minPrice, Double maxPrice,
+    	    int page, int size, String sortBy, String sortDir, int lowStockThreshold
+    	);
+
 
 }
