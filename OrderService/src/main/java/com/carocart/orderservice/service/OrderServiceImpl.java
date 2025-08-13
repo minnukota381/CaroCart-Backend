@@ -274,6 +274,7 @@ public class OrderServiceImpl implements OrderService {
         return new OrderResponse(savedOrder);
     }
 
+    
 
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
         notificationClient.sendEmail(new EmailRequest(
