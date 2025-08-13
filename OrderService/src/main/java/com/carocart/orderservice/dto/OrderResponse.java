@@ -20,7 +20,6 @@ public class OrderResponse {
     private String deliveryStatus;
     private Long vendorId;  // ✅ Included
 
-    // --- Constructors ---
     public OrderResponse() {}
 
     public OrderResponse(Long orderId, Long userId, String shippingAddress, Long addressId, Double totalAmount,
@@ -40,7 +39,7 @@ public class OrderResponse {
         this.items = items;
     }
 
-    // ✅ Entity-to-DTO constructor
+    // ✅ Entity-to-DTO constructor (just maps entity fields)
     public OrderResponse(com.carocart.orderservice.entity.Order order) {
         this.orderId = order.getId();
         this.userId = order.getUserId();
@@ -53,9 +52,8 @@ public class OrderResponse {
         this.updatedAt = order.getUpdatedAt();
         this.deliveryBoyId = order.getDeliveryBoyId();
         this.deliveryStatus = order.getDeliveryStatus();
-        this.vendorId = order.getVendorId(); // ✅ MISSING BEFORE
+        this.vendorId = order.getVendorId();
 
-        // Optional: handle addressId via reflection (if dynamic)
         try {
             this.addressId = (Long) order.getClass().getDeclaredMethod("getAddressId").invoke(order);
         } catch (Exception ignored) {}

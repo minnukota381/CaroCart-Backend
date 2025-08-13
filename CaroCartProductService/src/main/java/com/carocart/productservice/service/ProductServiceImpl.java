@@ -26,7 +26,10 @@ import org.springframework.data.jpa.domain.Specification;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 @Service
 public class ProductServiceImpl implements ProductService {
 
@@ -386,7 +389,6 @@ public class ProductServiceImpl implements ProductService {
         return result;
     }
     
-    
     @Override
     public Page<ProductAdminRowDTO> searchProductsAdmin(
             String q, String vendorType, Long vendorId, Long categoryId, Long subCategoryId,
@@ -480,4 +482,17 @@ public class ProductServiceImpl implements ProductService {
         });
     }
 
+    @Override
+    @Transactional
+    public void decreaseStock(Long productId, int quantity) {
+        Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        if (product.getStock() < quantity) {
+            throw new RuntimeException("Insufficient stock for product: " + product.getName());
+        }
+
+        product.setStock(product.getStock() - quantity);
+        productRepository.save(product);
+    }
 }

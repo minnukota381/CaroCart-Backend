@@ -281,4 +281,10 @@ public class ProductController {
         );
     }
 
+ // In ProductController.java
+    @PutMapping("/{id}/decrease-stock")
+    public ResponseEntity<String> decreaseStock(@PathVariable Long id, @RequestParam int quantity) {
+        productService.decreaseStock(id, quantity);
+        return ResponseEntity.ok("Stock decreased successfully");
+    }
 }

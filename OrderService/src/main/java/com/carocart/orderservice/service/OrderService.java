@@ -3,6 +3,7 @@ package com.carocart.orderservice.service;
 import com.carocart.orderservice.dto.OrderItemDTO;
 import com.carocart.orderservice.dto.OrderRequest;
 import com.carocart.orderservice.dto.OrderResponse;
+import com.carocart.orderservice.dto.VendorEarningsDTO;
 import com.carocart.orderservice.entity.Order;
 
 import java.util.List;
@@ -43,7 +44,7 @@ public interface OrderService {
     List<OrderItemDTO> getAvailableOrderItemsForDelivery();
     void assignOrderItemToDeliveryBoy(Long orderItemId, Long deliveryBoyId);
     void updateOrderItemDeliveryStatus(Long orderItemId, String status);
-
+    public List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate);
     // ✅ Internal token for Feign use
     String getInternalToken();
 }

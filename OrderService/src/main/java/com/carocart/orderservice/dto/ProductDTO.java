@@ -8,7 +8,7 @@ public class ProductDTO {
     private Boolean isAvailable;
     private String vendorEmail;
     private Long vendorId; // ✅ NEW FIELD ADDED
-
+    private String imageUrl;
     public Long getId() {
         return id;
     }
@@ -64,4 +64,12 @@ public class ProductDTO {
     public void setVendorId(Long vendorId) {
         this.vendorId = vendorId;
     }
+
+	public String getImageUrl() {
+		return imageUrl;
+	}
+
+	public void setImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
+	}
 }

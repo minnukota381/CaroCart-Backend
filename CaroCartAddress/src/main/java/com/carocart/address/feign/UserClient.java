@@ -5,9 +5,9 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.carocart.address.DTO.UserResponseDTO;
 
-@FeignClient(name = "CaroCartAuthentication")
+@FeignClient(name = "CaroCartAuthentication", contextId = "addressUserClient")
 public interface UserClient {
-
     @GetMapping("/users/me")
     UserResponseDTO getCurrentUser(@RequestHeader("Authorization") String token);
 }
+
