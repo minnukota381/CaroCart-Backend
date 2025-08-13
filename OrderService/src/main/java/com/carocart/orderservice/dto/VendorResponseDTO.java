@@ -20,6 +20,9 @@ public class VendorResponseDTO {
     private Double latitude;
     private Double longitude;
     private String profileImageUrl;
+    
+    private String upiId;
+    
 	public Long getId() {
 		return id;
 	}
@@ -121,6 +124,12 @@ public class VendorResponseDTO {
 	}
 	public void setProfileImageUrl(String profileImageUrl) {
 		this.profileImageUrl = profileImageUrl;
+	}
+	public String getUpiId() {
+		return upiId;
+	}
+	public void setUpiId(String upiId) {
+		this.upiId = upiId;
 	}
 
     // Getters and setters (same as original)

@@ -33,6 +33,8 @@ class OrderItemApprovalTests {
     @Mock
     private AddressClient addressClient;
     @Mock
+    private OrdersInternalUserClient ordersInternalUserClient;
+    @Mock
     private NotificationClient notificationClient;
     @Mock
     private VendorClient vendorClient;
@@ -47,7 +49,7 @@ class OrderItemApprovalTests {
     void setup() {
         MockitoAnnotations.openMocks(this);
         service = new OrderServiceImpl(orderRepository, cartClient, productClient, userClient,
-                addressClient, notificationClient, vendorClient, deliveryClient, orderItemRepository, jwtUtil);
+                addressClient,ordersInternalUserClient, notificationClient, vendorClient, deliveryClient, orderItemRepository, jwtUtil);
     }
 
     @Test

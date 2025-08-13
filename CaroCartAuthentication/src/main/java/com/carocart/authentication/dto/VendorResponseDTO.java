@@ -31,6 +31,7 @@ public class VendorResponseDTO {
 
     // Approved status
     private Boolean approved; // <--- ADD THIS
+    private String upiId;
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -86,4 +87,10 @@ public class VendorResponseDTO {
 
     public Boolean getApproved() { return approved; }
     public void setApproved(Boolean approved) { this.approved = approved; }
+	public String getUpiId() {
+		return upiId;
+	}
+	public void setUpiId(String upiId) {
+		this.upiId = upiId;
+	}
 }

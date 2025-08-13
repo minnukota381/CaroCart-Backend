@@ -9,6 +9,7 @@ import com.carocart.authentication.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +26,11 @@ public class UserService {
     @Autowired
     private NotificationClient notificationClient;
 
+    
+    @Transactional
+    public void saveAndFlush(User user) {
+        userRepository.saveAndFlush(user);
+    }
     public String signup(UserRegistrationDTO dto) {
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
             return "Email already registered";

@@ -34,6 +34,7 @@ public class SecurityConfig {
                 // Delivery endpoints
                 .requestMatchers("/orders/ready-for-delivery").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN", "ROLE_DELIVERY_BOY")
                 // All other order endpoints require authentication
+                .requestMatchers("/orders/admin/vendor-earnings").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/orders/**").authenticated()
                 .requestMatchers(
                     "/swagger-ui.html",

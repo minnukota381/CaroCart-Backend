@@ -313,6 +313,11 @@ public class OrderController {
         ));
     }
 
-
+    @GetMapping("/admin/vendor-earnings")
+    public ResponseEntity<List<VendorEarningsDTO>> getVendorEarnings(
+            @RequestParam String fromDate,
+            @RequestParam String toDate) {
+        return ResponseEntity.ok(orderService.getVendorEarnings(fromDate, toDate));
+    }
 
 }

@@ -18,6 +18,32 @@ public class OrderItemDTO {
     private String userPhone;
     private String paymentType;
     private String deliveryStatus;
+    private Double vendorLat;
+    private Double vendorLng;
+    private Double userLat;
+    private Double userLng;
+    
+    private String productImageUrl;
+
+    public String getProductImageUrl() { return productImageUrl; }
+    public void setProductImageUrl(String productImageUrl) { this.productImageUrl = productImageUrl; }
+
+    
+    public Double getVendorLat() {
+        return vendorLat;
+    }
+
+    public void setVendorLat(Double vendorLat) {
+        this.vendorLat = vendorLat;
+    }
+
+    public Double getVendorLng() {
+        return vendorLng;
+    }
+
+    public void setVendorLng(Double vendorLng) {
+        this.vendorLng = vendorLng;
+    }
 
     public OrderItemDTO() {}
 
@@ -26,6 +52,8 @@ public class OrderItemDTO {
         this.id = item.getId();
         this.productId = item.getProductId();
         this.productName = item.getProductName();
+        this.productImageUrl = item.getProductImageUrl();
+
         this.quantity = item.getQuantity();
         this.price = item.getPrice();
         this.totalPrice = item.getTotalPrice();
@@ -170,6 +198,22 @@ public class OrderItemDTO {
 
 	public void setDeliveryStatus(String deliveryStatus) {
 		this.deliveryStatus = deliveryStatus;
+	}
+
+	public Double getUserLat() {
+		return userLat;
+	}
+
+	public void setUserLat(Double userLat) {
+		this.userLat = userLat;
+	}
+
+	public Double getUserLng() {
+		return userLng;
+	}
+
+	public void setUserLng(Double userLng) {
+		this.userLng = userLng;
 	}
 
     // --- Getters and Setters (all fields) ---

@@ -1,3 +1,4 @@
+// package and imports unchanged
 package com.carocart.authentication.controller;
 
 import com.carocart.authentication.dto.UserRegistrationDTO;
@@ -19,22 +20,18 @@ import java.util.*;
 @RequestMapping("/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private JwtUtil jwtUtil;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private OtpEmailService otpEmailService;
+    @Autowired private UserService userService;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private UserRepository userRepository;
+    @Autowired private OtpEmailService otpEmailService;
 
     // === USER REGISTRATION ===
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@Valid @RequestBody UserRegistrationDTO dto) {
         String result = userService.signup(dto);
         return "User registered successfully".equals(result)
-            ? ResponseEntity.ok(result)
-            : ResponseEntity.badRequest().body(result);
+                ? ResponseEntity.ok(result)
+                : ResponseEntity.badRequest().body(result);
     }
 
     // === LOGIN ===
@@ -68,43 +65,40 @@ public class UserController {
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             UserDTO dto = new UserDTO(
-                user.getId(),
-                user.getEmail(),
-                user.getRole(),
-                user.getFirstName(),
-                user.getLatitude(),
-                user.getLongitude()
+                    user.getId(),
+                    user.getEmail(),
+                    user.getRole(),
+                    user.getFirstName(),
+                    user.getLatitude(),
+                    user.getLongitude()
             );
             return ResponseEntity.ok(dto);
         }
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // ✅ FIXED missing return
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
     // === GET USER BY ID (for FEIGN) ===
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getCurrentUserById(@PathVariable Long id) {
-        Optional<User> userOptional = userRepository.findById(id);
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-            UserDTO dto = new UserDTO(
-                user.getId(),
-                user.getEmail(),
-                user.getRole(),
-                user.getFirstName(),
-                user.getLatitude(),
-                user.getLongitude()
-            );
-            return ResponseEntity.ok(dto);
-        }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        return userRepository.findById(id)
+                .map(user -> new UserDTO(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getRole(),
+                        user.getFirstName(),
+                        user.getLatitude(),
+                        user.getLongitude()
+                ))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
     // === UPDATE USER PROFILE ===
     @PutMapping("/profile")
     public ResponseEntity<String> updateProfile(
-        @RequestHeader("Authorization") String authorizationHeader,
-        @RequestBody User updatedUser
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody User updatedUser
     ) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Authorization header");
@@ -113,15 +107,15 @@ public class UserController {
         String email = jwtUtil.extractUsername(token);
         boolean success = userService.updateUserProfile(email, updatedUser);
         return success
-            ? ResponseEntity.ok("Profile updated successfully")
-            : ResponseEntity.badRequest().body("Update failed");
+                ? ResponseEntity.ok("Profile updated successfully")
+                : ResponseEntity.badRequest().body("Update failed");
     }
 
     // === UPDATE PROFILE IMAGE ===
     @PutMapping("/profile/image-url")
     public ResponseEntity<String> updateProfileImageUrl(
-        @RequestHeader("Authorization") String authHeader,
-        @RequestBody Map<String, String> body
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> body
     ) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -131,8 +125,8 @@ public class UserController {
         String imageUrl = body.get("imageUrl");
         boolean success = userService.updateProfileImageUrl(email, imageUrl);
         return success
-            ? ResponseEntity.ok("Profile image URL updated successfully")
-            : ResponseEntity.badRequest().body("User not found");
+                ? ResponseEntity.ok("Profile image URL updated successfully")
+                : ResponseEntity.badRequest().body("User not found");
     }
 
     // === GET PROFILE ===
@@ -143,15 +137,16 @@ public class UserController {
         }
         String token = authorizationHeader.substring(7);
         String email = jwtUtil.extractUsername(token);
-        Optional<User> user = userService.findByEmail(email);
-        return user.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return userService.findByEmail(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // === UPDATE LOCATION ===
+    // === UPDATE LOCATION (by user) ===
     @PutMapping("/me/location")
     public ResponseEntity<String> updateUserLocation(
-        @RequestHeader("Authorization") String token,
-        @RequestBody Map<String, Double> location
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, Double> location
     ) {
         String email = jwtUtil.extractUsername(token.substring(7));
         Optional<User> optionalUser = userService.findByEmail(email);
@@ -169,7 +164,7 @@ public class UserController {
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody Map<String, String> request) {
         String email = request.get("email");
-        if (!userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.findByEmail(email).isEmpty()) {
             return ResponseEntity.badRequest().body("Email not registered");
         }
         String otp = otpEmailService.generateOtp();
@@ -196,14 +191,14 @@ public class UserController {
         String newPassword = request.get("newPassword");
         boolean success = userService.updatePassword(email, newPassword);
         return success
-            ? ResponseEntity.ok("Password updated successfully")
-            : ResponseEntity.badRequest().body("Failed to update password");
+                ? ResponseEntity.ok("Password updated successfully")
+                : ResponseEntity.badRequest().body("Failed to update password");
     }
 
     @PostMapping("/change-password")
     public ResponseEntity<String> changePassword(
-        @RequestHeader("Authorization") String authHeader,
-        @RequestBody Map<String, String> passwordMap
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> passwordMap
     ) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
@@ -214,42 +209,68 @@ public class UserController {
         String newPassword = passwordMap.get("newPassword");
         boolean success = userService.changePassword(email, currentPassword, newPassword);
         return success
-            ? ResponseEntity.ok("Password changed successfully")
-            : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Current password is incorrect");
+                ? ResponseEntity.ok("Password changed successfully")
+                : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Current password is incorrect");
     }
 
     // === ADMIN ===
     @GetMapping("/admin/users/count")
     public ResponseEntity<Long> getUserCount() {
-        long count = userRepository.count();
-        return ResponseEntity.ok(count);
+        return ResponseEntity.ok(userRepository.count());
     }
 
     @GetMapping("/admin/users/all")
     public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(userService.getAllUsers());
     }
 
     @PutMapping("/admin/users/{id}")
     public ResponseEntity<String> updateUserByAdmin(@PathVariable Long id, @RequestBody User updatedUser) {
-        Optional<User> userOpt = userRepository.findById(id);
-        if (userOpt.isEmpty()) return ResponseEntity.notFound().build();
-        User user = userOpt.get();
-        user.setFirstName(updatedUser.getFirstName());
-        user.setLastName(updatedUser.getLastName());
-        user.setEmail(updatedUser.getEmail());
-        user.setRole(updatedUser.getRole());
-        userRepository.save(user);
-        return ResponseEntity.ok("User updated successfully");
+        return userRepository.findById(id).map(user -> {
+            user.setFirstName(updatedUser.getFirstName());
+            user.setLastName(updatedUser.getLastName());
+            user.setEmail(updatedUser.getEmail());
+            user.setRole(updatedUser.getRole());
+            userRepository.save(user);
+            return ResponseEntity.ok("User updated successfully");
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/admin/users/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
-        if (!userRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
+        if (!userRepository.existsById(id)) return ResponseEntity.notFound().build();
         userRepository.deleteById(id);
         return ResponseEntity.ok("User deleted successfully");
     }
+
+    // === INTERNAL: UPDATE USER LOCATION (SYSTEM ONLY)
+    // NOTE: Controller is @RequestMapping("/users"), so the final path is:
+    //       PATCH /users/internal/{id}/location
+    @PatchMapping("/internal/{id}/location")
+    public ResponseEntity<String> updateUserLocationInternal(
+        @RequestHeader("Authorization") String authHeader,
+        @PathVariable Long id,
+        @RequestBody Map<String, Double> location
+    ) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+        }
+        String token = authHeader.substring(7);
+        String role = jwtUtil.extractRole(token);
+        if (!"SYSTEM".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        }
+
+        return userRepository.findById(id).map(user -> {
+            Double lat = location.get("latitude");
+            Double lng = location.get("longitude");
+            user.setLatitude(lat);
+            user.setLongitude(lng);
+            userService.saveAndFlush(user); // ✅ ensure immediate DB write
+            System.out.println("✅ Updated user " + id + " -> lat=" + lat + ", lng=" + lng);
+            return ResponseEntity.ok("User location updated");
+        }).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found"));
+    }
+
+
 }

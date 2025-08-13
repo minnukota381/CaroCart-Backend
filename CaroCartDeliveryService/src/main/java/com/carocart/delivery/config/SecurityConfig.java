@@ -31,7 +31,8 @@ public class SecurityConfig {
                     "/deliveryboys/forgot-password",
                     "/deliveryboys/verify-otp",
                     "/deliveryboys/reset-password",
-                    "/api/upload"
+                    "/api/upload",          // keep this
+                    "/api/upload/**"
                 ).permitAll()
 
                 // Admin-only endpoints

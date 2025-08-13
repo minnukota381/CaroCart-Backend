@@ -38,10 +38,22 @@ public class OrderItem {
 
     @Column(name = "vendor_email")
     private String vendorEmail;
+    
+    @Column(name = "product_image_url")
+    private String productImageUrl;
+
 
     // ---------------- Getters & Setters ----------------
 
-    public Long getId() {
+    public String getProductImageUrl() {
+		return productImageUrl;
+	}
+
+	public void setProductImageUrl(String productImageUrl) {
+		this.productImageUrl = productImageUrl;
+	}
+
+	public Long getId() {
         return id;
     }
 

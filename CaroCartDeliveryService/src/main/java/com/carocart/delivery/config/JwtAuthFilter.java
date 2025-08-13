@@ -15,7 +15,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
-
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -28,52 +27,54 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        if (
-            path.contains("/register") ||
-            path.contains("/login") ||
-            path.contains("/forgot-password") ||
-            path.contains("/verify-otp") ||
-            path.contains("/reset-password")
-        ) {
+        // 1) Always allow preflight
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        // 2) Public paths (keep this OR rely entirely on SecurityConfig)
+        if (path.startsWith("/deliveryboys/register")
+                || path.startsWith("/deliveryboys/login")
+                || path.startsWith("/deliveryboys/forgot-password")
+                || path.startsWith("/deliveryboys/verify-otp")
+                || path.startsWith("/deliveryboys/reset-password")
+                || path.startsWith("/api/upload")) { // <-- important for your case
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 3) If no Authorization header, do NOT 401 here. Let SecurityConfig decide (may be permitAll)
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            filterChain.doFilter(request, response);
             return;
         }
 
         String token = authHeader.substring(7);
-
         try {
-            if (jwtUtil.isTokenValid(token)) {
-                Claims claims = jwtUtil.getClaims(token);
-                String role = claims.get("role", String.class);
-                Long userId = jwtUtil.extractUserId(token);
-
-                if (!"DELIVERY_BOY".equals(role) && !"SYSTEM".equals(role) && !"ADMIN".equals(role)) {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    return;
-                }
-
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userId,
-                                null,
-                                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
-                        );
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            } else {
+            if (!jwtUtil.isTokenValid(token)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
+
+            Claims claims = jwtUtil.getClaims(token);
+            String role = claims.get("role", String.class);
+            Long userId = jwtUtil.extractUserId(token);
+
+            // Optional: You can skip role checks here and let SecurityConfig handle it.
+            // If you keep it, normalize to "ROLE_*" granted authority.
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            userId,
+                            null,
+                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                    );
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            filterChain.doFilter(request, response);
         } catch (Exception ex) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
         }
-
-        filterChain.doFilter(request, response);
     }
 }
