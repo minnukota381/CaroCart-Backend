@@ -86,7 +86,11 @@ public class Vendor {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+    @Column(name = "upi_id", length = 50)
+    private String upiId;
 
+    public String getUpiId() { return upiId; }
+    public void setUpiId(String upiId) { this.upiId = upiId; }
     // === Getters and Setters ===
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

@@ -250,8 +250,19 @@ public class VendorService {
         dto.setLatitude(vendor.getLatitude());
         dto.setLongitude(vendor.getLongitude());
         dto.setProfileImageUrl(vendor.getProfileImageUrl());
-        dto.setApproved(vendor.isApproved());  // <--- Add this line
+        dto.setApproved(vendor.isApproved()); 
+        dto.setUpiId(vendor.getUpiId());// <--- Add this line
         return dto;
     }
+    
+    
+    public void updatePassword(String email, String newPassword) {
+        Vendor v = vendorRepository.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
+
+        v.setPassword(passwordEncoder.encode(newPassword));
+        vendorRepository.save(v);
+    }
+
 
 }

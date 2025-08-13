@@ -35,6 +35,8 @@ public class OrderServiceImpl implements OrderService {
     private final VendorClient vendorClient;
     private final DeliveryBoyClient deliveryBoyClient;
     private final OrderItemRepository orderItemRepository;
+    private final OrdersInternalUserClient ordersInternalUserClient;
+
 	@Autowired
     private final JwtUtil jwtUtil;
 
@@ -45,6 +47,7 @@ public class OrderServiceImpl implements OrderService {
     	    ProductClient productClient,
     	    UserClient userClient,
     	    AddressClient addressClient,
+    	    OrdersInternalUserClient ordersInternalUserClient,
     	    NotificationClient notificationClient,
     	    VendorClient vendorClient,
     	    DeliveryBoyClient deliveryBoyClient,  // <--- ADD THIS PARAM
@@ -56,6 +59,7 @@ public class OrderServiceImpl implements OrderService {
     	    this.productClient = productClient;
     	    this.userClient = userClient;
     	    this.addressClient = addressClient;
+    	    this.ordersInternalUserClient = ordersInternalUserClient;
     	    this.notificationClient = notificationClient;
     	    this.vendorClient = vendorClient;
     	    this.deliveryBoyClient = deliveryBoyClient; // <--- CORRECT ASSIGNMENT
@@ -80,17 +84,38 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Cart is empty. Cannot place order.");
         }
 
-        // Step 2: Get shipping address
-        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), token);
-        System.out.println("📦 Shipping address: " + address.getAddress());
+        // Step 2: Try to get shipping address from AddressService
+        AddressDTO address = null;
+        try {
+            address = addressClient.getAddressById(orderRequest.getAddressId(), token);
+            System.out.println("📦 Shipping address: " + address.getAddress());
+        } catch (Exception e) {
+            System.err.println("⚠ Failed to fetch address details: " + e.getMessage());
+        }
 
         // Step 3: Initialize Order
         Order order = new Order();
         order.setUserId(user.getId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
-        order.setShippingAddress(address.getAddress());
-        order.setPaymentStatus("PENDING");
+
+        // ✅ Always store addressId from request
+        order.setAddressId(orderRequest.getAddressId());
+
+        // ✅ If AddressService works, use its address, else use provided shippingAddress
+        if (address != null && address.getAddress() != null) {
+            order.setShippingAddress(address.getAddress());
+        } else {
+            order.setShippingAddress(orderRequest.getShippingAddress());
+        }
+
+     // ✅ Handle payment method
+        if ("COD".equalsIgnoreCase(orderRequest.getPaymentMethod())) {
+            order.setPaymentStatus("COD");
+            order.setPaymentId("COD-" + System.currentTimeMillis());
+        } else {
+            order.setPaymentStatus("PENDING");
+        }
 
         // Step 4: Fetch vendorId from first product in cart
         try {
@@ -109,10 +134,16 @@ public class OrderServiceImpl implements OrderService {
         // Step 5: Build order items
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
-
+         // Decrease stock immediately
+            try {
+                productClient.decreaseStock(product.getId(), item.getQuantity());
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to decrease stock for product: " + product.getName());
+            }
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(product.getId());
             orderItem.setProductName(product.getName());
+            orderItem.setProductImageUrl(product.getImageUrl()); // ✅ store image
             orderItem.setQuantity(item.getQuantity());
             orderItem.setPrice(product.getPrice());
             orderItem.setTotalPrice(product.getPrice() * item.getQuantity());
@@ -133,19 +164,31 @@ public class OrderServiceImpl implements OrderService {
         double totalAmount = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
         order.setOrderItems(orderItems);
         order.setTotalAmount(totalAmount);
-
+        
+        double commissionPct = 20.0;
+        double commissionAmt = totalAmount * (commissionPct / 100.0);
+        order.setPlatformCommissionPct(commissionPct);
+        order.setPlatformCommissionAmount(commissionAmt);
         // Step 7: Save order
         Order savedOrder = orderRepository.save(order);
 
         // Step 8: Clear cart
         cartClient.clearCart(token);
-
-        // Step 9: Send notifications
+     // ✅ Step 9: Send notifications asynchronously (so they don't block)
+        new Thread(() -> {
+            try {
+                sendOrderPlacedEmails(savedOrder, user, orderItems);
+            } catch (Exception e) {
+                System.err.println("⚠ Failed to send order emails: " + e.getMessage());
+            }
+        }).start();
+        // Step 10: Send notifications
         sendOrderPlacedEmails(savedOrder, user, orderItems);
 
-        // Step 10: Return response
+        // Step 11: Return response
         return new OrderResponse(savedOrder);
     }
+
 
     @Override
     @Transactional
@@ -170,14 +213,41 @@ public class OrderServiceImpl implements OrderService {
         order.setShippingAddress(formattedAddress);
         order.setPaymentStatus("PAID");
         order.setTotalAmount(orderRequest.getTotalAmount());
-        order.setVendorId(orderRequest.getVendorId());
+     // ✅ VendorId lookup from first product in items
+        
+        try {
+            Long firstProductId = cartItems.get(0).getProductId();
+            ProductDTO firstProduct = productClient.getProductById(firstProductId);
+            if (firstProduct.getVendorId() != null) {
+                order.setVendorId(firstProduct.getVendorId());
+            } else {
+                throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Error fetching vendor ID from product: " + e.getMessage());
+            throw new RuntimeException("Unable to determine vendor for this order.");
+        }
+
+        // ✅ PaymentId from request (set by PaymentService after Razorpay payment)
+        if (orderRequest.getPaymentId() != null && !orderRequest.getPaymentId().isBlank()) {
+            order.setPaymentId(orderRequest.getPaymentId());
+        }
 
 
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
+         // Decrease stock immediately
+            try {
+                productClient.decreaseStock(product.getId(), item.getQuantity());
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to decrease stock for product: " + product.getName());
+            }
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(item.getProductId());
-            orderItem.setProductName(item.getProductName() != null ? item.getProductName() : "Product");
+//            orderItem.setProductName(item.getProductName() != null ? item.getProductName() : "Product");
+            orderItem.setProductName(product.getName());
+            orderItem.setProductImageUrl(product.getImageUrl()); // ✅ store image
+
             orderItem.setQuantity(item.getQuantity());
             orderItem.setPrice(item.getPrice());
             orderItem.setTotalPrice(item.getPrice() * item.getQuantity());
@@ -193,6 +263,11 @@ public class OrderServiceImpl implements OrderService {
         }).collect(Collectors.toList());
 
         order.setOrderItems(orderItems);
+     // Apply platform commission (20%)
+        double commissionPct = 20.0;
+        double commissionAmt = orderRequest.getTotalAmount() * (commissionPct / 100.0);
+        order.setPlatformCommissionPct(commissionPct);
+        order.setPlatformCommissionAmount(commissionAmt);
 
         Order savedOrder = orderRepository.save(order);
 
@@ -260,9 +335,37 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<OrderResponse> getOrdersForUser(String token) {
         UserDTO user = userClient.getCurrentUser(token);
-        return orderRepository.findByUserId(user.getId())
-                .stream().map(OrderResponse::new).collect(Collectors.toList());
+        List<OrderResponse> responses = orderRepository.findByUserId(user.getId())
+                .stream()
+                .map(OrderResponse::new)
+                .collect(Collectors.toList());
+
+        // 🔹 Fill missing product name/image
+        responses.forEach(orderResp -> {
+            if (orderResp.getItems() != null) {
+                orderResp.getItems().forEach(item -> {
+                    if (item.getProductName() == null 
+                            || "Product".equals(item.getProductName()) 
+                            || item.getProductImageUrl() == null) {
+                        try {
+                            ProductDTO product = productClient.getProductById(item.getProductId());
+                            if (item.getProductName() == null || "Product".equals(item.getProductName())) {
+                                item.setProductName(product.getName());
+                            }
+                            if (item.getProductImageUrl() == null) {
+                                item.setProductImageUrl(product.getImageUrl());
+                            }
+                        } catch (Exception e) {
+                            System.err.println("⚠ Could not fetch product for ID " + item.getProductId());
+                        }
+                    }
+                });
+            }
+        });
+
+        return responses;
     }
+
 
     @Override
     public OrderResponse getOrderById(String token, Long orderId) {
@@ -494,37 +597,74 @@ public class OrderServiceImpl implements OrderService {
                 .collect(Collectors.toList());
     }
     
-
     @Override
     public List<OrderItemDTO> getAvailableOrderItemsForDelivery() {
-        List<OrderItem> items = orderItemRepository.findByApprovalStatusAndDeliveryBoyIdIsNull(ApprovalStatus.APPROVED);
+        List<OrderItem> items = orderItemRepository
+                .findByApprovalStatusAndDeliveryBoyIdIsNull(ApprovalStatus.APPROVED);
+
         return items.stream().map(item -> {
             OrderItemDTO dto = new OrderItemDTO(item);
 
-            // Add delivery fields
             Order order = item.getOrder();
             if (order != null) {
                 dto.setDeliveryAddress(order.getShippingAddress());
                 dto.setPaymentType(order.getPaymentStatus());
                 dto.setDeliveryStatus(item.getDeliveryStatus());
 
-                // User info
+                // ✅ Get user details
                 try {
                     UserDTO user = userClient.getCurrentUserById(systemJwtToken, order.getUserId());
-                    dto.setUserName(
-                        (user.getFirstName() != null ? user.getFirstName() : "")
-                            + " " +
-                        (user.getLastName() != null ? user.getLastName() : "")
-                    );
+                    dto.setUserName(user.getFirstName() + " " + user.getLastName());
                     dto.setUserPhone(user.getMobileNumber());
                 } catch (Exception e) {
+                    System.err.println("⚠️ Could not fetch user details for order " + order.getId() + ": " + e.getMessage());
                     dto.setUserName("N/A");
                     dto.setUserPhone("N/A");
                 }
+
+                // ✅ Get user's lat/lng from AddressService
+                try {
+                    if (order.getAddressId() != null) {
+                        AddressDTO address = addressClient.getAddressById(order.getAddressId(), systemJwtToken);
+                        if (address != null) {
+                            dto.setUserLat(address.getLatitude());
+                            dto.setUserLng(address.getLongitude());
+                        } else {
+                            System.err.println("⚠️ Address not found for ID " + order.getAddressId());
+                        }
+                    } else {
+                        System.err.println("⚠️ Order " + order.getId() + " has no addressId set");
+                    }
+                } catch (Exception e) {
+                    System.err.println("⚠️ Could not fetch user location from AddressService for order " + order.getId() + ": " + e.getMessage());
+                }
+            } else {
+                System.err.println("⚠️ OrderItem " + item.getId() + " has no associated Order");
             }
+
+            // ✅ Vendor location
+            try {
+                ProductDTO product = productClient.getProductById(item.getProductId());
+                if (product != null && product.getVendorId() != null) {
+                    VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, product.getVendorId());
+                    if (vendor != null) {
+                        dto.setVendorLat(vendor.getLatitude());
+                        dto.setVendorLng(vendor.getLongitude());
+                    } else {
+                        System.err.println("⚠️ Vendor not found for ID " + product.getVendorId());
+                    }
+                } else {
+                    System.err.println("⚠️ Product vendorId missing for product " + item.getProductId());
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ Could not fetch vendor location for item " + item.getId() + ": " + e.getMessage());
+            }
+
             return dto;
         }).collect(Collectors.toList());
     }
+
+
     @Override
     @Transactional
     public void assignOrderToDeliveryBoy(String token, Long orderId) {
@@ -693,6 +833,36 @@ public class OrderServiceImpl implements OrderService {
     public String getInternalToken() {
         return this.systemJwtToken;
     }
+    @Override
+    public List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate) {
+        LocalDateTime from = LocalDateTime.parse(fromDate + "T00:00:00");
+        LocalDateTime to = LocalDateTime.parse(toDate + "T23:59:59");
 
+        // Fetch delivered orders in range
+        List<Order> orders = orderRepository.findByStatusAndOrderDateBetween("DELIVERED", from, to);
+
+        // Group by vendor
+        Map<Long, List<Order>> grouped = orders.stream()
+                .collect(Collectors.groupingBy(Order::getVendorId));
+
+        return grouped.entrySet().stream().map(entry -> {
+            Long vendorId = entry.getKey();
+            List<Order> vendorOrders = entry.getValue();
+
+            double totalSales = vendorOrders.stream().mapToDouble(Order::getTotalAmount).sum();
+            double commission = vendorOrders.stream().mapToDouble(Order::getPlatformCommissionAmount).sum();
+
+            // Fetch vendor info via internal token
+            VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, vendorId);
+
+            return new VendorEarningsDTO(
+                    vendorId,
+                    vendor.getCompanyName(),
+                    vendor.getUpiId(),
+                    totalSales,
+                    commission
+            );
+        }).collect(Collectors.toList());
+    }
 
 }

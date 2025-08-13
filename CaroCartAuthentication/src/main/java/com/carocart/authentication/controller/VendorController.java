@@ -4,6 +4,7 @@ import com.carocart.authentication.dto.VendorRegistrationDTO;
 import com.carocart.authentication.dto.VendorResponseDTO;
 import com.carocart.authentication.entity.Vendor;
 import com.carocart.authentication.entity.VendorType;
+import com.carocart.authentication.service.OtpEmailService;
 import com.carocart.authentication.service.VendorService;
 import com.carocart.authentication.repository.VendorRepository;
 import com.carocart.authentication.util.JwtUtil;
@@ -27,6 +28,8 @@ public class VendorController {
     private VendorRepository vendorRepository;
     @Autowired
     private JwtUtil jwtUtil;
+       @Autowired
+       private OtpEmailService otpEmailService;
 
     // --- SIGNUP WITH OTP (DTO + Validation) ---
     @PostMapping("/signup/request-otp")
@@ -210,6 +213,50 @@ public class VendorController {
         }
         return ResponseEntity.ok(VendorService.toResponseDTO(vendor));
     }
+    
+
+    // --- VENDOR PASSWORD FLOW ---
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> vendorForgotPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        Vendor vendor = vendorService.getVendorByEmail(email);
+        if (vendor == null) {
+            return ResponseEntity.badRequest().body("Email not registered");
+        }
+        String otp = otpEmailService.generateOtp();
+        otpEmailService.storeOtp(email, otp);
+        otpEmailService.sendOtpEmail(email, otp); // implement template if needed
+        return ResponseEntity.ok("OTP sent to email");
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<String> vendorVerifyOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String otp = request.get("otp");
+        boolean isValid = otpEmailService.validateOtp(email, otp);
+        if (isValid) {
+            otpEmailService.removeOtp(email);
+            return ResponseEntity.ok("OTP verified");
+        }
+        return ResponseEntity.badRequest().body("Invalid OTP");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> vendorResetPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String newPassword = request.get("newPassword");
+        Vendor vendor = vendorService.getVendorByEmail(email);
+        if (vendor == null) {
+            return ResponseEntity.badRequest().body("Email not registered");
+        }
+        try {
+            vendorService.updatePassword(email, newPassword);
+            return ResponseEntity.ok("Password updated successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to update password");
+        }
+    }
+
     
 }
 

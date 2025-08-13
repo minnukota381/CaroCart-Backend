@@ -33,6 +33,35 @@ public class Order {
     
     @Column(name = "vendor_id")
     private Long vendorId;
+    @Column(name = "address_id")
+    private Long addressId;
+    
+    @Column(name = "platform_commission_pct")
+    private Double platformCommissionPct; // e.g., 20.0 for 20%
+
+    @Column(name = "platform_commission_amount")
+    private Double platformCommissionAmount; // actual amount deducted as commission
+    
+    @Column(name = "payment_method")
+    private String paymentMethod; // e.g., "COD", "RAZORPAY"
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+
+    public Double getPlatformCommissionPct() { return platformCommissionPct; }
+    public void setPlatformCommissionPct(Double platformCommissionPct) { this.platformCommissionPct = platformCommissionPct; }
+
+    public Double getPlatformCommissionAmount() { return platformCommissionAmount; }
+    public void setPlatformCommissionAmount(Double platformCommissionAmount) { this.platformCommissionAmount = platformCommissionAmount; }
+
+    public Long getAddressId() { return addressId; }
+    public void setAddressId(Long addressId) { this.addressId = addressId; }
 
     public Long getDeliveryBoyId() {
 		return deliveryBoyId;
