@@ -88,6 +88,18 @@ public class Vendor {
     }
     @Column(name = "upi_id", length = 50)
     private String upiId;
+    @Column(name = "opening_time", nullable = false)
+    private String openingTime;
+
+    @Column(name = "closing_time", nullable = false)
+    private String closingTime;
+
+    public String getOpeningTime() { return openingTime; }
+    public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
+
+    public String getClosingTime() { return closingTime; }
+    public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
+
 
     public String getUpiId() { return upiId; }
     public void setUpiId(String upiId) { this.upiId = upiId; }

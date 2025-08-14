@@ -57,6 +57,17 @@ public class VendorRegistrationDTO {
 
     @NotNull(message = "Longitude is required")
     private Double longitude;
+    @NotBlank(message = "Opening time is required")
+    private String openingTime;
+
+    @NotBlank(message = "Closing time is required")
+    private String closingTime;
+
+    public String getOpeningTime() { return openingTime; }
+    public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
+
+    public String getClosingTime() { return closingTime; }
+    public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
 
     // Getters and Setters
     public String getFirstName() { return firstName; }

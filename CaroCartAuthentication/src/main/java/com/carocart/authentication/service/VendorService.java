@@ -160,12 +160,16 @@ public class VendorService {
         existing.setPinCode(updated.getPinCode());
         existing.setLatitude(updated.getLatitude());
         existing.setLongitude(updated.getLongitude());
+
+        // NEW
+        existing.setOpeningTime(updated.getOpeningTime());
+        existing.setClosingTime(updated.getClosingTime());
+
         return vendorRepository.save(existing);
     }
 
     // Upload profile image (now just URL)
     public void uploadProfileImage(String email, MultipartFile file) throws IOException {
-        // This can be refactored or removed if you only store URLs!
         throw new UnsupportedOperationException("Only profile image URL is supported. Upload to Firebase/S3 and save the URL.");
     }
 
@@ -188,10 +192,6 @@ public class VendorService {
     }
 
     // ====== NEW: FIND BY TYPE AND PROXIMITY ======
-    /**
-     * Find vendors of a given type within a radius (in km) of a point.
-     * For MVP: filters in Java. For production: use spatial query in repository.
-     */
     public List<Vendor> findByTypeAndProximity(VendorType type, double lat, double lng, double radiusKm) {
         List<Vendor> all = vendorRepository.findByVendorTypeAndIsApproved(type, true);
         return all.stream()
@@ -199,7 +199,6 @@ public class VendorService {
             .collect(Collectors.toList());
     }
 
-    // Haversine formula for distance between 2 geo points (km)
     public static double haversineDistanceKm(double lat1, double lng1, double lat2, double lng2) {
         final int EARTH_RADIUS = 6371; // km
         double dLat = Math.toRadians(lat2 - lat1);
@@ -229,8 +228,13 @@ public class VendorService {
         vendor.setLatitude(dto.getLatitude());
         vendor.setLongitude(dto.getLongitude());
         vendor.setRole("VENDOR");
+
+        // NEW
+        vendor.setOpeningTime(dto.getOpeningTime());
+        vendor.setClosingTime(dto.getClosingTime());
         return vendor;
     }
+
     public static VendorResponseDTO toResponseDTO(Vendor vendor) {
         VendorResponseDTO dto = new VendorResponseDTO();
         dto.setId(vendor.getId());
@@ -250,12 +254,15 @@ public class VendorService {
         dto.setLatitude(vendor.getLatitude());
         dto.setLongitude(vendor.getLongitude());
         dto.setProfileImageUrl(vendor.getProfileImageUrl());
-        dto.setApproved(vendor.isApproved()); 
-        dto.setUpiId(vendor.getUpiId());// <--- Add this line
+        dto.setApproved(vendor.isApproved());
+        dto.setUpiId(vendor.getUpiId());
+
+        // NEW
+        dto.setOpeningTime(vendor.getOpeningTime());
+        dto.setClosingTime(vendor.getClosingTime());
         return dto;
     }
-    
-    
+
     public void updatePassword(String email, String newPassword) {
         Vendor v = vendorRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
@@ -263,6 +270,4 @@ public class VendorService {
         v.setPassword(passwordEncoder.encode(newPassword));
         vendorRepository.save(v);
     }
-
-
 }
