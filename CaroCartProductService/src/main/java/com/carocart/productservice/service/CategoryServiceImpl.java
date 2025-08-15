@@ -1,9 +1,11 @@
 package com.carocart.productservice.service;
 
 import com.carocart.productservice.dto.AdminResponseDTO;
+import com.carocart.productservice.dto.VendorResponseDTO;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.feign.AdminClient;
+import com.carocart.productservice.feign.VendorClient;
 import com.carocart.productservice.repository.CategoryRepository;
 import com.carocart.productservice.repository.ProductRepository;
 import com.carocart.productservice.repository.SubCategoryRepository;
@@ -21,12 +23,15 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private SubCategoryRepository subCategoryRepo;
-    
+
     @Autowired
     private ProductRepository productRepo;
 
     @Autowired
     private AdminClient adminClient;
+
+    @Autowired
+    private VendorClient vendorClient;
 
     private void validateAdmin(String token) {
         AdminResponseDTO admin = adminClient.getCurrentAdmin(token);
@@ -35,48 +40,52 @@ public class CategoryServiceImpl implements CategoryService {
         }
     }
 
+    private String toSlug(String input) {
+        return input.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("-{2,}", "-")
+                .replaceAll("^-|-$", "");
+    }
+
+    private String generateSlug(String name, boolean appendUUID) {
+        String baseSlug = toSlug(name);
+        return appendUUID
+                ? baseSlug + "-" + UUID.randomUUID().toString().substring(0, 8)
+                : baseSlug;
+    }
+
     @Override
     public Category addCategory(Category category, String token) {
         validateAdmin(token);
 
-        // Prevent duplicate category name (case-insensitive)
         if (categoryRepo.findByNameIgnoreCase(category.getName()).isPresent()) {
             throw new IllegalArgumentException("Category name already exists");
         }
 
-        // ✅ Add slug generation
-        String slug = toSlug(category.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8);
-        category.setSlug(slug);
+        if (category.getSlug() == null || category.getSlug().isEmpty()) {
+            category.setSlug(generateSlug(category.getName(), false));
+        }
 
         return categoryRepo.save(category);
     }
-
 
     @Override
     public SubCategory addSubCategory(SubCategory subCategory, String token) {
         validateAdmin(token);
 
-        // Prevent duplicate subcategory in the same category
-        List<SubCategory> existingSubcategories = subCategoryRepo.findByCategoryId(subCategory.getCategory().getId());
-        boolean duplicate = existingSubcategories.stream()
-            .anyMatch(sc -> sc.getName().equalsIgnoreCase(subCategory.getName()));
+        boolean duplicate = subCategoryRepo.findByCategoryId(subCategory.getCategory().getId())
+                .stream()
+                .anyMatch(sc -> sc.getName().equalsIgnoreCase(subCategory.getName()));
         if (duplicate) {
             throw new IllegalArgumentException("Subcategory name already exists in this category");
         }
 
-        // ✅ Add slug generation
-        String slug = toSlug(subCategory.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8);
-        subCategory.setSlug(slug);
+        if (subCategory.getSlug() == null || subCategory.getSlug().isEmpty()) {
+            subCategory.setSlug(generateSlug(subCategory.getName(), false));
+        }
 
         return subCategoryRepo.save(subCategory);
     }
-    
-    @Override
-    public SubCategory getSubCategoryById(Long id) {
-        return subCategoryRepo.findById(id).orElse(null);
-    }
-
-
 
     @Override
     public List<Category> getAllCategories() {
@@ -86,6 +95,11 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public List<SubCategory> getSubCategoriesByCategoryId(Long categoryId) {
         return subCategoryRepo.findByCategoryId(categoryId);
+    }
+
+    @Override
+    public SubCategory getSubCategoryById(Long id) {
+        return subCategoryRepo.findById(id).orElse(null);
     }
 
     @Override
@@ -110,22 +124,16 @@ public class CategoryServiceImpl implements CategoryService {
         }
         subCategoryRepo.deleteById(subcategoryId);
     }
-    
+
+    @Override
     public Category saveCategory(Category category) {
         return categoryRepo.save(category);
     }
-    
+
     @Override
     public Category saveCategory(Category category, String token) {
         validateAdmin(token);
         return categoryRepo.save(category);
-    }
-
-    private String toSlug(String input) {
-        return input.toLowerCase()
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("-{2,}", "-")
-                .replaceAll("^-|-$", "");
     }
 
     @Override
@@ -141,32 +149,72 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public void generateMissingSlugsForCategories() {
         List<Category> all = categoryRepo.findAll();
-        int updated = 0;
+        boolean updated = false;
         for (Category cat : all) {
             if (cat.getSlug() == null || cat.getSlug().isEmpty()) {
-                cat.setSlug(toSlug(cat.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8));
-                updated++;
+                cat.setSlug(generateSlug(cat.getName(), false));
+                updated = true;
             }
         }
-        if (updated > 0) categoryRepo.saveAll(all);
+        if (updated) categoryRepo.saveAll(all);
     }
 
     @Override
     public void generateMissingSlugsForSubCategories() {
         List<SubCategory> all = subCategoryRepo.findAll();
-        int updated = 0;
+        boolean updated = false;
         for (SubCategory sub : all) {
             if (sub.getSlug() == null || sub.getSlug().isEmpty()) {
-                sub.setSlug(toSlug(sub.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8));
-                updated++;
+                sub.setSlug(generateSlug(sub.getName(), false));
+                updated = true;
             }
         }
-        if (updated > 0) subCategoryRepo.saveAll(all);
-    }
-    
-    @Override
-    public List<Category> getCategoriesByVendorId(Long vendorId) {
-        return productRepo.findDistinctCategoriesByVendorId(vendorId);
+        if (updated) subCategoryRepo.saveAll(all);
     }
 
+    @Override
+    public List<Category> getCategoriesByVendorId(Long vendorId) {
+        return categoryRepo.findByVendorId(vendorId);
+    }
+
+    @Override
+    public List<SubCategory> getSubCategoriesByVendorIds(List<Long> vendorIds) {
+        return subCategoryRepo.findByVendorIds(vendorIds);
+    }
+
+    @Override
+    public List<Long> getVendorIdsBySubCategory(Long subCategoryId) {
+        return productRepo.findVendorIdsBySubCategoryId(subCategoryId);
+    }
+
+    @Override
+    public List<VendorResponseDTO> getNearbyVendorsBySubCategory(Long subCategoryId, double lat, double lng, double radiusKm) {
+        List<Long> vendorIds = getVendorIdsBySubCategory(subCategoryId);
+        if (vendorIds.isEmpty()) return List.of();
+
+        List<VendorResponseDTO> vendors = vendorClient.getVendorsByIds(vendorIds);
+
+        return vendors.stream()
+                .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
+                .filter(v -> haversineDistanceKm(lat, lng, v.getLatitude(), v.getLongitude()) <= radiusKm)
+                .peek(v -> {
+                    double dist = haversineDistanceKm(lat, lng, v.getLatitude(), v.getLongitude());
+                    v.setEtaMinutes(calculateETAForPublic(dist));
+                })
+                .toList();
+    }
+
+    private double haversineDistanceKm(double lat1, double lon1, double lat2, double lon2) {
+        double R = 6371;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    private int calculateETAForPublic(double distanceKm) {
+        return (int) Math.ceil((distanceKm / 30) * 60);
+    }
 }

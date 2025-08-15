@@ -36,6 +36,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     @Query("SELECT DISTINCT p.subCategory.category FROM Product p WHERE p.vendorId = :vendorId")
     List<Category> findDistinctCategoriesByVendorId(@Param("vendorId") Long vendorId);
 
-    
+    @Query("SELECT DISTINCT p.vendorId FROM Product p WHERE p.subCategory.id = :subCategoryId")
+    List<Long> findVendorIdsBySubCategoryId(@Param("subCategoryId") Long subCategoryId);
+
     
 }

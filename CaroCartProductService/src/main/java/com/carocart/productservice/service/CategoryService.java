@@ -1,5 +1,6 @@
 package com.carocart.productservice.service;
 
+import com.carocart.productservice.dto.VendorResponseDTO;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
 
@@ -24,6 +25,10 @@ public interface CategoryService {
     void generateMissingSlugsForSubCategories();
 
     List<Category> getCategoriesByVendorId(Long vendorId);
+    List<SubCategory> getSubCategoriesByVendorIds(List<Long> vendorIds);
+
+    List<VendorResponseDTO> getNearbyVendorsBySubCategory(Long subCategoryId, double lat, double lng, double radiusKm);
+    List<Long> getVendorIdsBySubCategory(Long subCategoryId);
 
 
 }

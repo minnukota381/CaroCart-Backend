@@ -64,7 +64,9 @@ public class SecurityConfig {
                     "/vendors/forgot-password",   // <-- add
                     "/vendors/verify-otp",        // <-- add
                     "/vendors/reset-password" ,
-                    "/vendors/{id}"
+                    "/vendors/{id}",
+                    "/vendors/with-eta",
+                    "vendors//by-ids"
                 ).permitAll()
 
                 // --- ADMIN ONLY ---
