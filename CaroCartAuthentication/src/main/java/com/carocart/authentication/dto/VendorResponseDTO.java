@@ -38,6 +38,16 @@ public class VendorResponseDTO {
     // Use "HH:mm" as plain strings to match entity and avoid conversions
     private String openingTime;
     private String closingTime;
+    
+    private Integer etaMinutes;
+
+    public Integer getEtaMinutes() {
+        return etaMinutes;
+    }
+
+    public void setEtaMinutes(Integer etaMinutes) {
+        this.etaMinutes = etaMinutes;
+    }
 
     public String getOpeningTime() { return openingTime; }
     public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }

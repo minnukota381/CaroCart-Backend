@@ -191,28 +191,30 @@ public class VendorController {
 
     // === SCALABLE: VENDORS NEARBY BY TYPE AND PROXIMITY ===
     // GET /vendors/nearby?type=FOOD&lat=..&lng=..&radius=10
-    @GetMapping("/nearby")
-    public ResponseEntity<List<VendorResponseDTO>> getNearbyVendors(
-            @RequestParam VendorType type,
-            @RequestParam double lat,
-            @RequestParam double lng,
-            @RequestParam(defaultValue = "10") double radiusKm
-    ) {
-        List<Vendor> vendors = vendorService.findByTypeAndProximity(type, lat, lng, radiusKm);
-        List<VendorResponseDTO> dtos = vendors.stream()
-                .map(VendorService::toResponseDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(dtos);
-    }
- // --- GET VENDOR BY EMAIL (for Feign) ---
-    @GetMapping("/email/{email}")
-    public ResponseEntity<VendorResponseDTO> getVendorByEmail(@PathVariable String email) {
-        Vendor vendor = vendorService.getVendorByEmail(email);
-        if (vendor == null || !vendor.isApproved()) {
-            return ResponseEntity.status(404).body(null);
-        }
-        return ResponseEntity.ok(VendorService.toResponseDTO(vendor));
-    }
+ // === SCALABLE: VENDORS NEARBY BY TYPE AND PROXIMITY ===
+ // GET /vendors/nearby?type=FOOD&lat=..&lng=..&radius=10
+ @GetMapping("/nearby")
+ public ResponseEntity<List<VendorResponseDTO>> getNearbyVendors(
+         @RequestParam VendorType type,
+         @RequestParam double lat,
+         @RequestParam double lng,
+         @RequestParam(defaultValue = "10") double radiusKm
+ ) {
+     List<Vendor> vendors = vendorService.findByTypeAndProximity(type, lat, lng, radiusKm);
+
+     List<VendorResponseDTO> dtos = vendors.stream()
+             .map(v -> {
+                 VendorResponseDTO dto = VendorService.toResponseDTO(v);
+                 double distance = VendorService.haversineDistanceKm(lat, lng, v.getLatitude(), v.getLongitude());
+                 int eta = vendorService.calculateETAForPublic(distance);
+                 dto.setEtaMinutes(eta); // ✅ Include ETA in the response
+                 return dto;
+             })
+             .collect(Collectors.toList());
+
+     return ResponseEntity.ok(dtos);
+ }
+
     
 
     // --- VENDOR PASSWORD FLOW ---
@@ -256,7 +258,24 @@ public class VendorController {
             return ResponseEntity.badRequest().body("Failed to update password");
         }
     }
+    
+ // --- GET MULTIPLE VENDORS BY IDS (for Feign / other services) ---
+    @PostMapping("/by-ids")
+    public ResponseEntity<List<VendorResponseDTO>> getVendorsByIds(@RequestBody List<Long> vendorIds) {
+        if (vendorIds == null || vendorIds.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
 
+        List<Vendor> vendors = vendorService.getVendorsByIds(vendorIds);
+        List<VendorResponseDTO> dtos = vendors.stream()
+                .filter(Vendor::isApproved) // only approved vendors
+                .map(VendorService::toResponseDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(dtos);
+    }
+
+    
     
 }
 

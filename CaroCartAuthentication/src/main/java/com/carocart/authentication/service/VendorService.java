@@ -270,4 +270,16 @@ public class VendorService {
         v.setPassword(passwordEncoder.encode(newPassword));
         vendorRepository.save(v);
     }
+    
+    
+    public int calculateETAForPublic(double distanceKm) {
+        double avgSpeedKmH = 30.0; // Adjust for real delivery speed
+        return (int) Math.ceil((distanceKm / avgSpeedKmH) * 60);
+    }
+    
+    public List<Vendor> getVendorsByIds(List<Long> ids) {
+        return vendorRepository.findAllById(ids);
+    }
+
+
 }

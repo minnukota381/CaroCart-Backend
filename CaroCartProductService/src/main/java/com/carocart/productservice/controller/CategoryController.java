@@ -4,6 +4,7 @@ import com.carocart.productservice.dto.CategoryRequestDTO;
 import com.carocart.productservice.dto.CategoryResponseDTO;
 import com.carocart.productservice.dto.SubCategoryDTO;
 import com.carocart.productservice.dto.SubCategoryResponseDTO;
+import com.carocart.productservice.dto.VendorResponseDTO;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.repository.SubCategoryRepository;
@@ -22,6 +23,9 @@ public class CategoryController {
 
     @Autowired
     private CategoryService categoryService;
+    
+    @Autowired
+    private SubCategoryRepository subCategoryRepository;
 
     // Add Category (Admin, with imageUrl)
     @PostMapping("/admin/add")
@@ -197,20 +201,39 @@ public class CategoryController {
         return ResponseEntity.ok(dtos);
     }// At the bottom of your CategoryController
 
-@Autowired
-private SubCategoryRepository subCategoryRepository;
-
-@GetMapping("/subcategories/all")
-public ResponseEntity<List<SubCategoryResponseDTO>> getAllSubCategories() {
-    List<SubCategory> subCategories = subCategoryRepository.findAll();
-    List<SubCategoryResponseDTO> dtos = subCategories.stream()
-        .map(this::toSubCategoryResponseDTO)
-        .collect(Collectors.toList());
-    return ResponseEntity.ok(dtos);
-}
-
-    
 
 
+	@GetMapping("/subcategories/all")
+	public ResponseEntity<List<SubCategoryResponseDTO>> getAllSubCategories() {
+	    List<SubCategory> subCategories = subCategoryRepository.findAll();
+	    List<SubCategoryResponseDTO> dtos = subCategories.stream()
+	        .map(this::toSubCategoryResponseDTO)
+	        .collect(Collectors.toList());
+	    return ResponseEntity.ok(dtos);
+	}
+	
+	    
+	@GetMapping("/vendor-subcategories")
+	public ResponseEntity<List<SubCategoryResponseDTO>> getSubCategoriesByVendorIds(
+	        @RequestParam List<Long> vendorIds) {
+	    List<SubCategory> subCats = categoryService.getSubCategoriesByVendorIds(vendorIds);
+	    List<SubCategoryResponseDTO> dtos = subCats.stream()
+	            .map(this::toSubCategoryResponseDTO)
+	            .toList();
+	    return ResponseEntity.ok(dtos);
+	}
+	
+	@GetMapping("/subcategory/{subCategoryId}/vendors/nearby")
+	public ResponseEntity<List<VendorResponseDTO>> getNearbyVendorsBySubCategory(
+	        @PathVariable Long subCategoryId,
+	        @RequestParam double lat,
+	        @RequestParam double lng,
+	        @RequestParam(defaultValue = "10") double radiusKm) {
+
+	    List<VendorResponseDTO> vendors =
+	            categoryService.getNearbyVendorsBySubCategory(subCategoryId, lat, lng, radiusKm);
+
+	    return ResponseEntity.ok(vendors);
+	}
 
 }

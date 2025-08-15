@@ -24,4 +24,10 @@ public interface VendorClient {
         @RequestParam("lng") double lng,
         @RequestParam("radiusKm") double radiusKm
     );
+    
+    @PostMapping("/vendors/by-ids")
+    List<VendorResponseDTO> getVendorsByIds(@RequestBody List<Long> vendorIds);
+
+    
+    
 }

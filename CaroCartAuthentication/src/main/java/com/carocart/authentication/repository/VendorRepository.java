@@ -40,4 +40,7 @@ public interface VendorRepository extends JpaRepository<Vendor, Long> {
         @Param("radius") double radiusKm
     );
     */
+    
+    List<Vendor> findByIsApprovedTrue();
+
 }
