@@ -477,31 +477,60 @@ public class OrderServiceImpl implements OrderService {
         orderItemRepository.save(item);
     }
 
-//    @Override
-//    @Transactional
-//    public void rejectItemAsAdmin(Long itemId) {
-//        OrderItem item = orderItemRepository.findById(itemId)
-//                .orElseThrow(() -> new RuntimeException("Item not found"));
-//        if (!"ADMIN".equals(item.getApprovalRequiredBy())) {
-//            throw new RuntimeException("Not an admin item");
-//        }
-//        item.setApprovalStatus(ApprovalStatus.REJECTED);
-//        
-//        orderItemRepository.save(item);
-//    }
-//    @Override
-//    @Transactional
-//    public void approveOrderByAdmin(Long orderId) {
-//        Order order = orderRepository.findById(orderId)
-//            .orElseThrow(() -> new RuntimeException("Order not found"));
-//        if ("APPROVED".equalsIgnoreCase(order.getStatus())) {
-//            throw new RuntimeException("Order already approved.");
-//        }
-//        order.setStatus("APPROVED");
-//        order.setUpdatedAt(LocalDateTime.now());
-//        orderRepository.save(order);
-//    }
-    
+    @Override
+    public List<OrderItemDTO> getPendingItemsForAdmin() {
+        // Admin can see all pending items
+        return orderItemRepository.findByApprovalStatus(ApprovalStatus.PENDING)
+                .stream()
+                .map(OrderItemDTO::new)
+                .collect(Collectors.toList());
+    }
+    @Override
+    @Transactional
+    public void approveOrderByAdmin(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Approve all pending items under this order
+        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+        boolean changed = false;
+        for (OrderItem it : items) {
+            if (it.getApprovalStatus() != ApprovalStatus.APPROVED) {
+                it.setApprovalStatus(ApprovalStatus.APPROVED);
+                changed = true;
+            }
+        }
+        if (changed) {
+            orderItemRepository.saveAll(items);
+            order.setUpdatedAt(LocalDateTime.now());
+            orderRepository.save(order);
+        }
+        // Optional: send notifications here if you want
+    }
+
+    @Override
+    @Transactional
+    public void rejectOrderByAdmin(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Reject all non-rejected items under this order
+        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+        boolean changed = false;
+        for (OrderItem it : items) {
+            if (it.getApprovalStatus() != ApprovalStatus.REJECTED) {
+                it.setApprovalStatus(ApprovalStatus.REJECTED);
+                changed = true;
+            }
+        }
+        if (changed) {
+            orderItemRepository.saveAll(items);
+            order.setUpdatedAt(LocalDateTime.now());
+            orderRepository.save(order);
+        }
+        // Note: You already have a separate "cancel by admin" if you want to also cancel the order.
+    }
+
     @Override
     public List<OrderItemDTO> getAllItemsForVendor(String token) {
         VendorResponseDTO vendor = vendorClient.getCurrentVendor(token);

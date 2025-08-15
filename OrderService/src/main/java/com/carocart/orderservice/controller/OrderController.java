@@ -12,7 +12,7 @@ import com.carocart.orderservice.repository.OrderItemRepository;
 import com.carocart.orderservice.repository.OrderRepository;
 import com.carocart.orderservice.service.OrderService;
 import com.carocart.orderservice.util.JwtUtil;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -372,5 +372,31 @@ public class OrderController {
         ));
     }
 
+ // --- Admin actions on an ORDER ---
+    @PutMapping("/admin/orders/{orderId}/approve")
+    public ResponseEntity<String> approveOrderByAdmin(@PathVariable Long orderId) {
+        orderService.approveOrderByAdmin(orderId);
+        return ResponseEntity.ok("Order approved by admin");
+    }
 
+    @PutMapping("/admin/orders/{orderId}/reject")
+    public ResponseEntity<String> rejectOrderByAdmin(@PathVariable Long orderId) {
+        orderService.rejectOrderByAdmin(orderId);
+        return ResponseEntity.ok("Order rejected by admin");
+    }
+
+    // You also need these two since your frontend calls them:
+    @PutMapping("/admin/orders/{orderId}/cancel")
+    public ResponseEntity<String> cancelOrderByAdminEndpoint(@PathVariable Long orderId) {
+        orderService.cancelOrderByAdmin(orderId);
+        return ResponseEntity.ok("Order cancelled by admin");
+    }
+
+    @PutMapping("/admin/orders/{orderId}/ship")
+    public ResponseEntity<String> markOrderAsShippedEndpoint(@PathVariable Long orderId) {
+        orderService.markOrderAsShipped(orderId);
+        return ResponseEntity.ok("Order marked as shipped");
+    }
+
+    
 }

@@ -38,6 +38,10 @@ public class SecurityConfig {
                     .hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN", "ROLE_DELIVERY_BOY")
                 .requestMatchers("/orders/admin/vendor-earnings").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/orders/**").authenticated()
+                
+                .requestMatchers("/orders/admin/pending-items").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/orders/admin/items/**").hasAuthority("ROLE_ADMIN")
+
 
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                 .anyRequest().permitAll()
