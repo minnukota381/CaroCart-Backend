@@ -110,7 +110,6 @@ private String internalSystemToken;
         address.setIsDefault(true);
 
         Address saved = repository.save(address);
-        syncUserLatLng(saved); 
         // 3) Sync user's lat/lng from t
 
         return mapToDTO(saved);
@@ -146,7 +145,6 @@ private String internalSystemToken;
         address.setInstructions(dto.getInstructions());
 
         Address saved = repository.save(address);
-        syncUserLatLng(saved);
         // If it's now default, sync user'
 
         return mapToDTO(saved);

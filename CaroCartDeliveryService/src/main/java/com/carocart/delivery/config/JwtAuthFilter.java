@@ -14,37 +14,45 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
 
+    private static final Set<String> PUBLIC_PREFIXES = Set.of(
+            "/deliveryboys/register",
+            "/deliveryboys/login",
+            "/deliveryboys/forgot-password",
+            "/deliveryboys/verify-otp",
+            "/deliveryboys/reset-password",
+            "/api/upload"
+    );
+
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
             throws ServletException, IOException {
 
         String path = request.getServletPath();
 
-        // 1) Always allow preflight
+        // Allow CORS preflight
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 2) Public paths (keep this OR rely entirely on SecurityConfig)
-        if (path.startsWith("/deliveryboys/register")
-                || path.startsWith("/deliveryboys/login")
-                || path.startsWith("/deliveryboys/forgot-password")
-                || path.startsWith("/deliveryboys/verify-otp")
-                || path.startsWith("/deliveryboys/reset-password")
-                || path.startsWith("/api/upload")) { // <-- important for your case
+        // Public endpoints
+        if (PUBLIC_PREFIXES.stream().anyMatch(path::startsWith)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 3) If no Authorization header, do NOT 401 here. Let SecurityConfig decide (may be permitAll)
+        // No header? Let SecurityConfig decide (will 401 if needed)
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -60,19 +68,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             Claims claims = jwtUtil.getClaims(token);
             String role = claims.get("role", String.class);
-            Long userId = jwtUtil.extractUserId(token);
+            Long userId = jwtUtil.extractUserId(claims);
 
-            // Optional: You can skip role checks here and let SecurityConfig handle it.
-            // If you keep it, normalize to "ROLE_*" granted authority.
+            if (role == null || userId == null) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
+            // If you want to restrict here, allow these roles:
+            if (!Set.of("DELIVERY_BOY", "SYSTEM", "ADMIN").contains(role)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             userId,
                             null,
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                            List.of(new SimpleGrantedAuthority(role.startsWith("ROLE_") ? role : "ROLE_" + role))
                     );
             SecurityContextHolder.getContext().setAuthentication(authentication);
-
             filterChain.doFilter(request, response);
+
         } catch (Exception ex) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         }
