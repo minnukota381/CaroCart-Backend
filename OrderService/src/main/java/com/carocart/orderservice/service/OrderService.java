@@ -47,4 +47,11 @@ public interface OrderService {
     public List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate);
     // ✅ Internal token for Feign use
     String getInternalToken();
+    
+ // Admin-side item approval
+    List<OrderItemDTO> getPendingItemsForAdmin();
+    void approveOrderByAdmin(Long orderId);
+    void rejectOrderByAdmin(Long orderId);
+
+
 }

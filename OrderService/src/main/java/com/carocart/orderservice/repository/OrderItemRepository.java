@@ -20,5 +20,8 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     @Query("select o.addressId from OrderItem oi join oi.order o where oi.id = :orderItemId")
     Optional<Long> findAddressIdByOrderItemId(@Param("orderItemId") Long orderItemId);
+    
+    List<OrderItem> findByApprovalStatus(ApprovalStatus status);
+
 }
 
