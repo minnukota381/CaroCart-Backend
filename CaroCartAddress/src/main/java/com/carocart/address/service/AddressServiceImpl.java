@@ -186,4 +186,20 @@ private String internalSystemToken;
         }
         return response;
     }
+    
+    @Override
+    @Transactional
+    public void setDefaultForCurrentUser(Long addressId, String token) {
+        UserResponseDTO user = userClient.getCurrentUser(token);
+        Address address = repository.findByIdAndUserId(addressId, user.getId())
+            .orElseThrow(() -> new RuntimeException("Address not found for user"));
+
+        repository.clearDefaultForUser(user.getId());
+        address.setIsDefault(true);
+        repository.save(address);
+
+        // optionally sync user lat/lng if present
+        syncUserLatLng(address);
+    }
+
 }
