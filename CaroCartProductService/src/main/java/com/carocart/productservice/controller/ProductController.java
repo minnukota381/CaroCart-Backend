@@ -9,7 +9,6 @@ import com.carocart.productservice.entity.SubCategory;
 import com.carocart.productservice.repository.SubCategoryRepository;
 import com.carocart.productservice.service.ProductService;
 import org.springframework.data.domain.Page;
-
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -42,40 +41,7 @@ public class ProductController {
         SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
                 .orElseThrow(() -> new IllegalArgumentException("Subcategory not found"));
 
-        Product product = new Product();
-        product.setName(productDTO.getName());
-        product.setDescription(productDTO.getDescription());
-        product.setBrand(productDTO.getBrand());
-        product.setPrice(productDTO.getPrice());
-        product.setMrp(productDTO.getMrp());
-        product.setDiscount(productDTO.getDiscount());
-        product.setStock(productDTO.getStock());
-        product.setUnit(productDTO.getUnit());
-        product.setIsAvailable(productDTO.getIsAvailable());
-        product.setSubCategory(subCategory);
-        product.setImageUrl(productDTO.getImageUrl());
-
-        product.setProductType(
-            com.carocart.productservice.entity.ProductType.valueOf(productDTO.getProductType().toUpperCase())
-        );
-
-        // Grocery fields
-        product.setPackSize(productDTO.getPackSize());
-        product.setManufacturer(productDTO.getManufacturer());
-        product.setFssaiLicenseNo(productDTO.getFssaiLicenseNo());
-        product.setCountryOfOrigin(productDTO.getCountryOfOrigin());
-        product.setIngredients(productDTO.getIngredients());
-        product.setNutritionInfo(productDTO.getNutritionInfo());
-        product.setReturnPolicy(productDTO.getReturnPolicy());
-
-        // Food fields
-        product.setFoodCategory(productDTO.getFoodCategory());
-        product.setVeg(productDTO.getVeg());
-        product.setRestaurantName(productDTO.getRestaurantName());
-        product.setCustomizationOptions(productDTO.getCustomizationOptions());
-        product.setAddOns(productDTO.getAddOns());
-        product.setBestseller(productDTO.getBestseller());
-
+        Product product = mapDtoToProduct(productDTO, subCategory);
         return ResponseEntity.ok(productService.addProduct(product, null, token));
     }
 
@@ -94,40 +60,7 @@ public class ProductController {
         SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
                 .orElseThrow(() -> new IllegalArgumentException("Subcategory not found"));
 
-        Product updatedProduct = new Product();
-        updatedProduct.setName(productDTO.getName());
-        updatedProduct.setDescription(productDTO.getDescription());
-        updatedProduct.setBrand(productDTO.getBrand());
-        updatedProduct.setPrice(productDTO.getPrice());
-        updatedProduct.setMrp(productDTO.getMrp());
-        updatedProduct.setDiscount(productDTO.getDiscount());
-        updatedProduct.setStock(productDTO.getStock());
-        updatedProduct.setUnit(productDTO.getUnit());
-        updatedProduct.setIsAvailable(productDTO.getIsAvailable());
-        updatedProduct.setSubCategory(subCategory);
-        updatedProduct.setImageUrl(productDTO.getImageUrl());
-
-        updatedProduct.setProductType(
-            com.carocart.productservice.entity.ProductType.valueOf(productDTO.getProductType().toUpperCase())
-        );
-
-        // Grocery fields
-        updatedProduct.setPackSize(productDTO.getPackSize());
-        updatedProduct.setManufacturer(productDTO.getManufacturer());
-        updatedProduct.setFssaiLicenseNo(productDTO.getFssaiLicenseNo());
-        updatedProduct.setCountryOfOrigin(productDTO.getCountryOfOrigin());
-        updatedProduct.setIngredients(productDTO.getIngredients());
-        updatedProduct.setNutritionInfo(productDTO.getNutritionInfo());
-        updatedProduct.setReturnPolicy(productDTO.getReturnPolicy());
-
-        // Food fields
-        updatedProduct.setFoodCategory(productDTO.getFoodCategory());
-        updatedProduct.setVeg(productDTO.getVeg());
-        updatedProduct.setRestaurantName(productDTO.getRestaurantName());
-        updatedProduct.setCustomizationOptions(productDTO.getCustomizationOptions());
-        updatedProduct.setAddOns(productDTO.getAddOns());
-        updatedProduct.setBestseller(productDTO.getBestseller());
-
+        Product updatedProduct = mapDtoToProduct(productDTO, subCategory);
         Product updated = productService.updateProduct(id, updatedProduct, null, token);
         if (updated == null) {
             return ResponseEntity.notFound().build();
@@ -225,7 +158,7 @@ public class ProductController {
         return ResponseEntity.ok(results);
     }
 
-    // --- Unified Search (Blinkit-style) ---
+    // --- Unified Search ---
     @GetMapping("/unified-search")
     public ResponseEntity<SearchResultDTO> unifiedSearch(@RequestParam("query") String query) {
         if (query == null || query.trim().isEmpty()) {
@@ -244,17 +177,16 @@ public class ProductController {
     // --- Nearby ---
     @GetMapping("/nearby")
     public ResponseEntity<List<Product>> getProductsFromNearbyVendors(
-        @RequestParam String type,           // "FOOD" or "GROCERY"
+        @RequestParam String type,
         @RequestParam double lat,
         @RequestParam double lng,
         @RequestParam(defaultValue = "10") double radiusKm,
         @RequestParam(required = false) Long categoryId,
         @RequestParam(required = false) Long subCategoryId
     ) {
-        List<Product> products = productService.getProductsFromNearbyVendors(type, lat, lng, radiusKm, categoryId, subCategoryId);
-        return ResponseEntity.ok(products);
+        return ResponseEntity.ok(productService.getProductsFromNearbyVendors(type, lat, lng, radiusKm, categoryId, subCategoryId));
     }
-    
+
     @GetMapping("/admin")
     public ResponseEntity<Page<ProductAdminRowDTO>> searchProductsAdmin(
         @RequestParam(required = false) String q,
@@ -281,10 +213,42 @@ public class ProductController {
         );
     }
 
- // In ProductController.java
     @PutMapping("/{id}/decrease-stock")
     public ResponseEntity<String> decreaseStock(@PathVariable Long id, @RequestParam int quantity) {
         productService.decreaseStock(id, quantity);
         return ResponseEntity.ok("Stock decreased successfully");
+    }
+
+    // Utility to avoid duplicate mapping
+    private Product mapDtoToProduct(ProductRequestDTO dto, SubCategory subCategory) {
+        Product p = new Product();
+        p.setName(dto.getName());
+        p.setDescription(dto.getDescription());
+        p.setBrand(dto.getBrand());
+        p.setPrice(dto.getPrice());
+        p.setMrp(dto.getMrp());
+        p.setDiscount(dto.getDiscount());
+        p.setStock(dto.getStock());
+        p.setUnit(dto.getUnit());
+        p.setIsAvailable(dto.getIsAvailable());
+        p.setSubCategory(subCategory);
+        p.setImageUrl(dto.getImageUrl());
+        p.setProductType(
+            com.carocart.productservice.entity.ProductType.valueOf(dto.getProductType().toUpperCase())
+        );
+        p.setPackSize(dto.getPackSize());
+        p.setManufacturer(dto.getManufacturer());
+        p.setFssaiLicenseNo(dto.getFssaiLicenseNo());
+        p.setCountryOfOrigin(dto.getCountryOfOrigin());
+        p.setIngredients(dto.getIngredients());
+        p.setNutritionInfo(dto.getNutritionInfo());
+        p.setReturnPolicy(dto.getReturnPolicy());
+        p.setFoodCategory(dto.getFoodCategory());
+        p.setVeg(dto.getVeg());
+        p.setRestaurantName(dto.getRestaurantName());
+        p.setCustomizationOptions(dto.getCustomizationOptions());
+        p.setAddOns(dto.getAddOns());
+        p.setBestseller(dto.getBestseller());
+        return p;
     }
 }

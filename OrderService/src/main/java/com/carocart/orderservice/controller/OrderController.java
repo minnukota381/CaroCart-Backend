@@ -4,13 +4,15 @@ import com.carocart.orderservice.dto.*;
 import com.carocart.orderservice.entity.ApprovalStatus;
 import com.carocart.orderservice.entity.Order;
 import com.carocart.orderservice.entity.OrderItem;
+import com.carocart.orderservice.feign.AddressClient;
 import com.carocart.orderservice.feign.DeliveryBoyClient;
 import com.carocart.orderservice.feign.UserClient;
 import com.carocart.orderservice.feign.VendorClient;
 import com.carocart.orderservice.repository.OrderItemRepository;
+import com.carocart.orderservice.repository.OrderRepository;
 import com.carocart.orderservice.service.OrderService;
 import com.carocart.orderservice.util.JwtUtil;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,23 +38,28 @@ public class OrderController {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
+    private final AddressClient addressClient;
+    
     private String internalToken;
     @Autowired
     public OrderController(OrderService orderService,
                            OrderItemRepository orderItemRepository,
                            VendorClient vendorClient,
                            DeliveryBoyClient deliveryBoyClient,
-                           JwtUtil jwtUtil,UserClient userClient) {
+                           JwtUtil jwtUtil,UserClient userClient,
+                           AddressClient addressClient) {
         this.orderService = orderService;
         this.orderItemRepository = orderItemRepository;
         this.vendorClient = vendorClient;
         this.deliveryBoyClient = deliveryBoyClient;
         this.jwtUtil = jwtUtil;
 		this.userClient = userClient;
+		this.addressClient = addressClient;  
     }
 
     // ----------------- USER APIs -----------------
-
+    @Autowired
+    private OrderRepository orderRepository;
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest orderRequest) {
         OrderResponse response = orderService.placeOrderInternal(orderRequest);
@@ -296,20 +304,20 @@ public class OrderController {
 
     // ✅ NEW: User Location
     @GetMapping("/{orderId}/user-location")
-    public ResponseEntity<?> getUserLocation(@PathVariable Long orderId) {
-        Order order = orderService.getOrderEntity(orderId);
-        if (order.getUserId() == null) {
+    public ResponseEntity<?> getUserLocation(@PathVariable Long orderId,
+                                             @RequestHeader("Authorization") String token) {
+        // Reuse service logic that enriches with address lat/lng
+        OrderResponse resp = orderService.getOrderById(token, orderId);
+
+        if (resp.getAddressLat() == null || resp.getAddressLng() == null) {
             return ResponseEntity.ok(Map.of("available", false));
         }
 
-        String internalToken = "Bearer " + jwtUtil.generateInternalToken(); // ✅ Use internal token
-        UserDTO user = userClient.getUserById(internalToken, order.getUserId()); // ✅ Pass it here
-
         return ResponseEntity.ok(Map.of(
             "available", true,
-            "lat", user.getLatitude(),
-            "lng", user.getLongitude(),
-            "name", user.getFirstName()
+            "lat", resp.getAddressLat(),
+            "lng", resp.getAddressLng(),
+            "name", "Delivery Address" // or fetch name separately if you really need it
         ));
     }
 
@@ -320,4 +328,75 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getVendorEarnings(fromDate, toDate));
     }
 
+
+
+    @GetMapping("/orderitems/{orderItemId}/user-location")
+    public ResponseEntity<Map<String, Object>> getUserLocationFromOrderItem(
+            @PathVariable Long orderItemId,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.replace("Bearer ", "");
+        String role = jwtUtil.extractRole(token);
+        System.out.println("DEBUG: Extracted role from token = " + role);
+
+
+        // Allow only valid roles
+        if (!(role.equals("USER") || role.equals("DELIVERY_BOY") || role.equals("ADMIN") || role.equals("SYSTEM"))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+
+        // 1️⃣ Fetch the order item
+        OrderItem orderItem = orderItemRepository.findById(orderItemId)
+                .orElseThrow(() -> new RuntimeException("Order item not found"));
+
+        // 2️⃣ Get parent order
+        Order order = orderRepository.findById(orderItem.getOrder().getId())
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // 3️⃣ Internal token for Feign call
+        String internalToken = "Bearer " + jwtUtil.generateInternalToken();
+
+        // 4️⃣ Fetch address from Address Service
+        AddressDTO address = addressClient.getAddressById(internalToken, order.getAddressId());
+
+        if (address.getLatitude() == null || address.getLongitude() == null) {
+            return ResponseEntity.ok(Map.of("available", false));
+        }
+
+        // 5️⃣ Prepare response
+        return ResponseEntity.ok(Map.of(
+            "available", true,
+            "lat", address.getLatitude(),
+            "lng", address.getLongitude()
+        ));
+    }
+
+ // --- Admin actions on an ORDER ---
+    @PutMapping("/admin/orders/{orderId}/approve")
+    public ResponseEntity<String> approveOrderByAdmin(@PathVariable Long orderId) {
+        orderService.approveOrderByAdmin(orderId);
+        return ResponseEntity.ok("Order approved by admin");
+    }
+
+    @PutMapping("/admin/orders/{orderId}/reject")
+    public ResponseEntity<String> rejectOrderByAdmin(@PathVariable Long orderId) {
+        orderService.rejectOrderByAdmin(orderId);
+        return ResponseEntity.ok("Order rejected by admin");
+    }
+
+    // You also need these two since your frontend calls them:
+    @PutMapping("/admin/orders/{orderId}/cancel")
+    public ResponseEntity<String> cancelOrderByAdminEndpoint(@PathVariable Long orderId) {
+        orderService.cancelOrderByAdmin(orderId);
+        return ResponseEntity.ok("Order cancelled by admin");
+    }
+
+    @PutMapping("/admin/orders/{orderId}/ship")
+    public ResponseEntity<String> markOrderAsShippedEndpoint(@PathVariable Long orderId) {
+        orderService.markOrderAsShipped(orderId);
+        return ResponseEntity.ok("Order marked as shipped");
+    }
+
+    
 }

@@ -84,32 +84,24 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Cart is empty. Cannot place order.");
         }
 
-        // Step 2: Try to get shipping address from AddressService
-        AddressDTO address = null;
+        // Step 2: Get shipping address from AddressService
+        AddressDTO address;
         try {
             address = addressClient.getAddressById(orderRequest.getAddressId(), token);
             System.out.println("📦 Shipping address: " + address.getAddress());
         } catch (Exception e) {
-            System.err.println("⚠ Failed to fetch address details: " + e.getMessage());
+            throw new RuntimeException("Failed to fetch address details: " + e.getMessage());
         }
 
-        // Step 3: Initialize Order
+        // Step 3: Create Order
         Order order = new Order();
         order.setUserId(user.getId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
+        order.setAddressId(orderRequest.getAddressId()); // ✅ Store for tracking
+        order.setShippingAddress(address.getAddress());
 
-        // ✅ Always store addressId from request
-        order.setAddressId(orderRequest.getAddressId());
-
-        // ✅ If AddressService works, use its address, else use provided shippingAddress
-        if (address != null && address.getAddress() != null) {
-            order.setShippingAddress(address.getAddress());
-        } else {
-            order.setShippingAddress(orderRequest.getShippingAddress());
-        }
-
-     // ✅ Handle payment method
+        // Payment
         if ("COD".equalsIgnoreCase(orderRequest.getPaymentMethod())) {
             order.setPaymentStatus("COD");
             order.setPaymentId("COD-" + System.currentTimeMillis());
@@ -117,33 +109,28 @@ public class OrderServiceImpl implements OrderService {
             order.setPaymentStatus("PENDING");
         }
 
-        // Step 4: Fetch vendorId from first product in cart
-        try {
-            Long firstProductId = cartItems.get(0).getProductId();
-            ProductDTO firstProduct = productClient.getProductById(firstProductId);
-            if (firstProduct.getVendorId() == null) {
-                throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
-            }
-            order.setVendorId(firstProduct.getVendorId());
-            System.out.println("✅ Vendor ID fetched: " + firstProduct.getVendorId());
-        } catch (Exception e) {
-            System.err.println("❌ Error fetching vendor ID from product: " + e.getMessage());
-            throw new RuntimeException("Unable to determine vendor for this order.");
+        // Step 4: Get vendorId from first product
+        Long firstProductId = cartItems.get(0).getProductId();
+        ProductDTO firstProduct = productClient.getProductById(firstProductId);
+        if (firstProduct.getVendorId() == null) {
+            throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
         }
+        order.setVendorId(firstProduct.getVendorId());
 
-        // Step 5: Build order items
+        // Step 5: Create OrderItems
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
-         // Decrease stock immediately
+
             try {
                 productClient.decreaseStock(product.getId(), item.getQuantity());
             } catch (Exception e) {
                 throw new RuntimeException("Failed to decrease stock for product: " + product.getName());
             }
+
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(product.getId());
             orderItem.setProductName(product.getName());
-            orderItem.setProductImageUrl(product.getImageUrl()); // ✅ store image
+            orderItem.setProductImageUrl(product.getImageUrl());
             orderItem.setQuantity(item.getQuantity());
             orderItem.setPrice(product.getPrice());
             orderItem.setTotalPrice(product.getPrice() * item.getQuantity());
@@ -155,40 +142,28 @@ public class OrderServiceImpl implements OrderService {
             } else {
                 orderItem.setApprovalRequiredBy("ADMIN");
             }
-
             orderItem.setApprovalStatus(ApprovalStatus.PENDING);
             return orderItem;
         }).collect(Collectors.toList());
 
-        // Step 6: Finalize order
+        // Step 6: Calculate total & commission
         double totalAmount = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
         order.setOrderItems(orderItems);
         order.setTotalAmount(totalAmount);
-        
-        double commissionPct = 20.0;
-        double commissionAmt = totalAmount * (commissionPct / 100.0);
-        order.setPlatformCommissionPct(commissionPct);
-        order.setPlatformCommissionAmount(commissionAmt);
+        order.setPlatformCommissionPct(20.0);
+        order.setPlatformCommissionAmount(totalAmount * 0.20);
+
         // Step 7: Save order
         Order savedOrder = orderRepository.save(order);
 
         // Step 8: Clear cart
         cartClient.clearCart(token);
-     // ✅ Step 9: Send notifications asynchronously (so they don't block)
-        new Thread(() -> {
-            try {
-                sendOrderPlacedEmails(savedOrder, user, orderItems);
-            } catch (Exception e) {
-                System.err.println("⚠ Failed to send order emails: " + e.getMessage());
-            }
-        }).start();
-        // Step 10: Send notifications
-        sendOrderPlacedEmails(savedOrder, user, orderItems);
 
-        // Step 11: Return response
+        // Step 9: Async email notification
+        new Thread(() -> sendOrderPlacedEmails(savedOrder, user, orderItems)).start();
+
         return new OrderResponse(savedOrder);
     }
-
 
     @Override
     @Transactional
@@ -198,60 +173,47 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Cart is empty. Cannot place order.");
         }
 
-        // Always use shippingAddress field from OrderRequest for internal API
-        String formattedAddress = orderRequest.getShippingAddress() != null
-            ? orderRequest.getShippingAddress()
-            : "Unknown Address";
-
-        // LOG for debugging
-        System.out.println("Internal placeOrder: using shippingAddress = " + formattedAddress);
-
         Order order = new Order();
         order.setUserId(orderRequest.getUserId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
-        order.setShippingAddress(formattedAddress);
+        order.setAddressId(orderRequest.getAddressId()); // ✅ Keep for tracking
+        order.setShippingAddress(orderRequest.getShippingAddress());
         order.setPaymentStatus("PAID");
         order.setTotalAmount(orderRequest.getTotalAmount());
-     // ✅ VendorId lookup from first product in items
-        
-        try {
-            Long firstProductId = cartItems.get(0).getProductId();
-            ProductDTO firstProduct = productClient.getProductById(firstProductId);
-            if (firstProduct.getVendorId() != null) {
-                order.setVendorId(firstProduct.getVendorId());
-            } else {
-                throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Error fetching vendor ID from product: " + e.getMessage());
-            throw new RuntimeException("Unable to determine vendor for this order.");
+
+        // Vendor
+        Long firstProductId = cartItems.get(0).getProductId();
+        ProductDTO firstProduct = productClient.getProductById(firstProductId);
+        if (firstProduct.getVendorId() != null) {
+            order.setVendorId(firstProduct.getVendorId());
+        } else {
+            throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
         }
 
-        // ✅ PaymentId from request (set by PaymentService after Razorpay payment)
         if (orderRequest.getPaymentId() != null && !orderRequest.getPaymentId().isBlank()) {
             order.setPaymentId(orderRequest.getPaymentId());
         }
 
-
+        // Items
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
-         // Decrease stock immediately
+
             try {
                 productClient.decreaseStock(product.getId(), item.getQuantity());
             } catch (Exception e) {
                 throw new RuntimeException("Failed to decrease stock for product: " + product.getName());
             }
-            OrderItem orderItem = new OrderItem();
-            orderItem.setProductId(item.getProductId());
-//            orderItem.setProductName(item.getProductName() != null ? item.getProductName() : "Product");
-            orderItem.setProductName(product.getName());
-            orderItem.setProductImageUrl(product.getImageUrl()); // ✅ store image
 
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProductId(product.getId());
+            orderItem.setProductName(product.getName());
+            orderItem.setProductImageUrl(product.getImageUrl());
             orderItem.setQuantity(item.getQuantity());
             orderItem.setPrice(item.getPrice());
             orderItem.setTotalPrice(item.getPrice() * item.getQuantity());
             orderItem.setOrder(order);
+
             if (product.getVendorEmail() != null) {
                 orderItem.setApprovalRequiredBy("VENDOR");
                 orderItem.setVendorEmail(product.getVendorEmail());
@@ -263,17 +225,11 @@ public class OrderServiceImpl implements OrderService {
         }).collect(Collectors.toList());
 
         order.setOrderItems(orderItems);
-     // Apply platform commission (20%)
-        double commissionPct = 20.0;
-        double commissionAmt = orderRequest.getTotalAmount() * (commissionPct / 100.0);
-        order.setPlatformCommissionPct(commissionPct);
-        order.setPlatformCommissionAmount(commissionAmt);
+        order.setPlatformCommissionPct(20.0);
+        order.setPlatformCommissionAmount(orderRequest.getTotalAmount() * 0.20);
 
-        Order savedOrder = orderRepository.save(order);
-
-        return new OrderResponse(savedOrder);
+        return new OrderResponse(orderRepository.save(order));
     }
-
     
 
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
@@ -341,24 +297,16 @@ public class OrderServiceImpl implements OrderService {
                 .map(OrderResponse::new)
                 .collect(Collectors.toList());
 
-        // 🔹 Fill missing product name/image
+        // Fill missing product info
         responses.forEach(orderResp -> {
             if (orderResp.getItems() != null) {
                 orderResp.getItems().forEach(item -> {
-                    if (item.getProductName() == null 
-                            || "Product".equals(item.getProductName()) 
-                            || item.getProductImageUrl() == null) {
-                        try {
-                            ProductDTO product = productClient.getProductById(item.getProductId());
-                            if (item.getProductName() == null || "Product".equals(item.getProductName())) {
-                                item.setProductName(product.getName());
-                            }
-                            if (item.getProductImageUrl() == null) {
-                                item.setProductImageUrl(product.getImageUrl());
-                            }
-                        } catch (Exception e) {
-                            System.err.println("⚠ Could not fetch product for ID " + item.getProductId());
-                        }
+                    try {
+                        ProductDTO product = productClient.getProductById(item.getProductId());
+                        item.setProductName(product.getName());
+                        item.setProductImageUrl(product.getImageUrl());
+                    } catch (Exception e) {
+                        System.err.println("⚠ Could not fetch product for ID " + item.getProductId());
                     }
                 });
             }
@@ -366,7 +314,6 @@ public class OrderServiceImpl implements OrderService {
 
         return responses;
     }
-
 
     @Override
     public OrderResponse getOrderById(String token, Long orderId) {
@@ -530,31 +477,60 @@ public class OrderServiceImpl implements OrderService {
         orderItemRepository.save(item);
     }
 
-//    @Override
-//    @Transactional
-//    public void rejectItemAsAdmin(Long itemId) {
-//        OrderItem item = orderItemRepository.findById(itemId)
-//                .orElseThrow(() -> new RuntimeException("Item not found"));
-//        if (!"ADMIN".equals(item.getApprovalRequiredBy())) {
-//            throw new RuntimeException("Not an admin item");
-//        }
-//        item.setApprovalStatus(ApprovalStatus.REJECTED);
-//        
-//        orderItemRepository.save(item);
-//    }
-//    @Override
-//    @Transactional
-//    public void approveOrderByAdmin(Long orderId) {
-//        Order order = orderRepository.findById(orderId)
-//            .orElseThrow(() -> new RuntimeException("Order not found"));
-//        if ("APPROVED".equalsIgnoreCase(order.getStatus())) {
-//            throw new RuntimeException("Order already approved.");
-//        }
-//        order.setStatus("APPROVED");
-//        order.setUpdatedAt(LocalDateTime.now());
-//        orderRepository.save(order);
-//    }
-    
+    @Override
+    public List<OrderItemDTO> getPendingItemsForAdmin() {
+        // Admin can see all pending items
+        return orderItemRepository.findByApprovalStatus(ApprovalStatus.PENDING)
+                .stream()
+                .map(OrderItemDTO::new)
+                .collect(Collectors.toList());
+    }
+    @Override
+    @Transactional
+    public void approveOrderByAdmin(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Approve all pending items under this order
+        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+        boolean changed = false;
+        for (OrderItem it : items) {
+            if (it.getApprovalStatus() != ApprovalStatus.APPROVED) {
+                it.setApprovalStatus(ApprovalStatus.APPROVED);
+                changed = true;
+            }
+        }
+        if (changed) {
+            orderItemRepository.saveAll(items);
+            order.setUpdatedAt(LocalDateTime.now());
+            orderRepository.save(order);
+        }
+        // Optional: send notifications here if you want
+    }
+
+    @Override
+    @Transactional
+    public void rejectOrderByAdmin(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Reject all non-rejected items under this order
+        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+        boolean changed = false;
+        for (OrderItem it : items) {
+            if (it.getApprovalStatus() != ApprovalStatus.REJECTED) {
+                it.setApprovalStatus(ApprovalStatus.REJECTED);
+                changed = true;
+            }
+        }
+        if (changed) {
+            orderItemRepository.saveAll(items);
+            order.setUpdatedAt(LocalDateTime.now());
+            orderRepository.save(order);
+        }
+        // Note: You already have a separate "cancel by admin" if you want to also cancel the order.
+    }
+
     @Override
     public List<OrderItemDTO> getAllItemsForVendor(String token) {
         VendorResponseDTO vendor = vendorClient.getCurrentVendor(token);
@@ -709,24 +685,24 @@ public class OrderServiceImpl implements OrderService {
                 ". Please check your delivery dashboard for details."
         ));
     }
-
     @Override
+    @Transactional
     public void updateOrderDeliveryStatus(String token, Long orderId, String status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        order.setStatus(status);
+        // Update delivery_status instead of status
+        order.setDeliveryStatus(status);
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
 
-        // UPDATE deliveryStatus in all items of this order
+        // Update delivery_status in all items of this order
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
         for (OrderItem item : items) {
-            item.setDeliveryStatus(status);  // <- Ensure this is synced
+            item.setDeliveryStatus(status);
         }
         orderItemRepository.saveAll(items);
     }
-
 
     private void sendStatusUpdateNotifications(Order order, String status) {
         UserDTO user = userClient.getCurrentUserById(systemJwtToken, order.getUserId());

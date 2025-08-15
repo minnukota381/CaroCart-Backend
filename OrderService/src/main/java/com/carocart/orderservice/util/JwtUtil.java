@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+import java.time.Instant;
 import java.util.Date;
 
 @Component
@@ -17,9 +18,16 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    private Key key;
+    @Value("${jwt.expiration-ms:36000000}")
+    private long jwtExpirationMs;
 
-    private static final long JWT_EXPIRATION_MS = 1000 * 60 * 60 * 10; // 10 hours
+    @Value("${jwt.internal.ttl-seconds:3600}")
+    private long internalTtlSeconds;
+
+    @Value("${jwt.internal.sub:SYSTEM_CALL}")
+    private String internalSub;
+
+    private Key key;
 
     @PostConstruct
     public void init() {
@@ -33,61 +41,51 @@ public class JwtUtil {
                 .claim("firstName", firstName)
                 .claim("lastName", lastName)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public String generateInternalToken() {
-        String token = Jwts.builder()
-            .setSubject("internal-service")
-            .claim("role", "SYSTEM")
-            .claim("userId", 0)
-            .setIssuedAt(new Date())
-            .setExpiration(new Date(System.currentTimeMillis() + JWT_EXPIRATION_MS))
-            .signWith(key, SignatureAlgorithm.HS256)
-            .compact();
-
-        System.out.println("✅ Generated internal JWT: " + token); // add this
-        return token;
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(internalTtlSeconds);
+        return Jwts.builder()
+                .setSubject(internalSub)
+                .claim("role", "SYSTEM")
+                .claim("userId", 0)
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(exp))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
     }
-
-
 
     public boolean validateToken(String token) {
         try {
-            Claims claims = extractAllClaims(token);
-            return !isTokenExpired(claims);
+            return !getClaims(token).getExpiration().before(new Date());
         } catch (Exception e) {
             return false;
         }
     }
 
     public String extractUsername(String token) {
-        return extractAllClaims(token).getSubject();
+        return getClaims(token).getSubject();
     }
 
     public String extractRole(String token) {
-        return extractAllClaims(token).get("role", String.class);
+        return getClaims(token).get("role", String.class);
     }
 
-    public String extractFirstName(String token) {
-        return extractAllClaims(token).get("firstName", String.class);
+    public Long extractUserId(String token) {
+        Object userIdObj = getClaims(token).get("userId");
+        if (userIdObj instanceof Number) return ((Number) userIdObj).longValue();
+        if (userIdObj instanceof String) {
+            try { return Long.parseLong((String) userIdObj); } catch (NumberFormatException ignored) {}
+        }
+        return null;
     }
 
-    public String extractLastName(String token) {
-        return extractAllClaims(token).get("lastName", String.class);
-    }
-
-    public Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
-
-    private boolean isTokenExpired(Claims claims) {
-        return claims.getExpiration().before(new Date());
+    public Claims getClaims(String token) {
+        String real = token.startsWith("Bearer ") ? token.substring(7) : token;
+        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(real).getBody();
     }
 }

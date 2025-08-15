@@ -18,7 +18,11 @@ public class OrderResponse {
     private List<OrderItemDTO> items;
     private Long deliveryBoyId;
     private String deliveryStatus;
-    private Long vendorId;  // ✅ Included
+    private Long vendorId;
+
+    // ✅ NEW: address-based location (from AddressService)
+    private Double addressLat;
+    private Double addressLng;
 
     public OrderResponse() {}
 
@@ -39,7 +43,6 @@ public class OrderResponse {
         this.items = items;
     }
 
-    // ✅ Entity-to-DTO constructor (just maps entity fields)
     public OrderResponse(com.carocart.orderservice.entity.Order order) {
         this.orderId = order.getId();
         this.userId = order.getUserId();
@@ -107,4 +110,10 @@ public class OrderResponse {
 
     public Long getVendorId() { return vendorId; }
     public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
+
+    public Double getAddressLat() { return addressLat; }
+    public void setAddressLat(Double addressLat) { this.addressLat = addressLat; }
+
+    public Double getAddressLng() { return addressLng; }
+    public void setAddressLng(Double addressLng) { this.addressLng = addressLng; }
 }

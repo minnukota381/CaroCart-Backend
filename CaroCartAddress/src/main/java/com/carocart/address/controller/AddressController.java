@@ -20,37 +20,42 @@ public class AddressController {
         this.service = service;
     }
 
-    
-    
-    // --- Address CRUD endpoints ---
+    // ----- READ ONE (single mapping) -----
+    @GetMapping("/{id}")
+    public AddressResponseDTO getOne(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        // Optional: you can validate the token here if needed
+        return service.getAddressById(id);
+    }
 
+    // ----- CREATE -----
     @PostMapping
     public AddressResponseDTO create(@Valid @RequestBody AddressRequestDTO dto,
                                      @RequestHeader("Authorization") String token) {
         return service.createAddress(dto, token);
     }
 
+    // ----- UPDATE -----
     @PutMapping("/{id}")
     public AddressResponseDTO update(@PathVariable Long id,
                                      @Valid @RequestBody AddressRequestDTO dto) {
         return service.updateAddress(id, dto);
     }
 
+    // ----- DELETE -----
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         service.deleteAddress(id);
     }
 
+    // ----- LIST BY USER -----
     @GetMapping("/user/{userId}")
     public List<AddressResponseDTO> getAllByUser(@PathVariable Long userId) {
         return service.getAllAddressesByUserId(userId);
     }
 
-    @GetMapping("/{id}")
-    public AddressResponseDTO getOne(@PathVariable Long id) {
-        return service.getAddressById(id);
-    }
-
+    // ----- CURRENT USER ADDRESSES -----
     @GetMapping("/me")
     public List<AddressResponseDTO> getMyAddresses(@RequestHeader("Authorization") String token) {
         return service.getAddressesForCurrentUser(token);

@@ -4,6 +4,7 @@ import com.carocart.delivery.dto.DeliveryOrderItemDTO;
 import com.carocart.delivery.dto.OrderItemDTO;
 import com.carocart.delivery.feign.OrderFeignClient;
 import com.carocart.delivery.service.DeliveryOrderService;
+import com.carocart.delivery.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +17,9 @@ public class DeliveryOrderServiceImpl implements DeliveryOrderService {
     @Autowired
     private OrderFeignClient orderFeignClient;
 
-    // Map OrderItemDTO (from OrderService) to DeliveryOrderItemDTO (for DeliveryService)
+    @Autowired
+    private JwtUtil jwtUtil;
+
     private DeliveryOrderItemDTO mapToDeliveryDTO(OrderItemDTO item) {
         DeliveryOrderItemDTO dto = new DeliveryOrderItemDTO();
         dto.setOrderItemId(item.getId());
@@ -31,31 +34,35 @@ public class DeliveryOrderServiceImpl implements DeliveryOrderService {
         return dto;
     }
 
+    private String systemBearer() {
+        return "Bearer " + jwtUtil.getOrGenerateInternalToken();
+    }
+
     @Override
     public List<DeliveryOrderItemDTO> getAvailableOrderItems() {
-        List<OrderItemDTO> items = orderFeignClient.getAvailableOrderItems();
+        List<OrderItemDTO> items = orderFeignClient.getAvailableOrderItems(systemBearer());
         return items.stream().map(this::mapToDeliveryDTO).collect(Collectors.toList());
     }
 
     @Override
     public void assignOrderItem(Long orderItemId, Long deliveryBoyId) {
-        orderFeignClient.assignOrderItemToDeliveryBoy(orderItemId, deliveryBoyId);
+        orderFeignClient.assignOrderItemToDeliveryBoy(systemBearer(), orderItemId, deliveryBoyId);
     }
 
     @Override
     public List<DeliveryOrderItemDTO> getAssignedOrderItems(Long deliveryBoyId) {
-        List<OrderItemDTO> items = orderFeignClient.getAssignedOrderItems(deliveryBoyId);
+        List<OrderItemDTO> items = orderFeignClient.getAssignedOrderItems(systemBearer(), deliveryBoyId);
         return items.stream().map(this::mapToDeliveryDTO).collect(Collectors.toList());
     }
 
     @Override
     public void updateOrderItemStatus(Long orderItemId, Long deliveryBoyId, String status) {
-        orderFeignClient.updateDeliveryStatus(orderItemId, status);
+        orderFeignClient.updateDeliveryStatus(systemBearer(), orderItemId, status);
     }
 
     @Override
     public List<DeliveryOrderItemDTO> getDeliveredOrderItems(Long deliveryBoyId) {
-        List<OrderItemDTO> items = orderFeignClient.getDeliveredOrderItems(deliveryBoyId);
+        List<OrderItemDTO> items = orderFeignClient.getDeliveredOrderItems(systemBearer(), deliveryBoyId);
         return items.stream().map(this::mapToDeliveryDTO).collect(Collectors.toList());
     }
 }
