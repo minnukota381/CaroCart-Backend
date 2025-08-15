@@ -25,33 +25,28 @@ public class SecurityConfig {
         http
             .cors().and().csrf().disable()
             .authorizeHttpRequests(authz -> authz
-                // Public endpoint
                 .requestMatchers("/orders/debug/token").permitAll()
-                // Allow available-for-delivery to ADMIN and DELIVERY (adjust as needed)
-                .requestMatchers("/orders/orderitems/available-for-delivery").hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY")
-                // Admin endpoints
+
+                .requestMatchers("/orders/orderitems/available-for-delivery")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY", "ROLE_SYSTEM")
+                    .requestMatchers("/orders/orderitems/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY", "ROLE_SYSTEM", "ROLE_USER")
+
+
                 .requestMatchers("/orders/admin/orders/**").hasAuthority("ROLE_ADMIN")
-                // Delivery endpoints
-                .requestMatchers("/orders/ready-for-delivery").hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN", "ROLE_DELIVERY_BOY")
-                // All other order endpoints require authentication
+                .requestMatchers("/orders/ready-for-delivery")
+                    .hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN", "ROLE_DELIVERY_BOY")
                 .requestMatchers("/orders/admin/vendor-earnings").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/orders/**").authenticated()
-                .requestMatchers(
-                    "/swagger-ui.html",
-                    "/swagger-ui/**",
-                    "/v3/api-docs",
-                    "/v3/api-docs/**"
-                ).permitAll()
-                // All else
+
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                 .anyRequest().permitAll()
             )
-            // Add JWT authentication filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // Bean for AuthenticationManager
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();

@@ -4,7 +4,9 @@ import com.carocart.orderservice.entity.ApprovalStatus;
 import com.carocart.orderservice.entity.OrderItem;
 
 import java.util.List;
-
+import java.util.Optional;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
@@ -16,5 +18,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<OrderItem> findByDeliveryBoyIdAndDeliveryStatus(Long deliveryBoyId, String deliveryStatus);
     List<OrderItem> findByOrderId(Long orderId);
 
+    @Query("select o.addressId from OrderItem oi join oi.order o where oi.id = :orderItemId")
+    Optional<Long> findAddressIdByOrderItemId(@Param("orderItemId") Long orderItemId);
 }
 

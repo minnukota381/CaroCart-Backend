@@ -17,7 +17,11 @@ public interface AddressClient {
 
     @GetMapping("/api/addresses/me")
     List<AddressDTO> getMyAddresses(@RequestHeader("Authorization") String token);
-
+    @GetMapping("/api/addresses/{id}")
+    AddressDTO getAddressById(
+            @RequestHeader("Authorization") String token,
+            @PathVariable("id") Long id
+    );
     @GetMapping("/api/addresses/user/{userId}")
     List<AddressDTO> getAllAddressesByUserId(@PathVariable Long userId);
 }
