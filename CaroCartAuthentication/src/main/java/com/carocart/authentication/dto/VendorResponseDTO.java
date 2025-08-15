@@ -1,8 +1,6 @@
 package com.carocart.authentication.dto;
-import com.fasterxml.jackson.annotation.JsonFormat;
 
 import com.carocart.authentication.entity.VendorType;
-import java.time.LocalTime;
 
 public class VendorResponseDTO {
     private Long id;
@@ -32,29 +30,41 @@ public class VendorResponseDTO {
     private String profileImageUrl;
 
     // Approved status
-    private Boolean approved; // <--- ADD THIS
+    private Boolean approved;
     private String upiId;
 
-    // Use "HH:mm" as plain strings to match entity and avoid conversions
+    // Opening/closing (store as plain strings)
     private String openingTime;
     private String closingTime;
-    
+
+    // Extras
     private Integer etaMinutes;
+    private Boolean acceptingOrders;
 
-    public Integer getEtaMinutes() {
-        return etaMinutes;
-    }
+    // ✅ NEW: manual close info
+    private String manualCloseReason;   // optional note shown in admin
+    private String manualCloseUntil;    // ISO-8601 string, e.g. "2025-08-16T23:00:00"
 
-    public void setEtaMinutes(Integer etaMinutes) {
-        this.etaMinutes = etaMinutes;
-    }
+    // ===== getters/setters =====
+
+    public Boolean getAcceptingOrders() { return acceptingOrders; }
+    public void setAcceptingOrders(Boolean acceptingOrders) { this.acceptingOrders = acceptingOrders; }
+
+    public String getManualCloseReason() { return manualCloseReason; }
+    public void setManualCloseReason(String manualCloseReason) { this.manualCloseReason = manualCloseReason; }
+
+    public String getManualCloseUntil() { return manualCloseUntil; }
+    public void setManualCloseUntil(String manualCloseUntil) { this.manualCloseUntil = manualCloseUntil; }
+
+    public Integer getEtaMinutes() { return etaMinutes; }
+    public void setEtaMinutes(Integer etaMinutes) { this.etaMinutes = etaMinutes; }
 
     public String getOpeningTime() { return openingTime; }
     public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
+
     public String getClosingTime() { return closingTime; }
     public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
 
-	// Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -108,10 +118,7 @@ public class VendorResponseDTO {
 
     public Boolean getApproved() { return approved; }
     public void setApproved(Boolean approved) { this.approved = approved; }
-	public String getUpiId() {
-		return upiId;
-	}
-	public void setUpiId(String upiId) {
-		this.upiId = upiId;
-	}
+
+    public String getUpiId() { return upiId; }
+    public void setUpiId(String upiId) { this.upiId = upiId; }
 }
