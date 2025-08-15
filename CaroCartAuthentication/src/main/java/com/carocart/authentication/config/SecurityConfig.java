@@ -68,7 +68,7 @@ public class SecurityConfig {
                     "/vendors/with-eta",
                     "vendors//by-ids"
                 ).permitAll()
-
+              
                 // --- ADMIN ONLY ---
                 .requestMatchers("/admins/me").hasRole("ADMIN")
                 .requestMatchers("/users/admin/users/**").hasRole("ADMIN")

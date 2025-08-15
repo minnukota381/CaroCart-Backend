@@ -30,13 +30,13 @@ public class VendorService {
 
     private final Map<String, Vendor> pendingVendors = new ConcurrentHashMap<>();
 
-    // 1. Request OTP for signup (now uses DTO & validation)
+    // ===== Signup with OTP =====
     public String requestSignupOtp(VendorRegistrationDTO dto) {
         if (vendorRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Email already registered");
         }
         Vendor vendor = fromRegistrationDTO(dto);
-        vendor.setPassword(dto.getPassword()); // Will encode after OTP
+        vendor.setPassword(dto.getPassword()); // Encode after OTP verification
         pendingVendors.put(dto.getEmail(), vendor);
 
         String otp = otpEmailService.generateOtp();
@@ -45,7 +45,6 @@ public class VendorService {
         return "OTP sent to your email";
     }
 
-    // 2. Verify OTP and complete registration
     public String verifySignupOtp(String email, String otp) {
         if (!otpEmailService.validateOtp(email, otp)) {
             throw new IllegalArgumentException("Invalid or expired OTP");
@@ -60,16 +59,14 @@ public class VendorService {
 
         otpEmailService.removeOtp(email);
         pendingVendors.remove(email);
-
         return "Vendor registered successfully, pending admin approval";
     }
 
-    // 3. Vendor Login with JWT token (only if approved)
+    // ===== Login =====
     public String loginVendor(String email, String password) {
         Optional<Vendor> vendorOpt = vendorRepository.findByEmail(email);
-        if (vendorOpt.isEmpty()) {
-            throw new IllegalArgumentException("Invalid email or password");
-        }
+        if (vendorOpt.isEmpty()) throw new IllegalArgumentException("Invalid email or password");
+
         Vendor vendor = vendorOpt.get();
         if (!passwordEncoder.matches(password, vendor.getPassword())) {
             throw new IllegalArgumentException("Invalid email or password");
@@ -77,6 +74,7 @@ public class VendorService {
         if (!vendor.isApproved()) {
             throw new IllegalStateException("Vendor not approved yet");
         }
+
         return jwtUtil.generateToken(
                 vendor.getId(),
                 vendor.getEmail(),
@@ -86,30 +84,25 @@ public class VendorService {
         );
     }
 
-    // 4. Admin approval of vendor
+    // ===== Admin approvals =====
     public boolean approveVendor(Long vendorId) {
-        Optional<Vendor> optionalVendor = vendorRepository.findById(vendorId);
-        if (optionalVendor.isPresent()) {
-            Vendor vendor = optionalVendor.get();
-            vendor.setApproved(true);
-            vendorRepository.save(vendor);
-            otpEmailService.sendApprovalEmail(vendor.getEmail());
+        return vendorRepository.findById(vendorId).map(v -> {
+            v.setApproved(true);
+            vendorRepository.save(v);
+            otpEmailService.sendApprovalEmail(v.getEmail());
             return true;
-        }
-        return false;
+        }).orElse(false);
     }
 
     public boolean rejectVendor(Long vendorId) {
-        Optional<Vendor> optionalVendor = vendorRepository.findById(vendorId);
-        if (optionalVendor.isPresent()) {
-            Vendor vendor = optionalVendor.get();
-            vendorRepository.delete(vendor);
-            otpEmailService.sendRejectionEmail(vendor.getEmail());
+        return vendorRepository.findById(vendorId).map(v -> {
+            vendorRepository.delete(v);
+            otpEmailService.sendRejectionEmail(v.getEmail());
             return true;
-        }
-        return false;
+        }).orElse(false);
     }
 
+    // ===== Profiles =====
     public boolean updateProfileImageUrl(String email, String imageUrl) {
         Vendor vendor = getVendorByEmail(email);
         if (vendor != null) {
@@ -120,7 +113,6 @@ public class VendorService {
         return false;
     }
 
-    // Utility method: get vendor by ID
     public Vendor getVendorById(Long id) {
         return vendorRepository.findById(id).orElse(null);
     }
@@ -137,14 +129,12 @@ public class VendorService {
         return vendorRepository.findByEmail(email).orElse(null);
     }
 
-    // Get vendor profile (by JWT email)
     public VendorResponseDTO getCurrentVendorProfile(String email) {
         Vendor vendor = vendorRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
         return toResponseDTO(vendor);
     }
 
-    // Update vendor profile (excluding email & password)
     public Vendor updateVendorProfile(String email, VendorResponseDTO updated) {
         Vendor existing = getVendorByEmail(email);
         existing.setFirstName(updated.getFirstName());
@@ -160,26 +150,20 @@ public class VendorService {
         existing.setPinCode(updated.getPinCode());
         existing.setLatitude(updated.getLatitude());
         existing.setLongitude(updated.getLongitude());
-
-        // NEW
         existing.setOpeningTime(updated.getOpeningTime());
         existing.setClosingTime(updated.getClosingTime());
-
         return vendorRepository.save(existing);
     }
 
-    // Upload profile image (now just URL)
     public void uploadProfileImage(String email, MultipartFile file) throws IOException {
-        throw new UnsupportedOperationException("Only profile image URL is supported. Upload to Firebase/S3 and save the URL.");
+        throw new UnsupportedOperationException("Only profile image URL is supported.");
     }
 
     public boolean deleteVendorById(Long vendorId) {
-        Optional<Vendor> vendorOptional = vendorRepository.findById(vendorId);
-        if (vendorOptional.isPresent()) {
+        return vendorRepository.findById(vendorId).map(v -> {
             vendorRepository.deleteById(vendorId);
             return true;
-        }
-        return false;
+        }).orElse(false);
     }
 
     public void changePassword(String email, String currentPassword, String newPassword) {
@@ -191,7 +175,7 @@ public class VendorService {
         vendorRepository.save(vendor);
     }
 
-    // ====== NEW: FIND BY TYPE AND PROXIMITY ======
+    // ===== Nearby (Haversine) =====
     public List<Vendor> findByTypeAndProximity(VendorType type, double lat, double lng, double radiusKm) {
         List<Vendor> all = vendorRepository.findByVendorTypeAndIsApproved(type, true);
         return all.stream()
@@ -210,7 +194,7 @@ public class VendorService {
         return EARTH_RADIUS * c;
     }
 
-    // ===== DTO Mapping Helpers =====
+    // ===== Mapping =====
     public static Vendor fromRegistrationDTO(VendorRegistrationDTO dto) {
         Vendor vendor = new Vendor();
         vendor.setFirstName(dto.getFirstName());
@@ -228,8 +212,6 @@ public class VendorService {
         vendor.setLatitude(dto.getLatitude());
         vendor.setLongitude(dto.getLongitude());
         vendor.setRole("VENDOR");
-
-        // NEW
         vendor.setOpeningTime(dto.getOpeningTime());
         vendor.setClosingTime(dto.getClosingTime());
         return vendor;
@@ -256,30 +238,37 @@ public class VendorService {
         dto.setProfileImageUrl(vendor.getProfileImageUrl());
         dto.setApproved(vendor.isApproved());
         dto.setUpiId(vendor.getUpiId());
-
-        // NEW
         dto.setOpeningTime(vendor.getOpeningTime());
         dto.setClosingTime(vendor.getClosingTime());
+
+        // ✅ Make sure this is included so frontend can read it
+        dto.setAcceptingOrders(vendor.getAcceptingOrders());
+        dto.setEtaMinutes(null);
         return dto;
     }
 
     public void updatePassword(String email, String newPassword) {
         Vendor v = vendorRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
-
         v.setPassword(passwordEncoder.encode(newPassword));
         vendorRepository.save(v);
     }
-    
-    
+
     public int calculateETAForPublic(double distanceKm) {
-        double avgSpeedKmH = 30.0; // Adjust for real delivery speed
+        double avgSpeedKmH = 30.0;
         return (int) Math.ceil((distanceKm / avgSpeedKmH) * 60);
     }
-    
+
     public List<Vendor> getVendorsByIds(List<Long> ids) {
         return vendorRepository.findAllById(ids);
     }
 
-
+    // ===== Availability toggle (no DTO; just a param) =====
+    public VendorResponseDTO updateAvailability(Long vendorId, boolean acceptingOrders) {
+        Vendor vendor = vendorRepository.findById(vendorId)
+                .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
+        vendor.setAcceptingOrders(acceptingOrders);
+        Vendor saved = vendorRepository.save(vendor);
+        return toResponseDTO(saved);
+    }
 }
