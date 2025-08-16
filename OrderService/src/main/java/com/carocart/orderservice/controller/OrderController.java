@@ -398,5 +398,29 @@ public class OrderController {
         return ResponseEntity.ok("Order marked as shipped");
     }
 
-    
+ // ✅ Internal minimal info for rating verification
+    @GetMapping("/internal/order-items/{orderItemId}/mini")
+    public ResponseEntity<?> getOrderItemMiniForRating(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long orderItemId) {
+        // Allow only SYSTEM
+        String role = jwtUtil.extractRole(authHeader.substring(7));
+        if (!"SYSTEM".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        }
+
+        OrderItem oi = orderItemRepository.findById(orderItemId)
+                .orElseThrow(() -> new RuntimeException("OrderItem not found"));
+        Order o = oi.getOrder();
+        RatingEligibilityDTO dto = new RatingEligibilityDTO(
+                oi.getId(),
+                o.getId(),
+                o.getUserId(),
+                oi.getProductId(),
+                oi.getDeliveryStatus(), // e.g. DELIVERED / OUT_FOR_DELIVERY
+                o.getStatus()           // e.g. DELIVERED
+        );
+        return ResponseEntity.ok(dto);
+    }
+
 }
