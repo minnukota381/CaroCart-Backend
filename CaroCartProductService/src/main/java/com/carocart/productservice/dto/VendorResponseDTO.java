@@ -9,6 +9,8 @@ public class VendorResponseDTO {
     private String companyName;
     private String contactNumber;
     private String gstNumber;
+    private String vendorType; // "FOOD" or "GROCERY"
+
 
     // Address fields
     private String addressLine1;
@@ -97,4 +99,10 @@ public class VendorResponseDTO {
 
     public Integer getEtaMinutes() { return etaMinutes; }
     public void setEtaMinutes(Integer etaMinutes) { this.etaMinutes = etaMinutes; }
+	public String getVendorType() {
+		return vendorType;
+	}
+	public void setVendorType(String vendorType) {
+		this.vendorType = vendorType;
+	}
 }
