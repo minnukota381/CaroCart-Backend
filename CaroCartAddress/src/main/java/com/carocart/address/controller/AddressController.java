@@ -60,4 +60,11 @@ public class AddressController {
     public List<AddressResponseDTO> getMyAddresses(@RequestHeader("Authorization") String token) {
         return service.getAddressesForCurrentUser(token);
     }
+    
+    @PatchMapping("/{id}/default")
+    public void setDefault(@PathVariable Long id,
+                           @RequestHeader("Authorization") String token) {
+        service.setDefaultForCurrentUser(id, token);
+    }
+
 }

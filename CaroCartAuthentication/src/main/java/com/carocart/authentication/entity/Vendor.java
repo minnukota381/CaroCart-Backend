@@ -40,6 +40,24 @@ public class Vendor {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    public String getManualCloseReason() {
+		return manualCloseReason;
+	}
+
+	public void setManualCloseReason(String manualCloseReason) {
+		this.manualCloseReason = manualCloseReason;
+	}
+
+	public LocalDateTime getManualCloseUntil() {
+		return manualCloseUntil;
+	}
+
+	public void setManualCloseUntil(LocalDateTime manualCloseUntil) {
+		this.manualCloseUntil = manualCloseUntil;
+	}
+	private String manualCloseReason;
+    private LocalDateTime manualCloseUntil;
 
     @Column(nullable = false)
     private String role = "VENDOR";
@@ -75,17 +93,6 @@ public class Vendor {
     @Column(name = "profile_image_url")
     private String profileImageUrl;
 
-    // === Lifecycle hooks ===
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
     @Column(name = "upi_id", length = 50)
     private String upiId;
     @Column(name = "opening_time", nullable = false)
@@ -94,6 +101,25 @@ public class Vendor {
     @Column(name = "closing_time", nullable = false)
     private String closingTime;
 
+ // Availability Controls
+    @Column(name = "accepting_orders", nullable = false)
+    private Boolean acceptingOrders = Boolean.TRUE; // Manual toggle, default true
+    
+ // === Lifecycle hooks ===
+    @PrePersist
+    protected void onCreate() {
+        if (acceptingOrders == null) acceptingOrders = Boolean.TRUE;
+        createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        if (acceptingOrders == null) acceptingOrders = Boolean.TRUE;
+        updatedAt = LocalDateTime.now();
+    }
+    public Boolean getAcceptingOrders() { return acceptingOrders; }
+    public void setAcceptingOrders(Boolean acceptingOrders) { this.acceptingOrders = acceptingOrders; }
     public String getOpeningTime() { return openingTime; }
     public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
 

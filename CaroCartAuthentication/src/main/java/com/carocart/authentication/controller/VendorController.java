@@ -4,11 +4,10 @@ import com.carocart.authentication.dto.VendorRegistrationDTO;
 import com.carocart.authentication.dto.VendorResponseDTO;
 import com.carocart.authentication.entity.Vendor;
 import com.carocart.authentication.entity.VendorType;
+import com.carocart.authentication.repository.VendorRepository;
 import com.carocart.authentication.service.OtpEmailService;
 import com.carocart.authentication.service.VendorService;
-import com.carocart.authentication.repository.VendorRepository;
 import com.carocart.authentication.util.JwtUtil;
-
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -28,10 +27,10 @@ public class VendorController {
     private VendorRepository vendorRepository;
     @Autowired
     private JwtUtil jwtUtil;
-       @Autowired
-       private OtpEmailService otpEmailService;
+    @Autowired
+    private OtpEmailService otpEmailService;
 
-    // --- SIGNUP WITH OTP (DTO + Validation) ---
+    // ===== Signup with OTP =====
     @PostMapping("/signup/request-otp")
     public ResponseEntity<String> requestOtp(@Valid @RequestBody VendorRegistrationDTO dto) {
         try {
@@ -42,7 +41,6 @@ public class VendorController {
         }
     }
 
-    // --- VERIFY OTP ---
     @PostMapping("/signup/verify-otp")
     public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
         try {
@@ -53,7 +51,7 @@ public class VendorController {
         }
     }
 
-    // --- LOGIN ---
+    // ===== Login =====
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password) {
         try {
@@ -64,7 +62,7 @@ public class VendorController {
         }
     }
 
-    // --- GET CURRENT VENDOR PROFILE ---
+    // ===== Vendor self profile =====
     @GetMapping("/me")
     public ResponseEntity<VendorResponseDTO> getCurrentVendor(@RequestHeader("Authorization") String token) {
         String jwt = token.startsWith("Bearer ") ? token.substring(7) : token;
@@ -73,7 +71,6 @@ public class VendorController {
         return ResponseEntity.ok(dto);
     }
 
-    // --- UPDATE CURRENT VENDOR PROFILE ---
     @PutMapping("/me")
     public ResponseEntity<String> updateCurrentVendor(@RequestHeader("Authorization") String token,
                                                       @RequestBody VendorResponseDTO updatedVendor) {
@@ -87,7 +84,6 @@ public class VendorController {
         }
     }
 
-    // --- SAVE/UPDATE PROFILE IMAGE URL ---
     @PutMapping("/me/profile-image-url")
     public ResponseEntity<String> updateVendorProfileImageUrl(
             @RequestHeader("Authorization") String token,
@@ -101,7 +97,7 @@ public class VendorController {
                 : ResponseEntity.badRequest().body("Vendor not found");
     }
 
-    // --- ADMIN: Get all vendors ---
+    // ===== Admin: vendor management =====
     @GetMapping("/admin/vendors/all")
     public ResponseEntity<List<VendorResponseDTO>> getAllVendors() {
         List<VendorResponseDTO> vendors = vendorService.getAllVendors().stream()
@@ -110,7 +106,6 @@ public class VendorController {
         return ResponseEntity.ok(vendors);
     }
 
-    // --- ADMIN: Get pending vendors ---
     @GetMapping("/admin/vendors/pending")
     public ResponseEntity<List<VendorResponseDTO>> getPendingVendors() {
         List<VendorResponseDTO> vendors = vendorService.getPendingVendors().stream()
@@ -119,47 +114,34 @@ public class VendorController {
         return ResponseEntity.ok(vendors);
     }
 
-    // --- ADMIN: Approve vendor ---
     @PostMapping("/admin/approve/{vendorId}")
     public ResponseEntity<String> approveVendor(@PathVariable Long vendorId) {
         boolean approved = vendorService.approveVendor(vendorId);
-        if (approved) {
-            return ResponseEntity.ok("Vendor approved and notified");
-        } else {
-            return ResponseEntity.badRequest().body("Vendor not found");
-        }
+        if (approved) return ResponseEntity.ok("Vendor approved and notified");
+        return ResponseEntity.badRequest().body("Vendor not found");
     }
 
-    // --- ADMIN: Reject vendor ---
     @PostMapping("/admin/reject/{vendorId}")
     public ResponseEntity<String> rejectVendor(@PathVariable Long vendorId) {
         boolean rejected = vendorService.rejectVendor(vendorId);
-        if (rejected) {
-            return ResponseEntity.ok("Vendor rejected and removed from system");
-        } else {
-            return ResponseEntity.badRequest().body("Vendor not found");
-        }
+        if (rejected) return ResponseEntity.ok("Vendor rejected and removed from system");
+        return ResponseEntity.badRequest().body("Vendor not found");
     }
 
-    // --- ADMIN: Delete vendor ---
     @DeleteMapping("/admin/vendors/{vendorId}")
     public ResponseEntity<String> deleteVendor(@PathVariable Long vendorId) {
         boolean deleted = vendorService.deleteVendorById(vendorId);
-        if (deleted) {
-            return ResponseEntity.ok("Vendor deleted successfully");
-        } else {
-            return ResponseEntity.badRequest().body("Vendor not found or could not be deleted");
-        }
+        if (deleted) return ResponseEntity.ok("Vendor deleted successfully");
+        return ResponseEntity.badRequest().body("Vendor not found or could not be deleted");
     }
 
-    // --- ADMIN: Get vendor count ---
     @GetMapping("/admin/vendors/count")
     public ResponseEntity<Long> getTotalVendors() {
         long count = vendorRepository.count();
         return ResponseEntity.ok(count);
     }
 
-    // --- CHANGE PASSWORD ---
+    // ===== Password =====
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
             @RequestHeader("Authorization") String token,
@@ -179,7 +161,7 @@ public class VendorController {
         }
     }
 
-    // --- GET VENDOR BY ID (for Feign) ---
+    // ===== Public getters =====
     @GetMapping("/{id}")
     public ResponseEntity<VendorResponseDTO> getVendorById(@PathVariable Long id) {
         Vendor vendor = vendorService.getVendorById(id);
@@ -189,94 +171,52 @@ public class VendorController {
         return ResponseEntity.ok(VendorService.toResponseDTO(vendor));
     }
 
-    // === SCALABLE: VENDORS NEARBY BY TYPE AND PROXIMITY ===
-    // GET /vendors/nearby?type=FOOD&lat=..&lng=..&radius=10
- // === SCALABLE: VENDORS NEARBY BY TYPE AND PROXIMITY ===
- // GET /vendors/nearby?type=FOOD&lat=..&lng=..&radius=10
- @GetMapping("/nearby")
- public ResponseEntity<List<VendorResponseDTO>> getNearbyVendors(
-         @RequestParam VendorType type,
-         @RequestParam double lat,
-         @RequestParam double lng,
-         @RequestParam(defaultValue = "10") double radiusKm
- ) {
-     List<Vendor> vendors = vendorService.findByTypeAndProximity(type, lat, lng, radiusKm);
+    @GetMapping("/nearby")
+    public ResponseEntity<List<VendorResponseDTO>> getNearbyVendors(
+            @RequestParam VendorType type,
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "10") double radiusKm
+    ) {
+        List<Vendor> vendors = vendorService.findByTypeAndProximity(type, lat, lng, radiusKm);
 
-     List<VendorResponseDTO> dtos = vendors.stream()
-             .map(v -> {
-                 VendorResponseDTO dto = VendorService.toResponseDTO(v);
-                 double distance = VendorService.haversineDistanceKm(lat, lng, v.getLatitude(), v.getLongitude());
-                 int eta = vendorService.calculateETAForPublic(distance);
-                 dto.setEtaMinutes(eta); // ✅ Include ETA in the response
-                 return dto;
-             })
-             .collect(Collectors.toList());
-
-     return ResponseEntity.ok(dtos);
- }
-
-    
-
-    // --- VENDOR PASSWORD FLOW ---
-    @PostMapping("/forgot-password")
-    public ResponseEntity<String> vendorForgotPassword(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        Vendor vendor = vendorService.getVendorByEmail(email);
-        if (vendor == null) {
-            return ResponseEntity.badRequest().body("Email not registered");
-        }
-        String otp = otpEmailService.generateOtp();
-        otpEmailService.storeOtp(email, otp);
-        otpEmailService.sendOtpEmail(email, otp); // implement template if needed
-        return ResponseEntity.ok("OTP sent to email");
-    }
-
-    @PostMapping("/verify-otp")
-    public ResponseEntity<String> vendorVerifyOtp(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        String otp = request.get("otp");
-        boolean isValid = otpEmailService.validateOtp(email, otp);
-        if (isValid) {
-            otpEmailService.removeOtp(email);
-            return ResponseEntity.ok("OTP verified");
-        }
-        return ResponseEntity.badRequest().body("Invalid OTP");
-    }
-
-    @PostMapping("/reset-password")
-    public ResponseEntity<String> vendorResetPassword(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        String newPassword = request.get("newPassword");
-        Vendor vendor = vendorService.getVendorByEmail(email);
-        if (vendor == null) {
-            return ResponseEntity.badRequest().body("Email not registered");
-        }
-        try {
-            vendorService.updatePassword(email, newPassword);
-            return ResponseEntity.ok("Password updated successfully");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to update password");
-        }
-    }
-    
- // --- GET MULTIPLE VENDORS BY IDS (for Feign / other services) ---
-    @PostMapping("/by-ids")
-    public ResponseEntity<List<VendorResponseDTO>> getVendorsByIds(@RequestBody List<Long> vendorIds) {
-        if (vendorIds == null || vendorIds.isEmpty()) {
-            return ResponseEntity.ok(List.of());
-        }
-
-        List<Vendor> vendors = vendorService.getVendorsByIds(vendorIds);
         List<VendorResponseDTO> dtos = vendors.stream()
-                .filter(Vendor::isApproved) // only approved vendors
-                .map(VendorService::toResponseDTO)
+                .map(v -> {
+                    VendorResponseDTO dto = VendorService.toResponseDTO(v);
+                    double distance = VendorService.haversineDistanceKm(lat, lng, v.getLatitude(), v.getLongitude());
+                    int eta = vendorService.calculateETAForPublic(distance);
+                    dto.setEtaMinutes(eta);
+                    return dto;
+                })
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
     }
 
-    
-    
+    @PostMapping("/by-ids")
+    public ResponseEntity<List<VendorResponseDTO>> getVendorsByIds(@RequestBody List<Long> vendorIds) {
+        if (vendorIds == null || vendorIds.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<Vendor> vendors = vendorService.getVendorsByIds(vendorIds);
+        List<VendorResponseDTO> dtos = vendors.stream()
+                .filter(Vendor::isApproved)
+                .map(VendorService::toResponseDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    // ===== Availability toggle (no DTO, matches your frontend call) =====
+    @PutMapping("/{id}/availability")
+    public ResponseEntity<?> updateAvailability(
+            @PathVariable Long id,
+            @RequestParam boolean acceptingOrders) {
+        try {
+            VendorResponseDTO updatedVendor = vendorService.updateAvailability(id, acceptingOrders);
+            return ResponseEntity.ok(updatedVendor);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", ex.getMessage()));
+        }
+    }
 }
-
-

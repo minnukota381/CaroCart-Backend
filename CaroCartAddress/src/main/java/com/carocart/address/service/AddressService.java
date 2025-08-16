@@ -20,4 +20,7 @@ public interface AddressService {
     AddressResponseDTO getAddressById(Long id);
 
 	List<AddressResponseDTO> getAddressesForCurrentUser(String token);
+	
+	void setDefaultForCurrentUser(Long addressId, String token);
+
 }
