@@ -6,6 +6,7 @@ import com.carocart.orderservice.entity.Order;
 import com.carocart.orderservice.entity.OrderItem;
 import com.carocart.orderservice.feign.AddressClient;
 import com.carocart.orderservice.feign.DeliveryBoyClient;
+import com.carocart.orderservice.feign.ProductClient;
 import com.carocart.orderservice.feign.UserClient;
 import com.carocart.orderservice.feign.VendorClient;
 import com.carocart.orderservice.repository.OrderItemRepository;
@@ -35,6 +36,8 @@ public class OrderController {
     private final JwtUtil jwtUtil;
     private final DeliveryBoyClient deliveryBoyClient;
     private final UserClient userClient;
+    private final ProductClient productClient;
+
     @Value("${jwt.secret}")
     private String jwtSecret;
 
@@ -47,14 +50,15 @@ public class OrderController {
                            VendorClient vendorClient,
                            DeliveryBoyClient deliveryBoyClient,
                            JwtUtil jwtUtil,UserClient userClient,
-                           AddressClient addressClient) {
+                           AddressClient addressClient,ProductClient productClient) {
         this.orderService = orderService;
         this.orderItemRepository = orderItemRepository;
         this.vendorClient = vendorClient;
         this.deliveryBoyClient = deliveryBoyClient;
         this.jwtUtil = jwtUtil;
 		this.userClient = userClient;
-		this.addressClient = addressClient;  
+		this.addressClient = addressClient; 
+		this.productClient=productClient;
     }
 
     // ----------------- USER APIs -----------------
@@ -233,9 +237,68 @@ public class OrderController {
 
     @GetMapping("/orderitems/assigned/{deliveryBoyId}")
     public List<OrderItemDTO> getAssignedOrderItems(@PathVariable Long deliveryBoyId) {
+        // Internal token for cross-service calls
+        String internalToken = orderService.getInternalToken();
+
         List<OrderItem> items = orderItemRepository.findByDeliveryBoyId(deliveryBoyId);
-        return items.stream().map(OrderItemDTO::new).collect(Collectors.toList());
+
+        return items.stream().map(item -> {
+            OrderItemDTO dto = new OrderItemDTO(item);
+
+            Order order = item.getOrder();
+            if (order != null) {
+                // Basic order fields
+                dto.setDeliveryAddress(order.getShippingAddress());
+                dto.setPaymentType(order.getPaymentStatus());
+                dto.setDeliveryStatus(item.getDeliveryStatus());
+
+                // ✅ Customer details (name + phone)
+                try {
+                    UserDTO user = userClient.getUserById(internalToken, order.getUserId());
+                    dto.setUserName(
+                        ((user.getFirstName() != null ? user.getFirstName() : "") + " " +
+                         (user.getLastName()  != null ? user.getLastName()  : "")).trim()
+                    );
+                    dto.setUserPhone(user.getMobileNumber()); // <-- this is what the FE needs
+                } catch (Exception e) {
+                    System.err.println("⚠️ Could not fetch user details for order " + order.getId() + ": " + e.getMessage());
+                    dto.setUserName("N/A");
+                    dto.setUserPhone("N/A");
+                }
+
+                // ✅ Customer lat/lng via Address Service
+                try {
+                    if (order.getAddressId() != null) {
+                        AddressDTO addr = addressClient.getAddressById(internalToken, order.getAddressId());
+                        if (addr != null) {
+                            dto.setUserLat(addr.getLatitude());
+                            dto.setUserLng(addr.getLongitude());
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("⚠️ Could not fetch address for order " + order.getId() + ": " + e.getMessage());
+                }
+            }
+
+            // ✅ Vendor location + phone
+            try {
+                ProductDTO product = productClient.getProductById(item.getProductId());
+                if (product != null && product.getVendorId() != null) {
+                    VendorResponseDTO vendor = vendorClient.getVendorById(internalToken, product.getVendorId());
+                    if (vendor != null) {
+                        dto.setVendorLat(vendor.getLatitude());
+                        dto.setVendorLng(vendor.getLongitude());
+                        dto.setVendorPhone(vendor.getContactNumber());
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ Could not fetch vendor info for item " + item.getId() + ": " + e.getMessage());
+            }
+
+            return dto;
+        }).collect(Collectors.toList());
     }
+
 
     @GetMapping("/orderitems/delivered/{deliveryBoyId}")
     public List<OrderItemDTO> getDeliveredOrderItems(@PathVariable Long deliveryBoyId) {
@@ -398,5 +461,29 @@ public class OrderController {
         return ResponseEntity.ok("Order marked as shipped");
     }
 
-    
+ // ✅ Internal minimal info for rating verification
+    @GetMapping("/internal/order-items/{orderItemId}/mini")
+    public ResponseEntity<?> getOrderItemMiniForRating(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long orderItemId) {
+        // Allow only SYSTEM
+        String role = jwtUtil.extractRole(authHeader.substring(7));
+        if (!"SYSTEM".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Forbidden");
+        }
+
+        OrderItem oi = orderItemRepository.findById(orderItemId)
+                .orElseThrow(() -> new RuntimeException("OrderItem not found"));
+        Order o = oi.getOrder();
+        RatingEligibilityDTO dto = new RatingEligibilityDTO(
+                oi.getId(),
+                o.getId(),
+                o.getUserId(),
+                oi.getProductId(),
+                oi.getDeliveryStatus(), // e.g. DELIVERED / OUT_FOR_DELIVERY
+                o.getStatus()           // e.g. DELIVERED
+        );
+        return ResponseEntity.ok(dto);
+    }
+
 }

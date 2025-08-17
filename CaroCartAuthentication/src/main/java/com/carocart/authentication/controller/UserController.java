@@ -46,53 +46,64 @@ public class UserController {
     }
 
     // === GET CURRENT USER BY TOKEN ===
+ // === GET CURRENT USER BY TOKEN ===
     @GetMapping("/me")
     public ResponseEntity<UserDTO> getCurrentUser(@RequestHeader("Authorization") String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-
         String token = authorizationHeader.substring(7);
         String role = jwtUtil.extractRole(token);
 
         if ("SYSTEM".equalsIgnoreCase(role)) {
-            UserDTO systemUser = new UserDTO(0L, "internal-service@carocart.com", "SYSTEM", "System");
+            UserDTO systemUser = new UserDTO();
+            systemUser.setId(0L);
+            systemUser.setEmail("internal-service@carocart.com");
+            systemUser.setRole("SYSTEM");
+            systemUser.setFirstName("System");
             return ResponseEntity.ok(systemUser);
         }
 
         String email = jwtUtil.extractUsername(token);
-        Optional<User> userOptional = userService.findByEmail(email);
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-            UserDTO dto = new UserDTO(
-                    user.getId(),
-                    user.getEmail(),
-                    user.getRole(),
-                    user.getFirstName(),
-                    user.getLatitude(),
-                    user.getLongitude()
-            );
-            return ResponseEntity.ok(dto);
-        }
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        return userService.findByEmail(email)
+            .map(user -> {
+                UserDTO dto = new UserDTO();
+                dto.setId(user.getId());
+                dto.setEmail(user.getEmail());
+                dto.setRole(user.getRole());
+                dto.setFirstName(user.getFirstName());
+                dto.setLastName(user.getLastName());
+                // ✅ ensure +91 prefix if missing
+                String raw = user.getPhoneNumber();   // was getContactNumber()
+                if (raw != null && !raw.isBlank()) {
+                    dto.setMobileNumber(raw.startsWith("+") ? raw : "+91" + raw);
+                }
+                return ResponseEntity.ok(dto);
+            })
+            .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
     // === GET USER BY ID (for FEIGN) ===
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getCurrentUserById(@PathVariable Long id) {
         return userRepository.findById(id)
-                .map(user -> new UserDTO(
-                        user.getId(),
-                        user.getEmail(),
-                        user.getRole(),
-                        user.getFirstName(),
-                        user.getLatitude(),
-                        user.getLongitude()
-                ))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+            .map(user -> {
+                UserDTO dto = new UserDTO();
+                dto.setId(user.getId());
+                dto.setEmail(user.getEmail());
+                dto.setRole(user.getRole());
+                dto.setFirstName(user.getFirstName());
+                dto.setLastName(user.getLastName());
+                // ✅ ensure +91 prefix if missing
+                String raw = user.getPhoneNumber();   // was getContactNumber()
+                if (raw != null && !raw.isBlank()) {
+                    dto.setMobileNumber(raw.startsWith("+") ? raw : "+91" + raw);
+                }
+                return ResponseEntity.ok(dto);
+            })
+            .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
+
 
     // === UPDATE USER PROFILE ===
     @PutMapping("/profile")
@@ -154,8 +165,6 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
         User user = optionalUser.get();
-        user.setLatitude(location.get("latitude"));
-        user.setLongitude(location.get("longitude"));
         userService.save(user);
         return ResponseEntity.ok("Location updated successfully");
     }
@@ -264,8 +273,6 @@ public class UserController {
         return userRepository.findById(id).map(user -> {
             Double lat = location.get("latitude");
             Double lng = location.get("longitude");
-            user.setLatitude(lat);
-            user.setLongitude(lng);
             userService.saveAndFlush(user); // ✅ ensure immediate DB write
             System.out.println("✅ Updated user " + id + " -> lat=" + lat + ", lng=" + lng);
             return ResponseEntity.ok("User location updated");

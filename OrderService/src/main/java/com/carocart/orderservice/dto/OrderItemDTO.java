@@ -24,7 +24,11 @@ public class OrderItemDTO {
     private Double userLng;
     
     private String productImageUrl;
+    private String vendorPhone;
 
+
+    public String getVendorPhone() { return vendorPhone; }
+    public void setVendorPhone(String vendorPhone) { this.vendorPhone = vendorPhone; }
     public String getProductImageUrl() { return productImageUrl; }
     public void setProductImageUrl(String productImageUrl) { this.productImageUrl = productImageUrl; }
 

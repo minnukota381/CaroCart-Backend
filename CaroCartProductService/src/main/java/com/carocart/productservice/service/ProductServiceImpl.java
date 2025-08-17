@@ -86,11 +86,14 @@ public class ProductServiceImpl implements ProductService {
         VendorResponseDTO vendor = tryGetVendor(token);
 
         if (isAdmin(admin)) {
+            // Admin can add any product
             product.setAddedByRole("ADMIN");
             product.setVendorId(null);
             product.setVendorName(null);
             product.setVendorEmail(null);
+
         } else if (isVendor(vendor)) {
+            // Vendor restrictions
             product.setAddedByRole("VENDOR");
             product.setVendorId(vendor.getId());
             product.setVendorName(vendor.getFirstName() + " " + vendor.getLastName());
@@ -99,17 +102,30 @@ public class ProductServiceImpl implements ProductService {
             if (product.getProductType() == null) {
                 throw new IllegalArgumentException("Product type is required");
             }
-            if (!product.getProductType().name().equalsIgnoreCase(vendor.getVendorType())) {
-                throw new IllegalArgumentException("Vendor of type " + vendor.getVendorType() +
-                        " can only add products of type " + vendor.getVendorType());
+
+            // VendorResponseDTO.vendorType is a String (e.g., "FOOD" / "GROCERY")
+            String vendorType = vendor.getVendorType();
+            if (vendorType == null || vendorType.isBlank()) {
+                throw new IllegalArgumentException("Vendor type is missing on vendor profile");
             }
+
+            // Compare ProductType enum name() to vendorType string
+            if (!product.getProductType().name().equalsIgnoreCase(vendorType)) {
+                throw new IllegalArgumentException(
+                    "Vendor of type " + vendorType + " can only add products of type " + vendorType
+                );
+            }
+
         } else {
             throw new RuntimeException("Unauthorized: Only admin or vendor can add products");
         }
 
-        if (product.getSubCategory() == null) throw new RuntimeException("SubCategory must be provided");
+        if (product.getSubCategory() == null) {
+            throw new RuntimeException("SubCategory must be provided");
+        }
 
         product.setSlug(toSlug(product.getName()) + "-" + UUID.randomUUID().toString().substring(0, 8));
+
         if (image != null && !image.isEmpty()) {
             product.setImageUrl(firebaseStorageUtil.uploadFile(image));
         }
@@ -119,6 +135,7 @@ public class ProductServiceImpl implements ProductService {
 
         return productRepository.save(product);
     }
+
 
     @Override
     public Product updateProduct(Long id, Product updatedProduct, MultipartFile image, String token) throws IOException {
