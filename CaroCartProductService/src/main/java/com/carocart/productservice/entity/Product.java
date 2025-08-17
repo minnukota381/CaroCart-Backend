@@ -69,6 +69,19 @@ public class Product {
     private String addOns;
     private Boolean bestseller;
 
+ // ...
+    @Column(name = "avg_rating", nullable = false)
+    private Double avgRating = 0.0;
+
+    @Column(name = "rating_count", nullable = false)
+    private Integer ratingCount = 0;
+
+    public Double getAvgRating() { return avgRating; }
+    public void setAvgRating(Double avgRating) { this.avgRating = avgRating; }
+
+    public Integer getRatingCount() { return ratingCount; }
+    public void setRatingCount(Integer ratingCount) { this.ratingCount = ratingCount; }
+
     // --- Getters and Setters ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

@@ -32,9 +32,12 @@ public class SecurityConfig {
                     .requestMatchers("/orders/orderitems/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY", "ROLE_SYSTEM", "ROLE_USER")
 
+                    .requestMatchers("/orders/internal/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY", "ROLE_SYSTEM", "ROLE_USER")
 
                 .requestMatchers("/orders/admin/orders/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/orders/ready-for-delivery")
+                
                     .hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN", "ROLE_DELIVERY_BOY")
                 .requestMatchers("/orders/admin/vendor-earnings").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/orders/**").authenticated()
