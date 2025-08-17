@@ -1,5 +1,6 @@
 package com.carocart.productservice.service;
 
+import com.carocart.productservice.dto.SubCategoryDTO;
 import com.carocart.productservice.dto.VendorResponseDTO;
 import com.carocart.productservice.entity.Category;
 import com.carocart.productservice.entity.SubCategory;
@@ -18,7 +19,7 @@ public interface CategoryService {
     void deleteSubCategoryById(Long subcategoryId, String token);
     Category saveCategory(Category category);
     Category saveCategory(Category category, String token);
-    
+
     Category getCategoryBySlug(String slug);
     SubCategory getSubCategoryBySlug(String slug);
     void generateMissingSlugsForCategories();
@@ -30,5 +31,9 @@ public interface CategoryService {
     List<VendorResponseDTO> getNearbyVendorsBySubCategory(Long subCategoryId, double lat, double lng, double radiusKm);
     List<Long> getVendorIdsBySubCategory(Long subCategoryId);
 
+    // ✅ NEW: update subcategory (name/imageUrl/category)
+    SubCategory updateSubCategory(Long id, SubCategoryDTO dto, String token);
+    SubCategory saveSubCategory(SubCategory subCategory, String token);
+    void validateAdmin(String token);
 
 }

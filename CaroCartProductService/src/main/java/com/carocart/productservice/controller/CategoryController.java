@@ -23,7 +23,7 @@ public class CategoryController {
 
     @Autowired
     private CategoryService categoryService;
-    
+
     @Autowired
     private SubCategoryRepository subCategoryRepository;
 
@@ -35,7 +35,7 @@ public class CategoryController {
     ) {
         Category category = new Category();
         category.setName(dto.getName());
-        category.setImageUrl(dto.getImageUrl()); // Firebase URL from frontend
+        category.setImageUrl(dto.getImageUrl());
         Category saved = categoryService.addCategory(category, token);
         return ResponseEntity.ok(toCategoryResponseDTO(saved));
     }
@@ -61,13 +61,15 @@ public class CategoryController {
         return ResponseEntity.ok(toCategoryResponseDTO(saved));
     }
 
-    // Add Subcategory (Admin)
+    // Add Subcategory (Admin) — accepts imageUrl
     @PostMapping("/admin/subcategory/add")
     public ResponseEntity<SubCategoryResponseDTO> addSubCategory(
             @Valid @RequestBody SubCategoryDTO dto,
             @RequestHeader("Authorization") String token) {
         SubCategory subCategory = new SubCategory();
         subCategory.setName(dto.getName());
+        subCategory.setImageUrl(dto.getImageUrl());
+
         Category category = categoryService.getCategoryById(dto.getCategoryId());
         if (category == null) {
             return ResponseEntity.badRequest().build();
@@ -75,6 +77,18 @@ public class CategoryController {
         subCategory.setCategory(category);
         SubCategory savedSubCategory = categoryService.addSubCategory(subCategory, token);
         return ResponseEntity.ok(toSubCategoryResponseDTO(savedSubCategory));
+    }
+
+    // ✅ Update Subcategory (partial: name and/or imageUrl and/or category)
+    @PutMapping("/admin/subcategory/update/{subCategoryId}")
+    public ResponseEntity<SubCategoryResponseDTO> updateSubCategory(
+            @PathVariable Long subCategoryId,
+            @RequestBody SubCategoryDTO dto, // <— removed @Valid to avoid 400 on partial
+            @RequestHeader("Authorization") String token) {
+
+        SubCategory updated = categoryService.updateSubCategory(subCategoryId, dto, token);
+        return updated != null ? ResponseEntity.ok(toSubCategoryResponseDTO(updated))
+                               : ResponseEntity.notFound().build();
     }
 
     // Get all categories (User/Admin)
@@ -122,50 +136,47 @@ public class CategoryController {
         dto.setId(cat.getId());
         dto.setName(cat.getName());
         dto.setImageUrl(cat.getImageUrl());
-        dto.setSlug(cat.getSlug()); // ✅ Add this line
+        dto.setSlug(cat.getSlug());
         return dto;
     }
-
 
     private SubCategoryResponseDTO toSubCategoryResponseDTO(SubCategory subCat) {
         SubCategoryResponseDTO dto = new SubCategoryResponseDTO();
         dto.setId(subCat.getId());
         dto.setName(subCat.getName());
         dto.setSlug(subCat.getSlug());
-        
+        dto.setImageUrl(subCat.getImageUrl());
+
         if (subCat.getCategory() != null) {
             dto.setCategoryId(subCat.getCategory().getId());
-            dto.setCategoryName(subCat.getCategory().getName());     // ✅
-            dto.setCategorySlug(subCat.getCategory().getSlug());     // ✅
+            dto.setCategoryName(subCat.getCategory().getName());
+            dto.setCategorySlug(subCat.getCategory().getSlug());
         }
-
         return dto;
     }
 
-    
- // ⚠️ TEMPORARY: Generate missing slugs for categories
+    // Utility endpoints you already had
     @GetMapping("/admin/generate-category-slugs")
     public ResponseEntity<String> generateCategorySlugs(@RequestHeader("Authorization") String token) {
         categoryService.generateMissingSlugsForCategories();
         return ResponseEntity.ok("Category slugs generated (if missing).");
     }
 
-    // ⚠️ TEMPORARY: Generate missing slugs for subcategories
     @GetMapping("/admin/generate-subcategory-slugs")
     public ResponseEntity<String> generateSubCategorySlugs(@RequestHeader("Authorization") String token) {
         categoryService.generateMissingSlugsForSubCategories();
         return ResponseEntity.ok("Subcategory slugs generated (if missing).");
     }
+
     @GetMapping("/slug/{slug}")
     public ResponseEntity<?> getCategoryBySlug(@PathVariable String slug) {
         if (slug.matches("\\d+")) {
-            // Handle legacy numeric slugs by redirecting
             Long id = Long.parseLong(slug);
             Category cat = categoryService.getCategoryById(id);
             if (cat != null && cat.getSlug() != null) {
                 return ResponseEntity.status(301)
-                    .header("Location", "/categories/slug/" + cat.getSlug())
-                    .build();
+                        .header("Location", "/categories/slug/" + cat.getSlug())
+                        .build();
             }
             return ResponseEntity.notFound().build();
         }
@@ -181,8 +192,8 @@ public class CategoryController {
             SubCategory sub = categoryService.getSubCategoryById(id);
             if (sub != null && sub.getSlug() != null) {
                 return ResponseEntity.status(301)
-                    .header("Location", "/categories/subcategory/slug/" + sub.getSlug())
-                    .build();
+                        .header("Location", "/categories/subcategory/slug/" + sub.getSlug())
+                        .build();
             }
             return ResponseEntity.notFound().build();
         }
@@ -190,50 +201,43 @@ public class CategoryController {
         SubCategory sub = categoryService.getSubCategoryBySlug(slug);
         return sub != null ? ResponseEntity.ok(sub) : ResponseEntity.notFound().build();
     }
-    
- // Get all categories served by a specific vendor
+
     @GetMapping("/vendor/{vendorId}")
     public ResponseEntity<List<CategoryResponseDTO>> getCategoriesByVendor(@PathVariable Long vendorId) {
         List<Category> categories = categoryService.getCategoriesByVendorId(vendorId);
         List<CategoryResponseDTO> dtos = categories.stream()
-            .map(this::toCategoryResponseDTO)
-            .collect(Collectors.toList());
+                .map(this::toCategoryResponseDTO)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
-    }// At the bottom of your CategoryController
+    }
 
+    @GetMapping("/subcategories/all")
+    public ResponseEntity<List<SubCategoryResponseDTO>> getAllSubCategories() {
+        List<SubCategory> subCategories = subCategoryRepository.findAll();
+        List<SubCategoryResponseDTO> dtos = subCategories.stream()
+                .map(this::toSubCategoryResponseDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
 
+    @GetMapping("/vendor-subcategories")
+    public ResponseEntity<List<SubCategoryResponseDTO>> getSubCategoriesByVendorIds(
+            @RequestParam List<Long> vendorIds) {
+        List<SubCategory> subCats = categoryService.getSubCategoriesByVendorIds(vendorIds);
+        List<SubCategoryResponseDTO> dtos = subCats.stream()
+                .map(this::toSubCategoryResponseDTO)
+                .toList();
+        return ResponseEntity.ok(dtos);
+    }
 
-	@GetMapping("/subcategories/all")
-	public ResponseEntity<List<SubCategoryResponseDTO>> getAllSubCategories() {
-	    List<SubCategory> subCategories = subCategoryRepository.findAll();
-	    List<SubCategoryResponseDTO> dtos = subCategories.stream()
-	        .map(this::toSubCategoryResponseDTO)
-	        .collect(Collectors.toList());
-	    return ResponseEntity.ok(dtos);
-	}
-	
-	    
-	@GetMapping("/vendor-subcategories")
-	public ResponseEntity<List<SubCategoryResponseDTO>> getSubCategoriesByVendorIds(
-	        @RequestParam List<Long> vendorIds) {
-	    List<SubCategory> subCats = categoryService.getSubCategoriesByVendorIds(vendorIds);
-	    List<SubCategoryResponseDTO> dtos = subCats.stream()
-	            .map(this::toSubCategoryResponseDTO)
-	            .toList();
-	    return ResponseEntity.ok(dtos);
-	}
-	
-	@GetMapping("/subcategory/{subCategoryId}/vendors/nearby")
-	public ResponseEntity<List<VendorResponseDTO>> getNearbyVendorsBySubCategory(
-	        @PathVariable Long subCategoryId,
-	        @RequestParam double lat,
-	        @RequestParam double lng,
-	        @RequestParam(defaultValue = "10") double radiusKm) {
-
-	    List<VendorResponseDTO> vendors =
-	            categoryService.getNearbyVendorsBySubCategory(subCategoryId, lat, lng, radiusKm);
-
-	    return ResponseEntity.ok(vendors);
-	}
-
+    @GetMapping("/subcategory/{subCategoryId}/vendors/nearby")
+    public ResponseEntity<List<VendorResponseDTO>> getNearbyVendorsBySubCategory(
+            @PathVariable Long subCategoryId,
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "10") double radiusKm) {
+        List<VendorResponseDTO> vendors =
+                categoryService.getNearbyVendorsBySubCategory(subCategoryId, lat, lng, radiusKm);
+        return ResponseEntity.ok(vendors);
+    }
 }
