@@ -34,12 +34,6 @@ public class User {
     private LocalDateTime registeredAt;
 
 
-	@Column
-	private Double latitude;
-
-	@Column
-	private Double longitude;
-    // --- Getters and Setters ---
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -70,17 +64,5 @@ public class User {
 
     public LocalDateTime getRegisteredAt() { return registeredAt; }
     public void setRegisteredAt(LocalDateTime registeredAt) { this.registeredAt = registeredAt; }
-	public Double getLatitude() {
-		return latitude;
-	}
-	public void setLatitude(Double latitude) {
-		this.latitude = latitude;
-	}
-	public Double getLongitude() {
-		return longitude;
-	}
-	public void setLongitude(Double longitude) {
-		this.longitude = longitude;
-	}
-    
+	
 }

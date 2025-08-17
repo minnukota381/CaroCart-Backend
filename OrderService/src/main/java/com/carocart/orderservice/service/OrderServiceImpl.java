@@ -74,7 +74,7 @@ public class OrderServiceImpl implements OrderService {
         System.out.println("✅ Internal token initialized: " + systemJwtToken);
     }
 
-    @Override
+  @Override
     @Transactional
     public OrderResponse placeOrder(String token, OrderRequest orderRequest) {
         // Step 1: Get user and cart
@@ -164,8 +164,8 @@ public class OrderServiceImpl implements OrderService {
 
         return new OrderResponse(savedOrder);
     }
-
-    @Override
+    
+ @Override
     @Transactional
     public OrderResponse placeOrderInternal(OrderRequest orderRequest) {
         List<OrderItemDTO> cartItems = orderRequest.getItems();
@@ -230,7 +230,6 @@ public class OrderServiceImpl implements OrderService {
 
         return new OrderResponse(orderRepository.save(order));
     }
-    
 
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
         notificationClient.sendEmail(new EmailRequest(
@@ -620,6 +619,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
             // ✅ Vendor location
+         // ✅ Vendor location + phone
             try {
                 ProductDTO product = productClient.getProductById(item.getProductId());
                 if (product != null && product.getVendorId() != null) {
@@ -627,6 +627,7 @@ public class OrderServiceImpl implements OrderService {
                     if (vendor != null) {
                         dto.setVendorLat(vendor.getLatitude());
                         dto.setVendorLng(vendor.getLongitude());
+                        dto.setVendorPhone(vendor.getContactNumber());   // ✅ add this line
                     } else {
                         System.err.println("⚠️ Vendor not found for ID " + product.getVendorId());
                     }
