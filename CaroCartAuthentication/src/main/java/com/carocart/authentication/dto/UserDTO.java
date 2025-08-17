@@ -7,6 +7,8 @@ public class UserDTO {
     private String firstName;
     private Double latitude;
     private Double longitude;
+    private String mobileNumber; 
+    private String lastName;  
 
     public UserDTO() {}
 
@@ -45,4 +47,21 @@ public class UserDTO {
 
     public Double getLongitude() { return longitude; }
     public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+	public String getMobileNumber() {
+		return mobileNumber;
+	}
+
+	public void setMobileNumber(String mobileNumber) {
+		this.mobileNumber = mobileNumber;
+	}
+
+	public String getLastName() {
+		return lastName;
+	}
+
+	public void setLastName(String lastName) {
+		this.lastName = lastName;
+	}
+    
 }

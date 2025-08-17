@@ -32,7 +32,8 @@ public class SecurityConfig {
                     .requestMatchers("/orders/orderitems/**")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY", "ROLE_SYSTEM", "ROLE_USER")
 
-                    .requestMatchers("/orders/internal/**").hasAuthority("ROLE_SYSTEM")
+                    .requestMatchers("/orders/internal/**")
+                    .hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY", "ROLE_SYSTEM", "ROLE_USER")
 
                 .requestMatchers("/orders/admin/orders/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/orders/ready-for-delivery")
