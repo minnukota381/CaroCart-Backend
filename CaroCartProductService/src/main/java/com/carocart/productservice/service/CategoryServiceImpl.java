@@ -1,5 +1,6 @@
 package com.carocart.productservice.service;
 
+import com.carocart.productservice.dto.SubCategoryDTO;
 import com.carocart.productservice.dto.AdminResponseDTO;
 import com.carocart.productservice.dto.VendorResponseDTO;
 import com.carocart.productservice.entity.Category;
@@ -11,6 +12,8 @@ import com.carocart.productservice.repository.ProductRepository;
 import com.carocart.productservice.repository.SubCategoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+
 
 import java.util.List;
 import java.util.UUID;
@@ -32,13 +35,6 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private VendorClient vendorClient;
-
-    private void validateAdmin(String token) {
-        AdminResponseDTO admin = adminClient.getCurrentAdmin(token);
-        if (admin == null || !"ADMIN".equals(admin.getRole())) {
-            throw new RuntimeException("Unauthorized: Admin role required");
-        }
-    }
 
     private String toSlug(String input) {
         return input.toLowerCase()
@@ -204,6 +200,30 @@ public class CategoryServiceImpl implements CategoryService {
                 .toList();
     }
 
+    // ✅ Update subcategory (partial)
+    @Override
+    public SubCategory updateSubCategory(Long id, SubCategoryDTO dto, String token) {
+        validateAdmin(token);
+        SubCategory existing = subCategoryRepo.findById(id).orElse(null);
+        if (existing == null) return null;
+
+        if (dto.getName() != null && !dto.getName().isBlank()) {
+            existing.setName(dto.getName());
+            if (existing.getSlug() == null || existing.getSlug().isBlank()) {
+                existing.setSlug(generateSlug(existing.getName(), false));
+            }
+        }
+        if (dto.getImageUrl() != null && !dto.getImageUrl().isBlank()) {
+            existing.setImageUrl(dto.getImageUrl());
+        }
+        if (dto.getCategoryId() != null &&
+                (existing.getCategory() == null || !dto.getCategoryId().equals(existing.getCategory().getId()))) {
+            Category newCat = categoryRepo.findById(dto.getCategoryId()).orElse(null);
+            if (newCat != null) existing.setCategory(newCat);
+        }
+        return subCategoryRepo.save(existing);
+    }
+
     private double haversineDistanceKm(double lat1, double lon1, double lat2, double lon2) {
         double R = 6371;
         double dLat = Math.toRadians(lat2 - lat1);
@@ -216,5 +236,21 @@ public class CategoryServiceImpl implements CategoryService {
 
     private int calculateETAForPublic(double distanceKm) {
         return (int) Math.ceil((distanceKm / 30) * 60);
+    }
+
+    // ✅ single, public validateAdmin used everywhere
+    @Override
+    public void validateAdmin(String token) {
+        AdminResponseDTO admin = adminClient.getCurrentAdmin(token);
+        if (admin == null || !"ADMIN".equals(admin.getRole())) {
+            throw new RuntimeException("Unauthorized: Admin role required");
+        }
+    }
+
+    // ✅ Implemented missing method
+    @Override
+    public SubCategory saveSubCategory(SubCategory subCategory, String token) {
+        validateAdmin(token);
+        return subCategoryRepo.save(subCategory);
     }
 }
