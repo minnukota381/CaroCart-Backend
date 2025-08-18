@@ -41,21 +41,7 @@ public class Vendor {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
-    public String getManualCloseReason() {
-		return manualCloseReason;
-	}
 
-	public void setManualCloseReason(String manualCloseReason) {
-		this.manualCloseReason = manualCloseReason;
-	}
-
-	public LocalDateTime getManualCloseUntil() {
-		return manualCloseUntil;
-	}
-
-	public void setManualCloseUntil(LocalDateTime manualCloseUntil) {
-		this.manualCloseUntil = manualCloseUntil;
-	}
 	private String manualCloseReason;
     private LocalDateTime manualCloseUntil;
 
@@ -192,4 +178,20 @@ public class Vendor {
 
     public String getProfileImageUrl() { return profileImageUrl; }
     public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
+
+	public LocalDateTime getManualCloseUntil() {
+		return manualCloseUntil;
+	}
+
+	public void setManualCloseUntil(LocalDateTime manualCloseUntil) {
+		this.manualCloseUntil = manualCloseUntil;
+	}
+
+	public String getManualCloseReason() {
+		return manualCloseReason;
+	}
+
+	public void setManualCloseReason(String manualCloseReason) {
+		this.manualCloseReason = manualCloseReason;
+	}
 }

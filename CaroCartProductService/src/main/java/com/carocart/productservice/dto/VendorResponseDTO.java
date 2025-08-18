@@ -11,7 +11,6 @@ public class VendorResponseDTO {
     private String gstNumber;
     private String vendorType; // "FOOD" or "GROCERY"
 
-
     // Address fields
     private String addressLine1;
     private String city;
@@ -37,6 +36,11 @@ public class VendorResponseDTO {
 
     // ETA in minutes (calculated in ProductService)
     private Integer etaMinutes;
+    private Boolean acceptingOrders;
+
+    // ✅ NEW: manual close info
+    private String manualCloseReason;   // optional note shown in admin
+    private String manualCloseUntil;    // ISO-8601 string, e.g. "2025-08-16T23:00:00"
 
     // --- Getters and Setters ---
     public Long getId() { return id; }
@@ -104,5 +108,23 @@ public class VendorResponseDTO {
 	}
 	public void setVendorType(String vendorType) {
 		this.vendorType = vendorType;
+	}
+	public Boolean getAcceptingOrders() {
+		return acceptingOrders;
+	}
+	public void setAcceptingOrders(Boolean acceptingOrders) {
+		this.acceptingOrders = acceptingOrders;
+	}
+	public String getManualCloseReason() {
+		return manualCloseReason;
+	}
+	public void setManualCloseReason(String manualCloseReason) {
+		this.manualCloseReason = manualCloseReason;
+	}
+	public String getManualCloseUntil() {
+		return manualCloseUntil;
+	}
+	public void setManualCloseUntil(String manualCloseUntil) {
+		this.manualCloseUntil = manualCloseUntil;
 	}
 }
