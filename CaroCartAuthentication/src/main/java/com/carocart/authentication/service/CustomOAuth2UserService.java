@@ -1,39 +1,50 @@
 package com.carocart.authentication.service;
 
-import java.util.Optional;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import com.carocart.authentication.entity.User;
+import com.carocart.authentication.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
-import com.carocart.authentication.entity.User;
-import com.carocart.authentication.repository.UserRepository;
-import com.carocart.authentication.util.JwtUtil;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
-    @Autowired private UserRepository userRepository;
-    @Autowired private JwtUtil jwtUtil;
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public CustomOAuth2UserService(UserRepository userRepository,
+                                   PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        OAuth2User user = super.loadUser(userRequest);
-        String email = user.getAttribute("email");
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) {
+        OAuth2User oauth = super.loadUser(userRequest);
+        String email = oauth.getAttribute("email");
+        String given = oauth.getAttribute("given_name");
+        String family = oauth.getAttribute("family_name");
 
-        Optional<User> existingUser = userRepository.findByEmail(email);
-        if (existingUser.isEmpty()) {
-            User newUser = new User();
-            newUser.setEmail(email);
-            newUser.setFirstName(user.getAttribute("given_name"));
-            newUser.setLastName(user.getAttribute("family_name"));
-            newUser.setPassword(""); // Leave blank or random
-            newUser.setRole("USER");
-            userRepository.save(newUser);
+        if (email == null || email.isBlank()) {
+            throw new IllegalStateException("Google account does not expose email");
         }
 
-        return user;
+        Optional<User> existing = userRepository.findByEmail(email);
+        if (existing.isEmpty()) {
+            User u = new User();
+            u.setEmail(email);
+            u.setFirstName(given != null ? given : "CaroCart");
+            u.setLastName(family != null ? family : "");
+            u.setRole("USER");
+            u.setPassword(passwordEncoder.encode(UUID.randomUUID().toString())); // random, unusable
+            userRepository.save(u);
+        }
+
+        return oauth; // success handler will mint JWT
     }
 }
