@@ -13,79 +13,44 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId; // user placing the order
-
+    private Long userId; 
     private LocalDateTime orderDate;
-
     private String status; // e.g. PLACED, PROCESSING, SHIPPED, DELIVERED, CANCELLED
 
-    private Double totalAmount;
+    private Double totalAmount;   // items total
+    private Double deliveryFee;   // ✅ new
+    private Double finalAmount;   // ✅ new (totalAmount + deliveryFee - discounts)
 
     @Column(length = 1000)
-    private String shippingAddress; // can store as JSON string or simple text
-
+    private String shippingAddress;
 
     @Column(name = "payment_status")
     private String paymentStatus;
 
     @Column(name = "payment_id")
     private String paymentId;
-    
+
     @Column(name = "vendor_id")
     private Long vendorId;
+
     @Column(name = "address_id")
     private Long addressId;
-    
+
     @Column(name = "platform_commission_pct")
-    private Double platformCommissionPct; // e.g., 20.0 for 20%
+    private Double platformCommissionPct;
 
     @Column(name = "platform_commission_amount")
-    private Double platformCommissionAmount; // actual amount deducted as commission
-    
+    private Double platformCommissionAmount;
+
     @Column(name = "payment_method")
-    private String paymentMethod; // e.g., "COD", "RAZORPAY"
+    private String paymentMethod;
 
-    public String getPaymentMethod() {
-        return paymentMethod;
-    }
-
-    public void setPaymentMethod(String paymentMethod) {
-        this.paymentMethod = paymentMethod;
-    }
-
-
-    public Double getPlatformCommissionPct() { return platformCommissionPct; }
-    public void setPlatformCommissionPct(Double platformCommissionPct) { this.platformCommissionPct = platformCommissionPct; }
-
-    public Double getPlatformCommissionAmount() { return platformCommissionAmount; }
-    public void setPlatformCommissionAmount(Double platformCommissionAmount) { this.platformCommissionAmount = platformCommissionAmount; }
-
-    public Long getAddressId() { return addressId; }
-    public void setAddressId(Long addressId) { this.addressId = addressId; }
-
-    public Long getDeliveryBoyId() {
-		return deliveryBoyId;
-	}
-
-	public void setDeliveryBoyId(Long deliveryBoyId) {
-		this.deliveryBoyId = deliveryBoyId;
-	}
-
-	public String getDeliveryStatus() {
-		return deliveryStatus;
-	}
-
-	public void setDeliveryStatus(String deliveryStatus) {
-		this.deliveryStatus = deliveryStatus;
-	}
-
-	@Column(name = "delivery_boy_id")
+    @Column(name = "delivery_boy_id")
     private Long deliveryBoyId;
 
     @Column(name = "delivery_status")
-    private String deliveryStatus; // e.g., UNASSIGNED, ASSIGNED, OUT_FOR_DELIVERY, DELIVERED
+    private String deliveryStatus;
 
-    
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JsonManagedReference
     private List<OrderItem> orderItems;
@@ -93,81 +58,64 @@ public class Order {
     private LocalDateTime updatedAt;
 
     // --- Getters and Setters ---
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public LocalDateTime getOrderDate() { return orderDate; }
+    public void setOrderDate(LocalDateTime orderDate) { this.orderDate = orderDate; }
 
-    public Long getUserId() {
-        return userId;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
+    public Double getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
 
-    public LocalDateTime getOrderDate() {
-        return orderDate;
-    }
+    public Double getDeliveryFee() { return deliveryFee; } // ✅ new
+    public void setDeliveryFee(Double deliveryFee) { this.deliveryFee = deliveryFee; }
 
-    public void setOrderDate(LocalDateTime orderDate) {
-        this.orderDate = orderDate;
-    }
+    public Double getFinalAmount() { return finalAmount; } // ✅ new
+    public void setFinalAmount(Double finalAmount) { this.finalAmount = finalAmount; }
 
-    public String getStatus() {
-        return status;
-    }
+    public String getShippingAddress() { return shippingAddress; }
+    public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
 
-    public Double getTotalAmount() {
-        return totalAmount;
-    }
+    public String getPaymentId() { return paymentId; }
+    public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
 
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
-    }
+    public Long getVendorId() { return vendorId; }
+    public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
 
-    public String getShippingAddress() {
-        return shippingAddress;
-    }
+    public Long getAddressId() { return addressId; }
+    public void setAddressId(Long addressId) { this.addressId = addressId; }
 
-    public void setShippingAddress(String shippingAddress) {
-        this.shippingAddress = shippingAddress;
-    }
+    public Double getPlatformCommissionPct() { return platformCommissionPct; }
+    public void setPlatformCommissionPct(Double platformCommissionPct) { this.platformCommissionPct = platformCommissionPct; }
 
-    public String getPaymentStatus() {
-        return paymentStatus;
-    }
+    public Double getPlatformCommissionAmount() { return platformCommissionAmount; }
+    public void setPlatformCommissionAmount(Double platformCommissionAmount) { this.platformCommissionAmount = platformCommissionAmount; }
 
-    public void setPaymentStatus(String paymentStatus) {
-        this.paymentStatus = paymentStatus;
-    }
+    public String getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
 
-    public List<OrderItem> getOrderItems() {
-        return orderItems;
-    }
+    public Long getDeliveryBoyId() { return deliveryBoyId; }
+    public void setDeliveryBoyId(Long deliveryBoyId) { this.deliveryBoyId = deliveryBoyId; }
 
-    public void setOrderItems(List<OrderItem> orderItems) {
-        this.orderItems = orderItems;
-    }
+    public String getDeliveryStatus() { return deliveryStatus; }
+    public void setDeliveryStatus(String deliveryStatus) { this.deliveryStatus = deliveryStatus; }
 
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+    public List<OrderItem> getOrderItems() { return orderItems; }
+    public void setOrderItems(List<OrderItem> orderItems) { this.orderItems = orderItems; }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    // --- JPA Lifecycle Callbacks ---
-
+    // --- JPA Lifecycle ---
     @PrePersist
     public void onCreate() {
         if (this.orderDate == null) {
@@ -180,22 +128,4 @@ public class Order {
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-	public String getPaymentId() {
-		return paymentId;
-	}
-
-	public void setPaymentId(String paymentId) {
-		this.paymentId = paymentId;
-	}
-
-	public Long getVendorId() {
-		return vendorId;
-	}
-
-	public void setVendorId(Long vendorId) {
-		this.vendorId = vendorId;
-	}
-
-
 }
