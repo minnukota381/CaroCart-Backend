@@ -44,7 +44,6 @@ public interface OrderService {
     List<OrderItemDTO> getAvailableOrderItemsForDelivery();
     void assignOrderItemToDeliveryBoy(Long orderItemId, Long deliveryBoyId);
     void updateOrderItemDeliveryStatus(Long orderItemId, String status);
-    public List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate);
     // ✅ Internal token for Feign use
     String getInternalToken();
     
@@ -52,6 +51,10 @@ public interface OrderService {
     List<OrderItemDTO> getPendingItemsForAdmin();
     void approveOrderByAdmin(Long orderId);
     void rejectOrderByAdmin(Long orderId);
+    
+    List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate);
+    List<VendorEarningsDTO> getVendorEarningsByPeriod(String period);
+    VendorEarningsDTO getMyVendorEarnings(String token, String period);
 
 
 }

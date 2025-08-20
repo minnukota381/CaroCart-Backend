@@ -384,15 +384,6 @@ public class OrderController {
         ));
     }
 
-    @GetMapping("/admin/vendor-earnings")
-    public ResponseEntity<List<VendorEarningsDTO>> getVendorEarnings(
-            @RequestParam String fromDate,
-            @RequestParam String toDate) {
-        return ResponseEntity.ok(orderService.getVendorEarnings(fromDate, toDate));
-    }
-
-
-
     @GetMapping("/orderitems/{orderItemId}/user-location")
     public ResponseEntity<Map<String, Object>> getUserLocationFromOrderItem(
             @PathVariable Long orderItemId,
@@ -485,5 +476,26 @@ public class OrderController {
         );
         return ResponseEntity.ok(dto);
     }
+    
+ /// Admin → earnings by custom date range
+    @GetMapping("/admin/vendor-earnings")
+    public ResponseEntity<List<VendorEarningsDTO>> getVendorEarnings(
+            @RequestParam String fromDate,
+            @RequestParam String toDate) {
+        return ResponseEntity.ok(orderService.getVendorEarnings(fromDate, toDate));
+    }
 
+    // Admin → earnings by period (daily/weekly/monthly)
+    @GetMapping("/admin/vendor-earnings/{period}")
+    public ResponseEntity<List<VendorEarningsDTO>> getVendorEarningsByPeriod(@PathVariable String period) {
+        return ResponseEntity.ok(orderService.getVendorEarningsByPeriod(period));
+    }
+
+    // Vendor → see only their own earnings by period
+    @GetMapping("/vendor/earnings/{period}")
+    public ResponseEntity<VendorEarningsDTO> getMyEarningsByPeriod(
+            @PathVariable String period,
+            @RequestHeader("Authorization") String token) {
+        return ResponseEntity.ok(orderService.getMyVendorEarnings(token, period));
+    }
 }

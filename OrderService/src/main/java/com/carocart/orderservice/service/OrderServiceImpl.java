@@ -811,15 +811,30 @@ public class OrderServiceImpl implements OrderService {
     public String getInternalToken() {
         return this.systemJwtToken;
     }
+    
     @Override
-    public List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate) {
-        LocalDateTime from = LocalDateTime.parse(fromDate + "T00:00:00");
-        LocalDateTime to = LocalDateTime.parse(toDate + "T23:59:59");
+    public List<VendorEarningsDTO> getVendorEarningsByPeriod(String period) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime from;
+        LocalDateTime to = now;
 
-        // Fetch delivered orders in range
+        switch (period.toUpperCase()) {
+            case "DAILY":
+                from = now.toLocalDate().atStartOfDay();
+                to = now.toLocalDate().atTime(23, 59, 59);
+                break;
+            case "WEEKLY":
+                from = now.minusDays(7).toLocalDate().atStartOfDay();
+                break;
+            case "MONTHLY":
+                from = now.minusDays(30).toLocalDate().atStartOfDay();
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid period: " + period);
+        }
+
         List<Order> orders = orderRepository.findByStatusAndOrderDateBetween("DELIVERED", from, to);
 
-        // Group by vendor
         Map<Long, List<Order>> grouped = orders.stream()
                 .collect(Collectors.groupingBy(Order::getVendorId));
 
@@ -830,7 +845,6 @@ public class OrderServiceImpl implements OrderService {
             double totalSales = vendorOrders.stream().mapToDouble(Order::getTotalAmount).sum();
             double commission = vendorOrders.stream().mapToDouble(Order::getPlatformCommissionAmount).sum();
 
-            // Fetch vendor info via internal token
             VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, vendorId);
 
             return new VendorEarningsDTO(
@@ -842,7 +856,46 @@ public class OrderServiceImpl implements OrderService {
             );
         }).collect(Collectors.toList());
     }
-    
-    
 
+    @Override
+    public VendorEarningsDTO getMyVendorEarnings(String token, String period) {
+        VendorResponseDTO vendor = vendorClient.getCurrentVendor(token);
+        List<VendorEarningsDTO> all = getVendorEarningsByPeriod(period);
+
+        return all.stream()
+                .filter(e -> e.getVendorId().equals(vendor.getId()))
+                .findFirst()
+                .orElse(new VendorEarningsDTO(vendor.getId(), vendor.getCompanyName(),
+                        vendor.getUpiId(), 0, 0));
+    }
+
+    
+    @Override
+    public List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate) {
+        LocalDateTime from = LocalDateTime.parse(fromDate + "T00:00:00");
+        LocalDateTime to = LocalDateTime.parse(toDate + "T23:59:59");
+
+        List<Order> orders = orderRepository.findByStatusAndOrderDateBetween("DELIVERED", from, to);
+
+        Map<Long, List<Order>> grouped = orders.stream()
+                .collect(Collectors.groupingBy(Order::getVendorId));
+
+        return grouped.entrySet().stream().map(entry -> {
+            Long vendorId = entry.getKey();
+            List<Order> vendorOrders = entry.getValue();
+
+            double totalSales = vendorOrders.stream().mapToDouble(Order::getTotalAmount).sum();
+            double commission = vendorOrders.stream().mapToDouble(Order::getPlatformCommissionAmount).sum();
+
+            VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, vendorId);
+
+            return new VendorEarningsDTO(
+                    vendorId,
+                    vendor.getCompanyName(),
+                    vendor.getUpiId(),
+                    totalSales,
+                    commission
+            );
+        }).collect(Collectors.toList());
+    }
 }
