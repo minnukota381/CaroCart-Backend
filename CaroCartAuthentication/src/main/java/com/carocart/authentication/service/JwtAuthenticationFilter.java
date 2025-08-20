@@ -57,12 +57,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         UsernamePasswordAuthenticationToken authToken;
 
         if ("SYSTEM".equalsIgnoreCase(role)) {
-            // Internal Feign client access
             authToken = new UsernamePasswordAuthenticationToken(
                     "internal_system", null,
                     List.of(new SimpleGrantedAuthority("ROLE_SYSTEM")));
         } else {
-            // Normal user (ADMIN / USER / VENDOR)
             authToken = new UsernamePasswordAuthenticationToken(
                     email, null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + role)));
@@ -81,11 +79,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.startsWith("/users/forgot-password") ||
                path.startsWith("/users/verify-otp") ||
                path.startsWith("/users/reset-password") ||
+               path.startsWith("/users/phone/") ||     // ← allow all phone endpoints
                path.startsWith("/admins/signup") ||
                path.startsWith("/admins/login") ||
                path.startsWith("/vendors/signup") ||
                path.startsWith("/vendors/login") ||
                path.startsWith("/vendors/nearby") ||
+               path.startsWith("/oauth2/") ||
+               path.startsWith("/login/oauth2/") ||
                path.startsWith("/actuator");
     }
 }
