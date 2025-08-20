@@ -18,8 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.util.Optional;
-
 @Configuration
 public class SecurityConfig {
 
@@ -61,7 +59,8 @@ public class SecurityConfig {
                     "/vendors/nearby", "/vendors/nearby/**",
                     "/vendors/forgot-password", "/vendors/verify-otp", "/vendors/reset-password",
                     "/oauth2/**", "/login/oauth2/**",
-                    "/users/phone/**" // phone login public
+                    "/users/phone/**",
+                    "/vendors/{id}"
                 ).permitAll()
 
                 // Admin-only
@@ -89,47 +88,46 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .httpBasic(httpBasic -> httpBasic.disable())
-            .formLogin(form -> form.disable())
+            .formLogin(form -> form.disable());
 
-            // OAuth2 login: upsert user via CustomOAuth2UserService, then mint JWT and redirect to FE
-            .oauth2Login(oauth -> oauth
-                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-                .successHandler((request, response, authentication) -> {
-                    var oAuth2User = (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getPrincipal();
-                    String email = oAuth2User.getAttribute("email");
-
-                    Optional<User> userOpt = userRepository.findByEmail(email);
-                    if (userOpt.isEmpty()) {
-                        String failureRedirect = env.getProperty("app.oauth.failure-redirect",
-                                "http://localhost:5173/oauth-failed");
-                        response.sendRedirect(failureRedirect + "?reason=user_not_found");
-                        return;
-                    }
-
-                    User user = userOpt.get();
-                    String jwt = jwtUtil.generateToken(
-                            user.getId(),
-                            user.getEmail(),
-                            user.getRole(),
-                            user.getFirstName(),
-                            user.getLastName()
-                    );
-
-                    String successRedirect = env.getProperty("app.oauth.success-redirect",
-                            "http://localhost:5173/oauth-success");
-                    response.sendRedirect(successRedirect + "?token=" + jwt);
-                })
-                .failureHandler((request, response, exception) -> {
-                    String failureRedirect = env.getProperty("app.oauth.failure-redirect",
-                            "http://localhost:5173/oauth-failed");
-                    response.sendRedirect(failureRedirect + "?reason=" + exception.getClass().getSimpleName());
-                })
-            );
+        // 🔒 TEMPORARILY DISABLED OAUTH2 LOGIN
+//            .oauth2Login(oauth -> oauth
+//                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+//                .successHandler((request, response, authentication) -> {
+//                    var oAuth2User = (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getPrincipal();
+//                    String email = oAuth2User.getAttribute("email");
+//
+//                    Optional<User> userOpt = userRepository.findByEmail(email);
+//                    if (userOpt.isEmpty()) {
+//                        String failureRedirect = env.getProperty("app.oauth.failure-redirect",
+//                                "http://localhost:5173/oauth-failed");
+//                        response.sendRedirect(failureRedirect + "?reason=user_not_found");
+//                        return;
+//                    }
+//
+//                    User user = userOpt.get();
+//                    String jwt = jwtUtil.generateToken(
+//                            user.getId(),
+//                            user.getEmail(),
+//                            user.getRole(),
+//                            user.getFirstName(),
+//                            user.getLastName()
+//                    );
+//
+//                    String successRedirect = env.getProperty("app.oauth.success-redirect",
+//                            "http://localhost:5173/oauth-success");
+//                    response.sendRedirect(successRedirect + "?token=" + jwt);
+//                })
+//                .failureHandler((request, response, exception) -> {
+//                    String failureRedirect = env.getProperty("app.oauth.failure-redirect",
+//                            "http://localhost:5173/oauth-failed");
+//                    response.sendRedirect(failureRedirect + "?reason=" + exception.getClass().getSimpleName());
+//                })
+//            );
 
         return http.build();
     }
 
-    // Make this STATIC to avoid circular dependency with CustomOAuth2UserService
     @Bean
     public static PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
