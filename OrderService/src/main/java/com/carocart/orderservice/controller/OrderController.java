@@ -498,5 +498,4 @@ public class OrderController {
             @RequestHeader("Authorization") String token) {
         return ResponseEntity.ok(orderService.getMyVendorEarnings(token, period));
     }
-
 }
