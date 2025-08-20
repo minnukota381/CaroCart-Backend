@@ -36,6 +36,7 @@ public class SecurityConfig {
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_DELIVERY", "ROLE_DELIVERY_BOY", "ROLE_SYSTEM", "ROLE_USER")
 
                 .requestMatchers("/orders/admin/orders/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/orders/admin/vendor-earnings/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/orders/ready-for-delivery")
                 
                     .hasAnyAuthority("ROLE_DELIVERY", "ROLE_ADMIN", "ROLE_DELIVERY_BOY")
@@ -44,6 +45,9 @@ public class SecurityConfig {
                 
                 .requestMatchers("/orders/admin/pending-items").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/orders/admin/items/**").hasAuthority("ROLE_ADMIN")
+                
+                .requestMatchers("/orders/vendor/earnings/**")
+                .hasAnyAuthority("ROLE_VENDOR")
 
 
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
