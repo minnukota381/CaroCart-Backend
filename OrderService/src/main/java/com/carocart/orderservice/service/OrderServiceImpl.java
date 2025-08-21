@@ -67,6 +67,33 @@ public class OrderServiceImpl implements OrderService {
     	    this.jwtUtil = jwtUtil;
     	}
 
+ // --- Haversine formula for distance in KM ---
+    private double haversine(double lat1, double lon1, double lat2, double lon2) {
+    	
+        final int R = 6371; // Earth radius in km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    // --- Delivery Fee Logic ---
+    private double calculateDeliveryFee(double distanceKm, double cartAmount, boolean isGrocery) {
+        double freeThreshold = isGrocery ? 149.0 : 199.0;
+        if (cartAmount >= freeThreshold) return 0.0;
+
+        if (distanceKm <= 3) return 19.0;
+        if (distanceKm <= 6) return 29.0;
+        if (distanceKm <= 9) return 39.0;
+        if (distanceKm <= 12 && !isGrocery) return 59.0;
+
+        throw new RuntimeException("❌ Delivery not available for this distance.");
+    }
+
+    
     @PostConstruct
     public void init() {
         String token = jwtUtil.generateInternalToken();
@@ -74,7 +101,7 @@ public class OrderServiceImpl implements OrderService {
         System.out.println("✅ Internal token initialized: " + systemJwtToken);
     }
 
-  @Override
+    @Override
     @Transactional
     public OrderResponse placeOrder(String token, OrderRequest orderRequest) {
         // Step 1: Get user and cart
@@ -84,21 +111,15 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Cart is empty. Cannot place order.");
         }
 
-        // Step 2: Get shipping address from AddressService
-        AddressDTO address;
-        try {
-            address = addressClient.getAddressById(orderRequest.getAddressId(), token);
-            System.out.println("📦 Shipping address: " + address.getAddress());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch address details: " + e.getMessage());
-        }
+        // Step 2: Get shipping address
+        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), token);
 
         // Step 3: Create Order
         Order order = new Order();
         order.setUserId(user.getId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
-        order.setAddressId(orderRequest.getAddressId()); // ✅ Store for tracking
+        order.setAddressId(orderRequest.getAddressId());
         order.setShippingAddress(address.getAddress());
 
         // Payment
@@ -109,7 +130,7 @@ public class OrderServiceImpl implements OrderService {
             order.setPaymentStatus("PENDING");
         }
 
-        // Step 4: Get vendorId from first product
+        // Step 4: Vendor
         Long firstProductId = cartItems.get(0).getProductId();
         ProductDTO firstProduct = productClient.getProductById(firstProductId);
         if (firstProduct.getVendorId() == null) {
@@ -117,15 +138,12 @@ public class OrderServiceImpl implements OrderService {
         }
         order.setVendorId(firstProduct.getVendorId());
 
-        // Step 5: Create OrderItems
+        VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, firstProduct.getVendorId());
+
+        // Step 5: Items
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
-
-            try {
-                productClient.decreaseStock(product.getId(), item.getQuantity());
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to decrease stock for product: " + product.getName());
-            }
+            productClient.decreaseStock(product.getId(), item.getQuantity());
 
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(product.getId());
@@ -135,23 +153,31 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setPrice(product.getPrice());
             orderItem.setTotalPrice(product.getPrice() * item.getQuantity());
             orderItem.setOrder(order);
-
-            if (product.getVendorEmail() != null) {
-                orderItem.setApprovalRequiredBy("VENDOR");
-                orderItem.setVendorEmail(product.getVendorEmail());
-            } else {
-                orderItem.setApprovalRequiredBy("ADMIN");
-            }
+            orderItem.setApprovalRequiredBy(product.getVendorEmail() != null ? "VENDOR" : "ADMIN");
+            orderItem.setVendorEmail(product.getVendorEmail());
             orderItem.setApprovalStatus(ApprovalStatus.PENDING);
             return orderItem;
         }).collect(Collectors.toList());
 
-        // Step 6: Calculate total & commission
+        // Step 6: Totals
         double totalAmount = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
         order.setOrderItems(orderItems);
         order.setTotalAmount(totalAmount);
         order.setPlatformCommissionPct(20.0);
         order.setPlatformCommissionAmount(totalAmount * 0.20);
+        System.out.println("Vendor location: " + vendor.getLatitude() + "," + vendor.getLongitude());
+        System.out.println("User location: " + address.getLatitude() + "," + address.getLongitude());
+
+        // ✅ Delivery fee calculation
+        double distanceKm = haversine(vendor.getLatitude(), vendor.getLongitude(),
+                address.getLatitude(), address.getLongitude());
+
+        boolean isGrocery = vendor.getVendorType() != null 
+                && vendor.getVendorType().name().equalsIgnoreCase("GROCERY");
+
+        double deliveryFee = calculateDeliveryFee(distanceKm, totalAmount, isGrocery);
+        order.setDeliveryFee(deliveryFee);
+        order.setFinalAmount(totalAmount + deliveryFee);
 
         // Step 7: Save order
         Order savedOrder = orderRepository.save(order);
@@ -159,13 +185,14 @@ public class OrderServiceImpl implements OrderService {
         // Step 8: Clear cart
         cartClient.clearCart(token);
 
-        // Step 9: Async email notification
+        // Step 9: Notifications
         new Thread(() -> sendOrderPlacedEmails(savedOrder, user, orderItems)).start();
 
         return new OrderResponse(savedOrder);
     }
+
     
- @Override
+    @Override
     @Transactional
     public OrderResponse placeOrderInternal(OrderRequest orderRequest) {
         List<OrderItemDTO> cartItems = orderRequest.getItems();
@@ -177,33 +204,25 @@ public class OrderServiceImpl implements OrderService {
         order.setUserId(orderRequest.getUserId());
         order.setOrderDate(LocalDateTime.now());
         order.setStatus("PLACED");
-        order.setAddressId(orderRequest.getAddressId()); // ✅ Keep for tracking
+        order.setAddressId(orderRequest.getAddressId());
         order.setShippingAddress(orderRequest.getShippingAddress());
         order.setPaymentStatus("PAID");
         order.setTotalAmount(orderRequest.getTotalAmount());
 
-        // Vendor
         Long firstProductId = cartItems.get(0).getProductId();
         ProductDTO firstProduct = productClient.getProductById(firstProductId);
-        if (firstProduct.getVendorId() != null) {
-            order.setVendorId(firstProduct.getVendorId());
-        } else {
+        if (firstProduct.getVendorId() == null) {
             throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
         }
+        order.setVendorId(firstProduct.getVendorId());
 
-        if (orderRequest.getPaymentId() != null && !orderRequest.getPaymentId().isBlank()) {
-            order.setPaymentId(orderRequest.getPaymentId());
-        }
+        VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, firstProduct.getVendorId());
+        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), systemJwtToken);
 
         // Items
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
-
-            try {
-                productClient.decreaseStock(product.getId(), item.getQuantity());
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to decrease stock for product: " + product.getName());
-            }
+            productClient.decreaseStock(product.getId(), item.getQuantity());
 
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(product.getId());
@@ -213,13 +232,8 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setPrice(item.getPrice());
             orderItem.setTotalPrice(item.getPrice() * item.getQuantity());
             orderItem.setOrder(order);
-
-            if (product.getVendorEmail() != null) {
-                orderItem.setApprovalRequiredBy("VENDOR");
-                orderItem.setVendorEmail(product.getVendorEmail());
-            } else {
-                orderItem.setApprovalRequiredBy("ADMIN");
-            }
+            orderItem.setApprovalRequiredBy(product.getVendorEmail() != null ? "VENDOR" : "ADMIN");
+            orderItem.setVendorEmail(product.getVendorEmail());
             orderItem.setApprovalStatus(ApprovalStatus.PENDING);
             return orderItem;
         }).collect(Collectors.toList());
@@ -227,9 +241,23 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderItems(orderItems);
         order.setPlatformCommissionPct(20.0);
         order.setPlatformCommissionAmount(orderRequest.getTotalAmount() * 0.20);
+        System.out.println("Vendor location: " + vendor.getLatitude() + "," + vendor.getLongitude());
+        System.out.println("User location: " + address.getLatitude() + "," + address.getLongitude());
+
+        // ✅ Delivery fee calculation
+        double distanceKm = haversine(vendor.getLatitude(), vendor.getLongitude(),
+                address.getLatitude(), address.getLongitude());
+
+        boolean isGrocery = vendor.getVendorType() != null 
+                && vendor.getVendorType().name().equalsIgnoreCase("GROCERY");
+
+        double deliveryFee = calculateDeliveryFee(distanceKm, orderRequest.getTotalAmount(), isGrocery);
+        order.setDeliveryFee(deliveryFee);
+        order.setFinalAmount(orderRequest.getTotalAmount() + deliveryFee);
 
         return new OrderResponse(orderRepository.save(order));
     }
+
 
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
         notificationClient.sendEmail(new EmailRequest(

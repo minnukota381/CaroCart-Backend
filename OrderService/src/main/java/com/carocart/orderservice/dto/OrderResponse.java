@@ -20,33 +20,19 @@ public class OrderResponse {
     private String deliveryStatus;
     private Long vendorId;
 
-    // ✅ NEW: address-based location (from AddressService)
+    // ✅ Include delivery fee info for frontend
     private Double addressLat;
     private Double addressLng;
+    private Double deliveryFee;
+    private Double finalAmount;
 
     public OrderResponse() {}
-
-    public OrderResponse(Long orderId, Long userId, String shippingAddress, Long addressId, Double totalAmount,
-                         String status, String paymentStatus, String paymentId,
-                         LocalDateTime orderDate, LocalDateTime updatedAt,
-                         List<OrderItemDTO> items) {
-        this.orderId = orderId;
-        this.userId = userId;
-        this.shippingAddress = shippingAddress;
-        this.addressId = addressId;
-        this.totalAmount = totalAmount;
-        this.status = status;
-        this.paymentStatus = paymentStatus;
-        this.paymentId = paymentId;
-        this.orderDate = orderDate;
-        this.updatedAt = updatedAt;
-        this.items = items;
-    }
 
     public OrderResponse(com.carocart.orderservice.entity.Order order) {
         this.orderId = order.getId();
         this.userId = order.getUserId();
         this.shippingAddress = order.getShippingAddress();
+        this.addressId = order.getAddressId();
         this.totalAmount = order.getTotalAmount();
         this.status = order.getStatus();
         this.paymentStatus = order.getPaymentStatus();
@@ -56,10 +42,8 @@ public class OrderResponse {
         this.deliveryBoyId = order.getDeliveryBoyId();
         this.deliveryStatus = order.getDeliveryStatus();
         this.vendorId = order.getVendorId();
-
-        try {
-            this.addressId = (Long) order.getClass().getDeclaredMethod("getAddressId").invoke(order);
-        } catch (Exception ignored) {}
+        this.deliveryFee = order.getDeliveryFee();
+        this.finalAmount = order.getFinalAmount();
 
         if (order.getOrderItems() != null) {
             this.items = order.getOrderItems().stream()
@@ -116,4 +100,10 @@ public class OrderResponse {
 
     public Double getAddressLng() { return addressLng; }
     public void setAddressLng(Double addressLng) { this.addressLng = addressLng; }
+
+    public Double getDeliveryFee() { return deliveryFee; }
+    public void setDeliveryFee(Double deliveryFee) { this.deliveryFee = deliveryFee; }
+
+    public Double getFinalAmount() { return finalAmount; }
+    public void setFinalAmount(Double finalAmount) { this.finalAmount = finalAmount; }
 }

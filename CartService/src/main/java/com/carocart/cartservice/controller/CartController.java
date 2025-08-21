@@ -3,8 +3,10 @@ package com.carocart.cartservice.controller;
 import com.carocart.cartservice.dto.AddToCartRequestDTO;
 import com.carocart.cartservice.dto.CartItemDTO;
 import com.carocart.cartservice.dto.CartItemResponse;
+import com.carocart.cartservice.dto.CartSummaryDTO;
 import com.carocart.cartservice.dto.UpdateCartRequestDTO;
 import com.carocart.cartservice.service.CartService;
+import com.carocart.cartservice.util.JwtUtil;
 
 import jakarta.validation.Valid;
 
@@ -20,7 +22,8 @@ public class CartController {
 
     @Autowired
     private CartService cartService;
-
+    @Autowired
+private JwtUtil jwtUtil;
     @GetMapping("/get")
     public ResponseEntity<List<CartItemDTO>> getCartItemsByToken(
             @RequestHeader("Authorization") String token) {
@@ -61,4 +64,11 @@ public class CartController {
         cartService.clearCart(token);
         return ResponseEntity.noContent().build();
     }
+    
+    @GetMapping("/summary")
+    public ResponseEntity<CartSummaryDTO> getCartSummary(@RequestHeader("Authorization") String token) {
+        Long userId = jwtUtil.extractUserId(token);
+        return ResponseEntity.ok(cartService.getCartSummary(userId));
+    }
+
 }
