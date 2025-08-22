@@ -44,12 +44,13 @@ class OrderItemApprovalTests {
     private JwtUtil jwtUtil;
     @Mock
     private DeliveryBoyClient deliveryClient;
-
+    @Mock
+    private DeliveryEarningClient deliveryEarningClient;
     @BeforeEach
     void setup() {
         MockitoAnnotations.openMocks(this);
         service = new OrderServiceImpl(orderRepository, cartClient, productClient, userClient,
-                addressClient,ordersInternalUserClient, notificationClient, vendorClient, deliveryClient, orderItemRepository, jwtUtil);
+                addressClient,ordersInternalUserClient, notificationClient, vendorClient, deliveryClient, orderItemRepository, jwtUtil,deliveryEarningClient);
     }
 
     @Test
