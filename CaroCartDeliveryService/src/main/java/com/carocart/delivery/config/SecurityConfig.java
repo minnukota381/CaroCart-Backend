@@ -1,9 +1,11 @@
+
 package com.carocart.delivery.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;  // <-- add this
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,11 +21,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> {})
+            .cors(cors -> {})                      // keep
             .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
             .authorizeHttpRequests(authz -> authz
+                // ✅ Always allow preflight
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                 .requestMatchers(
                     "/deliveryboys/register",
                     "/deliveryboys/login",
@@ -42,6 +47,10 @@ public class SecurityConfig {
 
                 .requestMatchers("/deliveryboys/me", "/deliveryboys/me/**")
                     .hasRole("DELIVERY_BOY")
+
+                // ✅ FIX: include /delivery prefix (controller base path)
+                .requestMatchers("/delivery/internal/earnings").hasAnyRole("SYSTEM","ADMIN")
+                .requestMatchers("/delivery/earnings/**").hasRole("DELIVERY_BOY")
 
                 .requestMatchers("/delivery/orders/**")
                     .hasAnyRole("DELIVERY_BOY", "SYSTEM", "ADMIN")

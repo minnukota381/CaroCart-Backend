@@ -65,10 +65,10 @@ private JwtUtil jwtUtil;
         return ResponseEntity.noContent().build();
     }
     
-    @GetMapping("/summary")
-    public ResponseEntity<CartSummaryDTO> getCartSummary(@RequestHeader("Authorization") String token) {
-        Long userId = jwtUtil.extractUserId(token);
-        return ResponseEntity.ok(cartService.getCartSummary(userId));
-    }
+//    @GetMapping("/summary")
+//    public ResponseEntity<CartSummaryDTO> getCartSummary(@RequestHeader("Authorization") String token) {
+//        Long userId = jwtUtil.extractUserId(token);
+//        return ResponseEntity.ok(cartService.getCartSummary(userId));
+//    }
 
 }
