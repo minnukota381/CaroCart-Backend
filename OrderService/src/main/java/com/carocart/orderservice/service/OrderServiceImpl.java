@@ -14,6 +14,7 @@ import jakarta.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -24,6 +25,12 @@ import java.util.stream.Collectors;
 @Service
 public class OrderServiceImpl implements OrderService {
 
+    @Value("${orders.autoApprove.enabled:true}")
+    private boolean autoApproveEnabled;
+
+    @Value("${orders.autoApprove.delaySeconds:60}")
+    private long autoApproveDelaySeconds;
+    
 	private String systemJwtToken;
 
     private final OrderRepository orderRepository;
@@ -164,7 +171,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 2) address
-        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), token);
+//        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), token);
+        AddressDTO address = addressClient.getAddressById(token, orderRequest.getAddressId());
 
         // 3) order shell
         Order order = new Order();
@@ -267,8 +275,8 @@ public class OrderServiceImpl implements OrderService {
         order.setVendorId(firstProduct.getVendorId());
 
         VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, firstProduct.getVendorId());
-        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), systemJwtToken);
-
+//        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), systemJwtToken);
+        AddressDTO address = addressClient.getAddressById(systemJwtToken, orderRequest.getAddressId());
         // items
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
@@ -311,7 +319,7 @@ public class OrderServiceImpl implements OrderService {
         return new OrderResponse(orderRepository.save(order));
     }
 
-
+  
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
         notificationClient.sendEmail(new EmailRequest(
                 user.getEmail(),
@@ -401,25 +409,20 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
         try {
-            // Use internal token to get user info
             UserDTO user = userClient.getUserById(systemJwtToken, order.getUserId());
-
-            // If the incoming token is not from the same user, and not SYSTEM/ADMIN/DELIVERY_BOY, block it
             String incomingEmail = "";
-            try {
-                incomingEmail = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-            } catch (Exception ignored) {}
-
+            try { incomingEmail = jwtUtil.extractUsername(token.replace("Bearer ", "")); } catch (Exception ignored) {}
             if (!incomingEmail.equalsIgnoreCase(user.getEmail()) &&
                 !jwtUtil.extractRole(token.replace("Bearer ", "")).matches("ADMIN|DELIVERY_BOY|SYSTEM")) {
                 throw new RuntimeException("Unauthorized access to this order.");
             }
-
-            return new OrderResponse(order);
         } catch (Exception e) {
             throw new RuntimeException("Unable to fetch user info for this order.");
         }
+
+        return toEnrichedResponse(order);
     }
+
 
 
     @Override
@@ -508,17 +511,6 @@ public class OrderServiceImpl implements OrderService {
                 .map(OrderItemDTO::new)
                 .collect(Collectors.toList());
     }
-
-
-//    @Override
-//    public List<OrderItemDTO> getPendingItemsForAdmin() {
-//        return orderItemRepository
-//                .findByApprovalRequiredByAndApprovalStatus("ADMIN", "PENDING")
-//                .stream()
-//                .map(OrderItemDTO::new)
-//                .collect(Collectors.toList());
-//    }
-
     @Override
     @Transactional
     public void approveItemAsVendor(String token, Long itemId) {
@@ -531,18 +523,6 @@ public class OrderServiceImpl implements OrderService {
         item.setApprovalStatus(ApprovalStatus.APPROVED);
         orderItemRepository.save(item);
     }
-
-//    @Override
-//    @Transactional
-//    public void approveItemAsAdmin(Long itemId) {
-//        OrderItem item = orderItemRepository.findById(itemId)
-//                .orElseThrow(() -> new RuntimeException("Item not found"));
-//        if (!"ADMIN".equals(item.getApprovalRequiredBy())) {
-//            throw new RuntimeException("Not an admin item");
-//        }
-//        item.setApprovalStatus(ApprovalStatus.APPROVED);
-//        orderItemRepository.save(item);
-//    }
 
     @Override
     @Transactional
@@ -643,148 +623,109 @@ public class OrderServiceImpl implements OrderService {
         orderItemRepository.save(item);
     }
 
-    @Override
-    public List<OrderResponse> getOrdersAvailableForDelivery(String token) {
-        // Fetch only those orders where ALL items are approved by vendor and not assigned
-        List<Order> all = orderRepository.findAll();
-        return all.stream()
-                .filter(order -> order.getDeliveryBoyId() == null &&
-                        order.getOrderItems().stream().allMatch(item -> item.getApprovalStatus() == ApprovalStatus.APPROVED))
-                .map(OrderResponse::new)
-                .collect(Collectors.toList());
-    }
     
-    @Override
-    public List<OrderItemDTO> getAvailableOrderItemsForDelivery() {
-        List<OrderItem> items = orderItemRepository
-                .findByApprovalStatusAndDeliveryBoyIdIsNull(ApprovalStatus.APPROVED);
-
-        return items.stream().map(item -> {
-            OrderItemDTO dto = new OrderItemDTO(item);
-
-            Order order = item.getOrder();
-            if (order != null) {
-                dto.setDeliveryAddress(order.getShippingAddress());
-                dto.setPaymentType(order.getPaymentStatus());
-                dto.setDeliveryStatus(item.getDeliveryStatus());
-
-                // ✅ Get user details
-                try {
-                    UserDTO user = userClient.getCurrentUserById(systemJwtToken, order.getUserId());
-                    dto.setUserName(user.getFirstName() + " " + user.getLastName());
-                    dto.setUserPhone(user.getMobileNumber());
-                } catch (Exception e) {
-                    System.err.println("⚠️ Could not fetch user details for order " + order.getId() + ": " + e.getMessage());
-                    dto.setUserName("N/A");
-                    dto.setUserPhone("N/A");
-                }
-
-                // ✅ Get user's lat/lng from AddressService
-                try {
-                    if (order.getAddressId() != null) {
-                        AddressDTO address = addressClient.getAddressById(order.getAddressId(), systemJwtToken);
-                        if (address != null) {
-                            dto.setUserLat(address.getLatitude());
-                            dto.setUserLng(address.getLongitude());
-                        } else {
-                            System.err.println("⚠️ Address not found for ID " + order.getAddressId());
-                        }
-                    } else {
-                        System.err.println("⚠️ Order " + order.getId() + " has no addressId set");
-                    }
-                } catch (Exception e) {
-                    System.err.println("⚠️ Could not fetch user location from AddressService for order " + order.getId() + ": " + e.getMessage());
-                }
-            } else {
-                System.err.println("⚠️ OrderItem " + item.getId() + " has no associated Order");
-            }
-
-            // ✅ Vendor location
-         // ✅ Vendor location + phone
-            try {
-                ProductDTO product = productClient.getProductById(item.getProductId());
-                if (product != null && product.getVendorId() != null) {
-                    VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, product.getVendorId());
-                    if (vendor != null) {
-                        dto.setVendorLat(vendor.getLatitude());
-                        dto.setVendorLng(vendor.getLongitude());
-                        dto.setVendorPhone(vendor.getContactNumber());   // ✅ add this line
-                    } else {
-                        System.err.println("⚠️ Vendor not found for ID " + product.getVendorId());
-                    }
-                } else {
-                    System.err.println("⚠️ Product vendorId missing for product " + item.getProductId());
-                }
-            } catch (Exception e) {
-                System.err.println("⚠️ Could not fetch vendor location for item " + item.getId() + ": " + e.getMessage());
-            }
-
-            return dto;
-        }).collect(Collectors.toList());
-    }
-
-
     @Override
     @Transactional
     public void assignOrderToDeliveryBoy(String token, Long orderId) {
-        DeliveryBoyDTO deliveryBoy = deliveryBoyClient.getCurrentDeliveryBoy(token); // create this Feign client if not done
+        DeliveryBoyDTO rider = deliveryBoyClient.getCurrentDeliveryBoy(token);
 
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+            .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        if (order.getDeliveryBoyId() != null)
+        if (order.getDeliveryBoyId() != null) {
             throw new RuntimeException("Order already assigned");
-
-        if (order.getOrderItems().stream().anyMatch(item -> item.getApprovalStatus() != ApprovalStatus.APPROVED)) {
+        }
+        if (order.getOrderItems().stream().anyMatch(i -> i.getApprovalStatus() != ApprovalStatus.APPROVED)) {
             throw new RuntimeException("Some items not approved");
         }
 
-        order.setDeliveryBoyId(deliveryBoy.getId());
+        // Set on order + all items
+        order.setDeliveryBoyId(rider.getId());
         order.setDeliveryStatus("ASSIGNED");
+        if (order.getStatus() == null || !"CANCELLED".equalsIgnoreCase(order.getStatus())) {
+            // keep business status aligned with delivery phases if you wish
+            order.setStatus("PLACED"); // or keep existing
+        }
+        order.getOrderItems().forEach(i -> {
+            i.setDeliveryBoyId(rider.getId());
+            i.setDeliveryStatus("ASSIGNED");
+        });
+
         order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.save(order);
+        orderRepository.save(order); // CascadeType.ALL will persist item changes too
 
-        // Notify user and vendor
-        sendDeliveryAssignmentEmails(order, deliveryBoy);
     }
 
-    private void sendDeliveryAssignmentEmails(Order order, DeliveryBoyDTO deliveryBoy) {
-        UserDTO user = userClient.getCurrentUserById(systemJwtToken, order.getUserId());
-
-        // Notify user
-        notificationClient.sendEmail(new EmailRequest(
-                user.getEmail(),
-                "Order Out for Delivery - CaroCart",
-                "Hi " + user.getFirstName() + ",\n\nYour order #" + order.getId() +
-                " has been assigned to a delivery boy. You will receive your package shortly."
-        ));
-
-        // Notify delivery boy
-        notificationClient.sendEmail(new EmailRequest(
-                deliveryBoy.getEmail(),
-                "Order Assigned to You - CaroCart",
-                "Hi " + deliveryBoy.getFirstName() + ",\n\nYou have been assigned order #" + order.getId() +
-                ". Please check your delivery dashboard for details."
-        ));
-    }
     @Override
     @Transactional
     public void updateOrderDeliveryStatus(String token, Long orderId, String status) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found"));
+        String s = status == null ? "" : status.trim().toUpperCase();
 
-        // Update delivery_status instead of status
-        order.setDeliveryStatus(status);
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Propagate delivery status to order + items
+        order.setDeliveryStatus(s);
+        order.getOrderItems().forEach(i -> i.setDeliveryStatus(s));
         order.setUpdatedAt(LocalDateTime.now());
+
+        // Optionally mirror delivery phases to business status
+        switch (s) {
+            case "ASSIGNED" -> order.setStatus("PROCESSING");
+            case "PICKED_UP" -> order.setStatus("PREPARING");
+            case "OUT_FOR_DELIVERY" -> order.setStatus("OUT_FOR_DELIVERY");
+            case "DELIVERED" -> order.setStatus("DELIVERED");
+            default -> { /* leave as-is for unknown states */ }
+        }
+
         orderRepository.save(order);
 
-        // Update delivery_status in all items of this order
+        // Also persist via item repo (idempotent; helpful if items were detached)
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
-        for (OrderItem item : items) {
-            item.setDeliveryStatus(status);
-        }
+        items.forEach(i -> i.setDeliveryStatus(s));
         orderItemRepository.saveAll(items);
+
+        // Create rider earning once when the WHOLE order is delivered
+        if ("DELIVERED".equalsIgnoreCase(s)) {
+            try {
+                // Use a stable reference itemId for idempotency
+                long referenceItemId = items.stream()
+                    .mapToLong(OrderItem::getId)
+                    .min()
+                    .orElseThrow(() -> new RuntimeException("Order has no items"));
+
+                // Compute payout by distance (independent of what customer paid)
+                double distanceKm = distanceKmForOrder(order.getVendorId(), order.getAddressId());
+                double payout = riderPayoutByDistance(distanceKm);
+
+                Long boyId = order.getDeliveryBoyId();
+                if (boyId == null) {
+                    // Fallback to any item’s deliveryBoyId if order-level is missing
+                    boyId = items.stream().map(OrderItem::getDeliveryBoyId).filter(id -> id != null).findFirst().orElse(null);
+                }
+
+                if (boyId == null) {
+                    System.err.println("⚠️ Skipping earning creation: no deliveryBoyId set.");
+                } else {
+                    var req = new com.carocart.orderservice.dto.DeliveryEarningCreateRequest(
+                        referenceItemId, // used by Delivery service to de-duplicate
+                        boyId,
+                        payout,
+                        0.0,
+                        0.0,
+                        LocalDateTime.now()
+                    );
+                    deliveryEarningClient.create(systemJwtToken, req);
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to create delivery earning for order " + order.getId() + ": " + e.getMessage());
+            }
+        }
+
+        // Optional: notify user/vendor(s)
+        // sendStatusUpdateNotifications(order, s);
     }
+
 
     private void sendStatusUpdateNotifications(Order order, String status) {
         UserDTO user = userClient.getCurrentUserById(systemJwtToken, order.getUserId());
@@ -810,84 +751,6 @@ public class OrderServiceImpl implements OrderService {
             "minnukota381@gmail.com", subject, "Order #" + order.getId() + " updated to " + status
         ));
     }
-
-    @Override
-    @Transactional
-    public void assignOrderItemToDeliveryBoy(Long orderItemId, Long deliveryBoyId) {
-        OrderItem item = orderItemRepository.findById(orderItemId)
-            .orElseThrow(() -> new RuntimeException("OrderItem not found"));
-        if (item.getDeliveryBoyId() != null)
-            throw new RuntimeException("Already assigned");
-        item.setDeliveryBoyId(deliveryBoyId);
-        item.setDeliveryStatus("ASSIGNED");
-        orderItemRepository.save(item);
-    }
-    @Override
-    @Transactional
-    public void updateOrderItemDeliveryStatus(Long orderItemId, String status) {
-        OrderItem item = orderItemRepository.findById(orderItemId)
-            .orElseThrow(() -> new RuntimeException("OrderItem not found"));
-
-        item.setDeliveryStatus(status);
-        orderItemRepository.save(item);
-
-        Long orderId = item.getOrder().getId();
-        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
-
-        boolean allDelivered = items.stream()
-            .allMatch(i -> "DELIVERED".equalsIgnoreCase(i.getDeliveryStatus()));
-        boolean allOutForDelivery = items.stream()
-            .allMatch(i -> "OUT_FOR_DELIVERY".equalsIgnoreCase(i.getDeliveryStatus()));
-
-        Order order = item.getOrder();
-        if (allDelivered) {
-            order.setStatus("DELIVERED");
-        } else if (allOutForDelivery) {
-            order.setStatus("OUT_FOR_DELIVERY");
-        }
-        if (order.getDeliveryBoyId() == null && item.getDeliveryBoyId() != null) {
-            order.setDeliveryBoyId(item.getDeliveryBoyId());
-        }
-        order.setDeliveryStatus(status);
-        order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.save(order);
-
-        // ✅ Create earning when an item reaches DELIVERED
-     // ... after you saved item & order and computed allDelivered
-     // After you saved item & order and computed allDelivered
-        if ("DELIVERED".equalsIgnoreCase(status) && allDelivered) {
-            try {
-                // Reference one stable item id (min id) so repeats don't create duplicates
-                long referenceItemId = items.stream().mapToLong(OrderItem::getId).min().orElse(item.getId());
-
-                // If an earning for this order is already made, your Delivery service will no-op
-                // because it de-duplicates on orderItemId (we'll always use the same reference).
-
-                // Full rider payout = slab by distance (independent of customer fee)
-                double distanceKm = distanceKmForOrder(order.getVendorId(), order.getAddressId());
-                double payout = riderPayoutByDistance(distanceKm);
-
-                Long boyId = item.getDeliveryBoyId() != null ? item.getDeliveryBoyId() : order.getDeliveryBoyId();
-                if (boyId == null) {
-                    System.err.println("⚠️ Skipping earning creation: no deliveryBoyId set.");
-                } else {
-                    var req = new com.carocart.orderservice.dto.DeliveryEarningCreateRequest(
-                            referenceItemId,   // stable id → idempotent at Delivery service
-                            boyId,
-                            payout,            // FULL payout (₹19/29/39/59 by distance)
-                            0.0,
-                            0.0,
-                            LocalDateTime.now()
-                    );
-                    deliveryEarningClient.create(systemJwtToken, req);
-                }
-            } catch (Exception e) {
-                System.err.println("⚠️ Failed to create delivery earning for order " + order.getId() + ": " + e.getMessage());
-            }
-        }
-
-    }
-
 
 
     @Override
@@ -1007,4 +870,112 @@ public class OrderServiceImpl implements OrderService {
             );
         }).collect(Collectors.toList());
     }
+    
+    @Override
+    public List<OrderResponse> getOrdersAvailableForDelivery(String token) {
+        return orderRepository.findAll().stream()
+            .filter(o -> o.getDeliveryBoyId() == null
+                      && o.getOrderItems().stream().allMatch(i -> i.getApprovalStatus() == ApprovalStatus.APPROVED))
+            .map(this::toEnrichedResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OrderResponse> getAssignedOrdersForRider(String token) {
+        DeliveryBoyDTO me = deliveryBoyClient.getCurrentDeliveryBoy(token);
+        return orderRepository.findAll().stream()
+            .filter(o -> me.getId().equals(o.getDeliveryBoyId()))
+            .map(this::toEnrichedResponse)
+            .collect(Collectors.toList());
+    }
+ // OrderServiceImpl.java
+    private OrderResponse toEnrichedResponse(Order order) {
+        OrderResponse resp = new OrderResponse(order);
+
+        // 1) Customer info
+        try {
+            UserDTO user = userClient.getUserById(systemJwtToken, order.getUserId());
+            String fullName = ((user.getFirstName() == null ? "" : user.getFirstName()) + " " +
+                               (user.getLastName()  == null ? "" : user.getLastName())).trim();
+            resp.setUserName(fullName.isBlank() ? "Customer" : fullName);
+            resp.setUserPhone(user.getMobileNumber());
+        } catch (Exception e) {
+            System.err.println("Could not load user for order " + order.getId() + ": " + e.getMessage());
+        }
+
+        // 2) Address lat/lng for user pin + ETA
+        try {
+            if (order.getAddressId() != null) {
+                AddressDTO addr = addressClient.getAddressById(systemJwtToken, order.getAddressId());
+                if (addr != null) {
+                    resp.setAddressLat(addr.getLatitude());
+                    resp.setAddressLng(addr.getLongitude());
+                    // Keep shippingAddress already set on order
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load address for order " + order.getId() + ": " + e.getMessage());
+        }
+
+        // 3) Vendor location and phone
+        try {
+            if (order.getVendorId() != null) {
+                VendorResponseDTO v = vendorClient.getVendorById(systemJwtToken, order.getVendorId());
+                resp.setVendorLat(v.getLatitude());
+                resp.setVendorLng(v.getLongitude());
+                resp.setVendorPhone(v.getContactNumber());
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load vendor for order " + order.getId() + ": " + e.getMessage());
+        }
+
+        // 4) Compact product summary shown on cards (first name + total qty)
+        if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            String firstName = order.getOrderItems().get(0).getProductName();
+            int totalQty = order.getOrderItems().stream()
+                    .mapToInt(oi -> oi.getQuantity() == null ? 0 : oi.getQuantity())
+                    .sum();
+            // If your OrderResponse has these fields, set them:
+            try {
+                var firstNameField = OrderResponse.class.getDeclaredField("firstProductName");
+                firstNameField.setAccessible(true);
+                firstNameField.set(resp, firstName);
+            } catch (Exception ignore) {}
+            try {
+                var qtyField = OrderResponse.class.getDeclaredField("totalQuantity");
+                qtyField.setAccessible(true);
+                qtyField.set(resp, totalQty);
+            } catch (Exception ignore) {}
+        }
+
+        return resp;
+    }
+
+
+    // Runs every 30s; approve anything older than delaySeconds
+    @Scheduled(fixedDelay = 30000)
+    @Transactional
+    public void autoApprovePendingItemsJob() {
+        if (!autoApproveEnabled) return;
+
+        LocalDateTime cutoff = LocalDateTime.now().minusSeconds(autoApproveDelaySeconds);
+        List<OrderItem> pending = orderItemRepository.findPendingOlderThan(ApprovalStatus.PENDING, cutoff);
+        if (pending.isEmpty()) return;
+
+        // flip items to APPROVED
+        for (OrderItem it : pending) {
+            it.setApprovalStatus(ApprovalStatus.APPROVED);
+            // keep item-level delivery status unchanged here; your normal flow sets it later
+            // touch the order.updatedAt to reflect change
+            if (it.getOrder() != null) {
+                it.getOrder().setUpdatedAt(LocalDateTime.now());
+            }
+        }
+
+        orderItemRepository.saveAll(pending);
+
+        // (Optional) If you want to notify vendors/admin here, do it in a try/catch.
+        System.out.println("✅ Auto-approved " + pending.size() + " order items older than " + autoApproveDelaySeconds + "s");
+    }
+
 }
