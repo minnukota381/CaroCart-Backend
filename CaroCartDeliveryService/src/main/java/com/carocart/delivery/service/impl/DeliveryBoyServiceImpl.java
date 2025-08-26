@@ -232,6 +232,13 @@ public class DeliveryBoyServiceImpl implements DeliveryBoyService {
         repo.save(boy);
     }
 
+    @Override
+    public List<DeliveryBoyDTO> getAll() {
+        // however you map entities → DTOs in your project
+        return repo.findAll().stream()
+            .map(this::toDTO)
+            .toList();
+    }
 
 
 }
