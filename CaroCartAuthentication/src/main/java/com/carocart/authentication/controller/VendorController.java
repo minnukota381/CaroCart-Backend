@@ -219,4 +219,18 @@ public class VendorController {
                     .body(Map.of("error", ex.getMessage()));
         }
     }
+    
+ // ===== Public search for restaurants =====
+    @GetMapping("/search")
+    public ResponseEntity<List<VendorResponseDTO>> searchRestaurants(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        List<Vendor> vendors = vendorService.searchRestaurants(q, limit);
+        List<VendorResponseDTO> dtos = vendors.stream()
+                .map(VendorService::toResponseDTO)
+                .toList();
+        return ResponseEntity.ok(dtos);
+    }
+
 }

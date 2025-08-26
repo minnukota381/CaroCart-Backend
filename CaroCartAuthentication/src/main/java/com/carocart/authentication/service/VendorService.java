@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.PageRequest;
+
 
 import java.io.IOException;
 import java.util.*;
@@ -271,4 +273,10 @@ public class VendorService {
         Vendor saved = vendorRepository.save(vendor);
         return toResponseDTO(saved);
     }
+    
+    public List<Vendor> searchRestaurants(String query, int limit) {
+        String q = (query == null) ? "" : query.trim();
+        return vendorRepository.searchVendorsAnyType(q, PageRequest.of(0, limit));
+    }
+
 }
