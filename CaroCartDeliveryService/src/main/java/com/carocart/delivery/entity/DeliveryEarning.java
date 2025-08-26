@@ -4,9 +4,11 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "delivery_earnings", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"orderItemId"})
-})
+@Table(
+    name = "delivery_earnings",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"orderItemId"})
+)
+@org.hibernate.annotations.DynamicUpdate
 public class DeliveryEarning {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -14,12 +16,17 @@ public class DeliveryEarning {
     @Column(nullable=false) private Long deliveryBoyId;
     @Column(nullable=false) private Long orderItemId;
 
-    @Column(nullable=false) private Double fee;      // base earning
+    @Column(nullable=false) private Double fee;       // base earning
     @Column(nullable=false) private Double tip = 0.0;
     @Column(nullable=false) private Double penalty = 0.0;
 
     @Column(nullable=false) private Double netAmount; // fee + tip - penalty
-    @Column(nullable=false) private String status = "PENDING"; // PENDING|PAID
+
+    @Column(nullable=false, length=16)
+    private String status = "PENDING"; // PENDING | PAID
+
+    @Column private Long payoutId;            // links to DeliveryPayout
+    @Column private LocalDateTime paidAt;     // when this earning got paid
 
     @Column(nullable=false) private LocalDateTime deliveredAt;
     @Column(nullable=false) private LocalDateTime createdAt = LocalDateTime.now();
@@ -40,6 +47,10 @@ public class DeliveryEarning {
     public void setNetAmount(Double netAmount) { this.netAmount = netAmount; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public Long getPayoutId() { return payoutId; }
+    public void setPayoutId(Long payoutId) { this.payoutId = payoutId; }
+    public LocalDateTime getPaidAt() { return paidAt; }
+    public void setPaidAt(LocalDateTime paidAt) { this.paidAt = paidAt; }
     public LocalDateTime getDeliveredAt() { return deliveredAt; }
     public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
