@@ -10,11 +10,25 @@ import java.util.List;
 import java.util.Map;
 
 public interface OrderService {
+    // Vendor views
     List<OrderItemDTO> getAllItemsForVendor(String token);
+    List<OrderItemDTO> getPendingItemsForVendor(String token);
+    void approveItemAsVendor(String token, Long itemId);
+    void rejectItemAsVendor(String token, Long itemId);
+    void approveOrderItem(Long itemId, String vendorEmail);
+    void rejectOrderItem(Long itemId, String vendorEmail);
+
+    // Delivery (ORDER LEVEL) ✅ only order-level methods remain
     List<OrderResponse> getOrdersAvailableForDelivery(String token);
     void assignOrderToDeliveryBoy(String token, Long orderId);
     void updateOrderDeliveryStatus(String token, Long orderId, String status);
+    List<OrderResponse> getAssignedOrdersForRider(String token);
     Map<String, Object> getAssignedDeliveryBoyLocation(Long orderId);
+
+    // ⛔️ Removed item-level delivery methods:
+    // void assignOrderItemToDeliveryBoy(Long orderItemId, Long deliveryBoyId);
+    // void updateOrderItemDeliveryStatus(Long orderItemId, String status);
+    // List<OrderItemDTO> getAvailableOrderItemsForDelivery();
 
     // User
     OrderResponse placeOrder(String token, OrderRequest orderRequest);
@@ -35,26 +49,16 @@ public interface OrderService {
     OrderResponse placeOrderInternal(OrderRequest orderRequest);
     Order getOrderEntity(Long orderId);
 
-    // Approval - Only Vendor
-    List<OrderItemDTO> getPendingItemsForVendor(String token);
-    void approveItemAsVendor(String token, Long itemId);
-    void rejectItemAsVendor(String token, Long itemId);
-    void approveOrderItem(Long itemId, String vendorEmail);
-    void rejectOrderItem(Long itemId, String vendorEmail);
-    List<OrderItemDTO> getAvailableOrderItemsForDelivery();
-    void assignOrderItemToDeliveryBoy(Long orderItemId, Long deliveryBoyId);
-    void updateOrderItemDeliveryStatus(Long orderItemId, String status);
-    // ✅ Internal token for Feign use
+    // Internal token for Feign use
     String getInternalToken();
-    
- // Admin-side item approval
+
+    // Admin-side item approval
     List<OrderItemDTO> getPendingItemsForAdmin();
     void approveOrderByAdmin(Long orderId);
     void rejectOrderByAdmin(Long orderId);
-    
+
+    // Earnings
     List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate);
     List<VendorEarningsDTO> getVendorEarningsByPeriod(String period);
     VendorEarningsDTO getMyVendorEarnings(String token, String period);
-
-
 }

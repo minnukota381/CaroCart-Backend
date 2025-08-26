@@ -3,6 +3,7 @@ package com.carocart.orderservice.repository;
 import com.carocart.orderservice.entity.ApprovalStatus;
 import com.carocart.orderservice.entity.OrderItem;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.Query;
@@ -23,5 +24,14 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     
     List<OrderItem> findByApprovalStatus(ApprovalStatus status);
 
+    @Query("""
+    	      select i from OrderItem i
+    	      where i.approvalStatus = :status
+    	        and i.order.orderDate <= :cutoff
+    	    """)
+    	    List<OrderItem> findPendingOlderThan(
+    	        @Param("status") ApprovalStatus status,
+    	        @Param("cutoff") LocalDateTime cutoff
+    	    );
 }
 

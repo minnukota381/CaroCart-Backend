@@ -1,7 +1,7 @@
 package com.carocart.delivery.service.impl;
 
 import com.carocart.delivery.dto.DeliveryOrderItemDTO;
-import com.carocart.delivery.dto.OrderItemDTO;
+import com.carocart.delivery.dto.OrderResponse;   // mirror of orderservice OrderResponse
 import com.carocart.delivery.feign.OrderFeignClient;
 import com.carocart.delivery.service.DeliveryOrderService;
 import com.carocart.delivery.util.JwtUtil;
@@ -9,60 +9,63 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class DeliveryOrderServiceImpl implements DeliveryOrderService {
 
-    @Autowired
-    private OrderFeignClient orderFeignClient;
+    @Autowired private OrderFeignClient orderFeignClient;
+    @Autowired private JwtUtil jwtUtil;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private String bearer() { return "Bearer " + jwtUtil.getOrGenerateInternalToken(); }
 
-    private DeliveryOrderItemDTO mapToDeliveryDTO(OrderItemDTO item) {
-        DeliveryOrderItemDTO dto = new DeliveryOrderItemDTO();
-        dto.setOrderItemId(item.getId());
-        dto.setOrderId(item.getOrderId());
-        dto.setProductName(item.getProductName());
-        dto.setQuantity(item.getQuantity());
-        dto.setDeliveryAddress(item.getDeliveryAddress());
-        dto.setUserName(item.getUserName());
-        dto.setUserPhone(item.getUserPhone());
-        dto.setPaymentType(item.getPaymentType());
-        dto.setDeliveryStatus(item.getDeliveryStatus());
-        return dto;
-    }
+    private DeliveryOrderItemDTO mapOrderToCard(OrderResponse o) {
+        DeliveryOrderItemDTO d = new DeliveryOrderItemDTO();
+        d.setOrderId(o.getOrderId());
 
-    private String systemBearer() {
-        return "Bearer " + jwtUtil.getOrGenerateInternalToken();
+        // Use enriched order-level fields (see orderservice changes below)
+        d.setProductName(o.getProductName());
+        d.setQuantity(o.getQuantity());
+
+        d.setDeliveryStatus(o.getDeliveryStatus());
+        d.setPaymentType(o.getPaymentStatus());
+        d.setDeliveryAddress(o.getShippingAddress());
+
+        d.setUserName(o.getUserName());
+        d.setUserPhone(o.getUserPhone());
+
+        d.setVendorLat(o.getVendorLat());
+        d.setVendorLng(o.getVendorLng());
+        d.setVendorPhone(o.getVendorPhone());
+        return d;
     }
 
     @Override
     public List<DeliveryOrderItemDTO> getAvailableOrderItems() {
-        List<OrderItemDTO> items = orderFeignClient.getAvailableOrderItems(systemBearer());
-        return items.stream().map(this::mapToDeliveryDTO).collect(Collectors.toList());
+        return orderFeignClient.getAvailableOrders(bearer())
+                .stream().map(this::mapOrderToCard).toList();
     }
 
     @Override
-    public void assignOrderItem(Long orderItemId, Long deliveryBoyId) {
-        orderFeignClient.assignOrderItemToDeliveryBoy(systemBearer(), orderItemId, deliveryBoyId);
+    public void assignOrderItem(Long orderId, Long deliveryBoyIdIgnored) {
+        orderFeignClient.assign(bearer(), orderId); // order-level assignment
     }
 
     @Override
-    public List<DeliveryOrderItemDTO> getAssignedOrderItems(Long deliveryBoyId) {
-        List<OrderItemDTO> items = orderFeignClient.getAssignedOrderItems(systemBearer(), deliveryBoyId);
-        return items.stream().map(this::mapToDeliveryDTO).collect(Collectors.toList());
+    public List<DeliveryOrderItemDTO> getAssignedOrderItems(Long deliveryBoyIdIgnored) {
+        return orderFeignClient.myAssigned(bearer())
+                .stream().map(this::mapOrderToCard).toList();
     }
 
     @Override
-    public void updateOrderItemStatus(Long orderItemId, Long deliveryBoyId, String status) {
-        orderFeignClient.updateDeliveryStatus(systemBearer(), orderItemId, status);
+    public void updateOrderItemStatus(Long orderId, Long deliveryBoyIdIgnored, String status) {
+        orderFeignClient.updateStatus(bearer(), orderId, status); // order-level status update
     }
 
     @Override
-    public List<DeliveryOrderItemDTO> getDeliveredOrderItems(Long deliveryBoyId) {
-        List<OrderItemDTO> items = orderFeignClient.getDeliveredOrderItems(systemBearer(), deliveryBoyId);
-        return items.stream().map(this::mapToDeliveryDTO).collect(Collectors.toList());
+    public List<DeliveryOrderItemDTO> getDeliveredOrderItems(Long ignored) {
+        return orderFeignClient.myAssigned(bearer()).stream()
+                .filter(o -> "DELIVERED".equalsIgnoreCase(o.getDeliveryStatus()))
+                .map(this::mapOrderToCard)
+                .toList();
     }
 }
