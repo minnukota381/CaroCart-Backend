@@ -26,6 +26,10 @@ public class DeliveryBoyController {
 
     @Autowired
     private JwtUtil jwtUtil;
+    @GetMapping
+    public List<DeliveryBoyDTO> getAll() {
+        return service.getAll(); // implement in service
+    }
 
     @PostMapping("/register")
     public ResponseEntity<?> registerDeliveryBoy(@RequestBody DeliveryBoyRegistrationDTO dto) {

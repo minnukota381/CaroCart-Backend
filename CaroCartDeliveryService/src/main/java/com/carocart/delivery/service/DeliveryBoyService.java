@@ -17,7 +17,8 @@ public interface DeliveryBoyService {
     List<DeliveryBoyDTO> getAvailableDeliveryBoys();
     List<DeliveryBoyDTO> getDeliveryBoysByStatus(String status);
     void updateDeliveryBoyStatus(Long id, String status);
-    
+    List<DeliveryBoyDTO> getAll();
+
     void updateCurrentLocation(Long deliveryBoyId, Double lat, Double lng);
     ResponseEntity<String> sendForgotPasswordOtp(String phoneOrEmail);
     ResponseEntity<String> verifyForgotPasswordOtp(String phoneOrEmail, String otp);

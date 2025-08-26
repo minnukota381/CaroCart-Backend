@@ -41,9 +41,11 @@ public class SecurityConfig {
 
                 .requestMatchers("/deliveryboys/status/**").hasRole("ADMIN")
                 .requestMatchers("/deliveryboys/*/status").hasRole("ADMIN")
-
+                .requestMatchers("/deliveryboys/**").hasAnyRole("ADMIN", "SYSTEM", "DELIVERY_BOY")
                 .requestMatchers("/deliveryboys/*/location")
                     .hasAnyRole("DELIVERY_BOY", "ADMIN", "SYSTEM")
+                    .requestMatchers("/delivery/admin/earnings/preview/**").hasRole("ADMIN")
+                    .requestMatchers("/delivery/admin/earnings/pay/**").hasRole("ADMIN")
 
                 .requestMatchers("/deliveryboys/me", "/deliveryboys/me/**")
                     .hasRole("DELIVERY_BOY")
