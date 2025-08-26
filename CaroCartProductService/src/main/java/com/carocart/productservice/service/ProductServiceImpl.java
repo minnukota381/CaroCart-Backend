@@ -367,11 +367,13 @@ public class ProductServiceImpl implements ProductService {
     public SearchResultDTO unifiedSearch(String query) {
         SearchResultDTO result = new SearchResultDTO();
 
+        // --- Products ---
         List<Product> products = productRepository
                 .findTop8ByNameIgnoreCaseContainingOrBrandIgnoreCaseContainingOrDescriptionIgnoreCaseContaining(
                         query, query, query);
         result.setProducts(products.stream().map(this::toProductDTO).toList());
 
+        // --- Categories ---
         List<Category> categories = categoryRepository.findTop5ByNameIgnoreCaseContaining(query);
         result.setCategories(categories.stream().map(cat -> {
             CategoryResponseDTO dto = new CategoryResponseDTO();
@@ -382,6 +384,7 @@ public class ProductServiceImpl implements ProductService {
             return dto;
         }).toList());
 
+        // --- SubCategories ---
         List<SubCategory> subCats = subCategoryRepository.findTop5ByNameIgnoreCaseContaining(query);
         result.setSubCategories(subCats.stream().map(sub -> {
             SubCategoryResponseDTO dto = new SubCategoryResponseDTO();
@@ -396,6 +399,7 @@ public class ProductServiceImpl implements ProductService {
             return dto;
         }).toList());
 
+        // --- Brands ---
         result.setBrands(products.stream()
                 .map(Product::getBrand)
                 .filter(b -> b != null && !b.isEmpty())
@@ -403,8 +407,17 @@ public class ProductServiceImpl implements ProductService {
                 .limit(5)
                 .toList());
 
+        // --- Vendors (via Feign) ---
+        try {
+            List<VendorResponseDTO> vendors = vendorClient.searchRestaurants(query, 5);
+            result.setVendors(vendors);
+        } catch (Exception e) {
+            result.setVendors(List.of()); // fallback
+        }
+
         return result;
     }
+
     
     @Override
     public Page<ProductAdminRowDTO> searchProductsAdmin(

@@ -6,28 +6,33 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@FeignClient(name = "carocartauthentication") // Ensure this matches your auth microservice app name
+@FeignClient(name = "carocartauthentication", path="/vendors") 
 public interface VendorClient {
-    @GetMapping("/vendors/me")
+
+    @GetMapping("/me")
     VendorResponseDTO getCurrentVendor(@RequestHeader("Authorization") String token);
 
-    @GetMapping("/vendors/{id}")
+    @GetMapping("/{id}")
     VendorResponseDTO getVendorById(@PathVariable("id") Long id);
 
-    @GetMapping("/vendors/email/{email}")
+    @GetMapping("/email/{email}")
     VendorResponseDTO getVendorByEmail(@PathVariable("email") String email);
 
-    @GetMapping("/vendors/nearby")
+    @GetMapping("/nearby")
     List<VendorResponseDTO> getNearbyVendors(
         @RequestParam("type") String type,
         @RequestParam("lat") double lat,
         @RequestParam("lng") double lng,
         @RequestParam("radiusKm") double radiusKm
     );
-    
-    @PostMapping("/vendors/by-ids")
+
+    @PostMapping("/by-ids")
     List<VendorResponseDTO> getVendorsByIds(@RequestBody List<Long> vendorIds);
 
-    
-    
+    // ✅ New: search restaurants
+    @GetMapping("/search")
+    List<VendorResponseDTO> searchRestaurants(
+        @RequestParam("q") String query,
+        @RequestParam(value = "limit", defaultValue = "5") int limit
+    );
 }
