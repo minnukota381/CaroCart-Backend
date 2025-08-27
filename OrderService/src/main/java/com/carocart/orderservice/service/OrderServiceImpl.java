@@ -21,6 +21,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -250,7 +252,6 @@ public class OrderServiceImpl implements OrderService {
 
         return new OrderResponse(savedOrder);
     }
-    
     @Override
     @Transactional
     public OrderResponse placeOrderInternal(OrderRequest orderRequest) {
@@ -265,7 +266,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus("PLACED");
         order.setAddressId(orderRequest.getAddressId());
         order.setShippingAddress(orderRequest.getShippingAddress());
-        order.setPaymentStatus("PAID");
+        order.setPaymentStatus("PAID"); // Razorpay success
 
         Long firstProductId = cartItems.get(0).getProductId();
         ProductDTO firstProduct = productClient.getProductById(firstProductId);
@@ -274,9 +275,10 @@ public class OrderServiceImpl implements OrderService {
         }
         order.setVendorId(firstProduct.getVendorId());
 
-        VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, firstProduct.getVendorId());
-//        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), systemJwtToken);
+        // ensure vendor/address exist (also used for delivery fee calc)
+        vendorClient.getVendorById(systemJwtToken, firstProduct.getVendorId());
         AddressDTO address = addressClient.getAddressById(systemJwtToken, orderRequest.getAddressId());
+
         // items
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
@@ -296,85 +298,98 @@ public class OrderServiceImpl implements OrderService {
             return oi;
         }).collect(Collectors.toList());
 
-        // totals (trust the request total but also compute to keep finalAmount consistent)
+        // totals
         double itemsTotal = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
         order.setOrderItems(orderItems);
         order.setTotalAmount(itemsTotal);
         order.setPlatformCommissionPct(20.0);
         order.setPlatformCommissionAmount(itemsTotal * 0.20);
 
-        System.out.println("Vendor location: " + vendor.getLatitude() + "," + vendor.getLongitude());
-        System.out.println("User location: " + address.getLatitude() + "," + address.getLongitude());
-
-        // ✅ New delivery-fee logic (customer-facing)
+        // delivery fee (same logic as COD path)
         double distanceKm = distanceKmForOrder(order.getVendorId(), order.getAddressId());
         boolean isGrocery = isGroceryVendor(order.getVendorId());
-
         double customerFee = feeFromSlab(distanceKm);
         if (qualifiesForFree(itemsTotal, isGrocery)) customerFee = 0;
-
         order.setDeliveryFee(customerFee);
         order.setFinalAmount(itemsTotal + customerFee);
 
-        return new OrderResponse(orderRepository.save(order));
+        // save
+        Order saved = orderRepository.save(order);
+
+        // 🔔 send the same rich HTML emails as COD
+        try {
+            UserDTO user = userClient.getUserById(systemJwtToken, order.getUserId());
+            new Thread(() -> sendOrderPlacedEmails(saved, user, orderItems)).start();
+        } catch (Exception e) {
+            System.err.println("⚠ Failed to send Razorpay order-placed emails for order " + saved.getId() + ": " + e.getMessage());
+        }
+
+        return new OrderResponse(saved);
     }
 
-  
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
+        String fe = System.getenv().getOrDefault("http://localhost:5173","https://carocart.com");
+
+        int randomRef = (int)(Math.random() * 900000) + 100000; // 6-digit ref no
+
+        String orderLinkUser  = "%s/user/orders/%d".formatted(fe, order.getId());
+        String orderLinkAdmin = "%s/admin/orders/%d".formatted(fe, order.getId());
+
+        String userHtml = buildOrderHtml(
+            order,
+            "Order placed successfully",
+            "Thanks, "+safe(user.getFirstName())+"! We’re getting your order ready.",
+            orderItems,
+            orderLinkUser,
+            "Track order"
+        );
         notificationClient.sendEmail(new EmailRequest(
-                user.getEmail(),
-                "Order Placed Successfully - CaroCart",
-                "Hi " + user.getFirstName() + ",\n\nYour order #" + order.getId() + " has been placed successfully."
+            user.getEmail(), "Order Placed ✔ – #" + randomRef, userHtml, true
         ));
 
-        orderItems.stream()
-                .map(item -> productClient.getProductById(item.getProductId()))
-                .map(ProductDTO::getVendorEmail)
-                .filter(email -> email != null && !email.isBlank())
-                .distinct()
-                .forEach(vendorEmail ->
-                        notificationClient.sendEmail(new EmailRequest(
-                                vendorEmail,
-                                "New Order Received - CaroCart",
-                                "You have received a new order #" + order.getId()
-                        ))
-                );
+        var byVendor = orderItems.stream()
+            .filter(it -> productClient.getProductById(it.getProductId()).getVendorEmail()!=null)
+            .collect(java.util.stream.Collectors.groupingBy(
+                it -> productClient.getProductById(it.getProductId()).getVendorEmail()));
 
+        for (var e : byVendor.entrySet()) {
+            String vhtml = buildOrderHtml(
+                order, "New order received", "Please prepare the following items.",
+                e.getValue(), "%s/vendor/orders/%d".formatted(fe, order.getId()), "Open order");
+            notificationClient.sendEmail(new EmailRequest(e.getKey(),
+                "New Order – #"+randomRef, vhtml, true));
+        }
+
+        String adminHtml = buildOrderHtml(
+            order, "New order created", "Real-time alert for admin dashboard.",
+            orderItems, orderLinkAdmin, "Open in Admin");
         notificationClient.sendEmail(new EmailRequest(
-                "minnukota381@gmail.com",
-                "Order Alert - CaroCart",
-                "Order #" + order.getId() + " placed by user " + user.getEmail()
-        ));
+            "carocartteam@gmail.com", "Order Alert – #"+randomRef, adminHtml, true));
     }
+
 
     private void sendOrderShippedEmails(Order order) {
-        // ✅ Use internal token here
         UserDTO user = userClient.getCurrentUserById(systemJwtToken, order.getUserId());
+        String link = "%s/user/orders/%d".formatted(System.getenv().getOrDefault("http://localhost:5173","https://www.carocart.com"), order.getId());
+        String html = buildOrderHtml(order, "Your order is on the way 🚚", "We’ve shipped your order.", order.getOrderItems(), link, "Track order");
+        notificationClient.sendEmail(new EmailRequest(user.getEmail(), "Shipped – #"+order.getId(), html, true));
 
-        notificationClient.sendEmail(new EmailRequest(
-                user.getEmail(),
-                "Order Shipped - CaroCart",
-                "Hi " + user.getFirstName() + ",\n\nYour order #" + order.getId() + " has been shipped."
-        ));
+        // Vendors
+        Map<String, List<OrderItem>> byVendor = order.getOrderItems().stream()
+            .filter(it -> productClient.getProductById(it.getProductId()).getVendorEmail()!=null)
+            .collect(Collectors.groupingBy(it -> productClient.getProductById(it.getProductId()).getVendorEmail()));
+        for (var e: byVendor.entrySet()) {
+            String vhtml = buildOrderHtml(order, "Order shipped", "FYI – customer’s order is shipped.", e.getValue(),
+                    "%s/vendor/orders/%d".formatted(System.getenv().getOrDefault("http://localhost:5173","https://www.carocart.com"), order.getId()),
+                    "Open order");
+            notificationClient.sendEmail(new EmailRequest(e.getKey(), "Order Shipped – #"+order.getId(), vhtml, true));
+        }
 
-        order.getOrderItems().stream()
-                .map(item -> productClient.getProductById(item.getProductId()))
-                .map(ProductDTO::getVendorEmail)
-                .filter(email -> email != null && !email.isBlank())
-                .distinct()
-                .forEach(vendorEmail ->
-                        notificationClient.sendEmail(new EmailRequest(
-                                vendorEmail,
-                                "Order Shipped - CaroCart",
-                                "Order #" + order.getId() + " has been shipped."
-                        ))
-                );
-
-        notificationClient.sendEmail(new EmailRequest(
-                "minnukota381@gmail.com",
-                "Order Shipped - CaroCart",
-                "Order #" + order.getId() + " has been shipped."
-        ));
+        // Admin
+        String ahtml = buildOrderHtml(order, "Order shipped", "Status moved to SHIPPED.", order.getOrderItems(),
+                "%s/admin/orders/%d".formatted(System.getenv().getOrDefault("http://localhost:5173","https://www.carocart.com"), order.getId()),
+                "Open in Admin");
+        notificationClient.sendEmail(new EmailRequest("carocartteam@gmail.com", "Order Shipped – #"+order.getId(), ahtml, true));
     }
 
     @Override
@@ -748,7 +763,7 @@ public class OrderServiceImpl implements OrderService {
 
         // Optionally notify admin
         notificationClient.sendEmail(new EmailRequest(
-            "minnukota381@gmail.com", subject, "Order #" + order.getId() + " updated to " + status
+            "carocartteam@gmail.com", subject, "Order #" + order.getId() + " updated to " + status
         ));
     }
 
@@ -977,5 +992,82 @@ public class OrderServiceImpl implements OrderService {
         // (Optional) If you want to notify vendors/admin here, do it in a try/catch.
         System.out.println("✅ Auto-approved " + pending.size() + " order items older than " + autoApproveDelaySeconds + "s");
     }
+
+    
+ // ====== EMAIL HTML TEMPLATES ======
+    private static final NumberFormat INR = NumberFormat.getCurrencyInstance(new Locale("en", "IN"));
+
+    private String buildOrderHtml(Order order, String heading, String subtitle, List<OrderItem> items, String actionUrl, String actionText) {
+        StringBuilder rows = new StringBuilder();
+        for (OrderItem it : items) {
+            rows.append("""
+                <tr style="border-bottom:1px solid #eee">
+                  <td style="padding:8px 0">
+                    <img src="%s" width="64" height="64" style="object-fit:cover;border-radius:8px" onerror="this.style.display='none'"/>
+                  </td>
+                  <td style="padding:8px 0; font-size:14px">
+                    <div style="font-weight:600">%s</div>
+                    <div style="color:#666">Qty: %d</div>
+                  </td>
+                  <td style="padding:8px 0; text-align:right; white-space:nowrap">%s</td>
+                  <td style="padding:8px 0; text-align:right; white-space:nowrap">%s</td>
+                </tr>
+            """.formatted(
+                safe(it.getProductImageUrl()),
+                safe(it.getProductName()),
+                (it.getQuantity()==null?0:it.getQuantity()),
+                INR.format(it.getPrice()==null?0:it.getPrice()),
+                INR.format(it.getTotalPrice()==null?0:it.getTotalPrice())
+            ));
+        }
+
+        String address = safe(order.getShippingAddress());
+        String summary = """
+            <tr><td colspan="3" style="padding:4px 0; color:#666">Items total</td><td style="text-align:right">%s</td></tr>
+            <tr><td colspan="3" style="padding:4px 0; color:#666">Delivery fee</td><td style="text-align:right">%s</td></tr>
+            <tr><td colspan="3" style="padding:8px 0; font-weight:700">Grand total</td><td style="text-align:right; font-weight:700">%s</td></tr>
+        """.formatted(
+            INR.format(order.getTotalAmount()),
+            INR.format(order.getDeliveryFee()==null?0:order.getDeliveryFee()),
+            INR.format(order.getFinalAmount()==null?order.getTotalAmount():order.getFinalAmount())
+        );
+
+        return """
+        <div style="font-family:Inter,Segoe UI,Arial,sans-serif; background:#f6f7f9; padding:24px">
+          <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width:640px; margin:0 auto; background:#fff; border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.06); overflow:hidden">
+            <tr><td style="padding:20px 24px; background:#1e7a46; color:#fff">
+              <div style="font-size:18px; font-weight:700">%s</div>
+              <div style="opacity:.9; font-size:14px">%s</div>
+            </td></tr>
+            <tr><td style="padding:18px 24px">
+              <div style="font-size:14px; color:#333; margin-bottom:8px">Order ID: <b>#%d</b></div>
+              <div style="font-size:13px; color:#666; margin-bottom:18px">Placed on: %s</div>
+              <table width="100%%" cellspacing="0" cellpadding="0" style="border-collapse:collapse">%s</table>
+              <table width="100%%" cellspacing="0" cellpadding="0" style="margin-top:10px; border-top:1px dashed #e5e7eb; padding-top:10px">%s</table>
+              <div style="margin-top:18px; font-size:13px; color:#444">
+                <div style="font-weight:600; margin-bottom:4px">Delivery address</div>
+                <div style="white-space:pre-line">%s</div>
+              </div>
+              <div style="margin:24px 0">
+                <a href="%s" style="display:inline-block; background:#1e7a46; color:#fff; text-decoration:none; padding:10px 16px; border-radius:10px; font-weight:600">%s</a>
+              </div>
+              <div style="font-size:12px; color:#9aa3af">This is an automated email from CaroCart.</div>
+            </td></tr>
+          </table>
+        </div>
+        """.formatted(
+            safe(heading),
+            safe(subtitle),
+            order.getId(),
+            safe(order.getOrderDate()==null?LocalDateTime.now().toString():order.getOrderDate().toString()),
+            rows.toString(),
+            summary,
+            address,
+            safe(actionUrl),
+            safe(actionText)
+        );
+    }
+
+    private static String safe(String s){ return s==null? "": s; }
 
 }
