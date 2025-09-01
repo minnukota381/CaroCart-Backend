@@ -4,11 +4,9 @@ COPY pom.xml ./
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-FROM eclipse-temurin:17-jdk-jammy
+FROM gcr.io/distroless/java17
 WORKDIR /app
-
 COPY --from=build /app/target/CaroCartAPIGateway-0.0.1-SNAPSHOT.jar app.jar
 
 EXPOSE 8080
-
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=prod"]
+ENTRYPOINT ["java","-jar","app.jar","--spring.profiles.active=prod"]
