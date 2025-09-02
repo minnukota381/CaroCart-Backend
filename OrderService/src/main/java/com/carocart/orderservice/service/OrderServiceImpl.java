@@ -35,6 +35,11 @@ public class OrderServiceImpl implements OrderService {
     
 	private String systemJwtToken;
 
+	
+	public boolean isFirstOrder(Long userId) {
+	    return orderRepository.countByUserId(userId) == 0;
+	}
+
     private final OrderRepository orderRepository;
     private final CartClient cartClient;
     private final ProductClient productClient;
@@ -164,7 +169,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse placeOrder(String token, OrderRequest orderRequest) {
+    public OrderResponse placeOrder(String token, OrderRequest orderRequest, String couponCode) {
+        orderRequest.setCouponCode(couponCode);
+
         // 1) user + cart
         UserDTO user = userClient.getCurrentUser(token);
         List<CartItemDTO> cartItems = cartClient.getUserCart(token);
@@ -173,7 +180,6 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 2) address
-//        AddressDTO address = addressClient.getAddressById(orderRequest.getAddressId(), token);
         AddressDTO address = addressClient.getAddressById(token, orderRequest.getAddressId());
 
         // 3) order shell
@@ -183,9 +189,10 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus("PLACED");
         order.setAddressId(orderRequest.getAddressId());
         order.setShippingAddress(address.getAddress());
-
-        // payment
-        if ("COD".equalsIgnoreCase(orderRequest.getPaymentMethod())) {
+        order.setPaymentMethod(
+            (orderRequest.getPaymentMethod() != null) ? orderRequest.getPaymentMethod() : "COD"
+        );
+        if ("COD".equalsIgnoreCase(order.getPaymentMethod())) {
             order.setPaymentStatus("COD");
             order.setPaymentId("COD-" + System.currentTimeMillis());
         } else {
@@ -199,10 +206,9 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
         }
         order.setVendorId(firstProduct.getVendorId());
+        vendorClient.getVendorById(systemJwtToken, firstProduct.getVendorId());
 
-        VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, firstProduct.getVendorId());
-
-        // 5) items
+        // 5) items (authoritative pricing)
         List<OrderItem> orderItems = cartItems.stream().map(item -> {
             ProductDTO product = productClient.getProductById(item.getProductId());
             productClient.decreaseStock(product.getId(), item.getQuantity());
@@ -222,24 +228,45 @@ public class OrderServiceImpl implements OrderService {
         }).collect(Collectors.toList());
 
         // 6) totals
-        double totalAmount = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
+        double itemsTotal = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
+
+        // 🔒 Coupon validation: only FIRST20 allowed, and only on first real order
+        double discount = 0.0;
+        String c = (orderRequest.getCouponCode() == null) ? null : orderRequest.getCouponCode().trim();
+
+        if (c != null && !c.isEmpty()) {
+            if (!c.equalsIgnoreCase("FIRST20")) {
+                throw new IllegalArgumentException("Invalid coupon code.");
+            }
+            long priorRealOrders = orderRepository.countByUserIdAndStatusIn(
+                order.getUserId(),
+                List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
+            );
+            if (priorRealOrders == 0) {
+                discount = itemsTotal * 0.20;
+                order.setCouponApplied("FIRST20");
+            } else {
+                throw new IllegalArgumentException("FIRST20 is valid only on your first order.");
+            }
+            order.setDiscountAmount(discount);
+            order.setCouponCode(c);
+        }
+
+        double discountedTotal = itemsTotal - discount;
+
         order.setOrderItems(orderItems);
-        order.setTotalAmount(totalAmount);
+        order.setTotalAmount(itemsTotal);
         order.setPlatformCommissionPct(20.0);
-        order.setPlatformCommissionAmount(totalAmount * 0.20);
+        order.setPlatformCommissionAmount(itemsTotal * 0.20);
 
-        System.out.println("Vendor location: " + vendor.getLatitude() + "," + vendor.getLongitude());
-        System.out.println("User location: " + address.getLatitude() + "," + address.getLongitude());
-
-        // ✅ New delivery-fee logic (customer-facing)
+        // delivery fee
         double distanceKm = distanceKmForOrder(order.getVendorId(), order.getAddressId());
         boolean isGrocery = isGroceryVendor(order.getVendorId());
+        double customerFee = feeFromSlab(distanceKm);
+        if (qualifiesForFree(discountedTotal, isGrocery)) customerFee = 0.0;
+        order.setDeliveryFee(customerFee);
 
-        double customerFee = feeFromSlab(distanceKm);                  // slab price
-        if (qualifiesForFree(totalAmount, isGrocery)) customerFee = 0; // free above threshold
-
-        order.setDeliveryFee(customerFee);                              // what customer pays
-        order.setFinalAmount(totalAmount + customerFee);
+        order.setFinalAmount(discountedTotal + customerFee);
 
         // 7) save
         Order savedOrder = orderRepository.save(order);
@@ -252,9 +279,10 @@ public class OrderServiceImpl implements OrderService {
 
         return new OrderResponse(savedOrder);
     }
+
     @Override
     @Transactional
-    public OrderResponse placeOrderInternal(OrderRequest orderRequest) {
+    public OrderResponse placeOrderInternal(OrderRequest orderRequest, String couponCode) {
         List<OrderItemDTO> cartItems = orderRequest.getItems();
         if (cartItems == null || cartItems.isEmpty()) {
             throw new RuntimeException("Cart is empty. Cannot place order.");
@@ -266,7 +294,10 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus("PLACED");
         order.setAddressId(orderRequest.getAddressId());
         order.setShippingAddress(orderRequest.getShippingAddress());
-        order.setPaymentStatus("PAID"); // Razorpay success
+        order.setPaymentStatus("PAID");
+        order.setPaymentMethod(
+            (orderRequest.getPaymentMethod() != null) ? orderRequest.getPaymentMethod() : "RAZORPAY"
+        );
 
         Long firstProductId = cartItems.get(0).getProductId();
         ProductDTO firstProduct = productClient.getProductById(firstProductId);
@@ -274,8 +305,6 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("Vendor ID is null for product: " + firstProductId);
         }
         order.setVendorId(firstProduct.getVendorId());
-
-        // ensure vendor/address exist (also used for delivery fee calc)
         vendorClient.getVendorById(systemJwtToken, firstProduct.getVendorId());
         AddressDTO address = addressClient.getAddressById(systemJwtToken, orderRequest.getAddressId());
 
@@ -289,8 +318,8 @@ public class OrderServiceImpl implements OrderService {
             oi.setProductName(product.getName());
             oi.setProductImageUrl(product.getImageUrl());
             oi.setQuantity(item.getQuantity());
-            oi.setPrice(item.getPrice());
-            oi.setTotalPrice(item.getPrice() * item.getQuantity());
+            oi.setPrice(product.getPrice());
+            oi.setTotalPrice(product.getPrice() * item.getQuantity());
             oi.setOrder(order);
             oi.setApprovalRequiredBy(product.getVendorEmail() != null ? "VENDOR" : "ADMIN");
             oi.setVendorEmail(product.getVendorEmail());
@@ -298,34 +327,60 @@ public class OrderServiceImpl implements OrderService {
             return oi;
         }).collect(Collectors.toList());
 
-        // totals
         double itemsTotal = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
+
+        // 🔒 Coupon validation: only FIRST20 allowed, and only on first real order
+        double discount = 0.0;
+        String c = (couponCode == null) ? null : couponCode.trim();
+
+        if (c != null && !c.isEmpty()) {
+            if (!c.equalsIgnoreCase("FIRST20")) {
+                throw new IllegalArgumentException("Invalid coupon code.");
+            }
+            long priorRealOrders = orderRepository.countByUserIdAndStatusIn(
+                orderRequest.getUserId(),
+                List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
+            );
+            if (priorRealOrders == 0) {
+                discount = itemsTotal * 0.20;
+                order.setCouponApplied("FIRST20");
+            } else {
+                throw new IllegalArgumentException("FIRST20 is valid only on your first order.");
+            }
+            order.setDiscountAmount(discount);
+            order.setCouponCode(c);
+        }
+
+        double discountedTotal = itemsTotal - discount;
+
         order.setOrderItems(orderItems);
         order.setTotalAmount(itemsTotal);
         order.setPlatformCommissionPct(20.0);
         order.setPlatformCommissionAmount(itemsTotal * 0.20);
 
-        // delivery fee (same logic as COD path)
+        // delivery fee
         double distanceKm = distanceKmForOrder(order.getVendorId(), order.getAddressId());
         boolean isGrocery = isGroceryVendor(order.getVendorId());
         double customerFee = feeFromSlab(distanceKm);
-        if (qualifiesForFree(itemsTotal, isGrocery)) customerFee = 0;
+        if (qualifiesForFree(discountedTotal, isGrocery)) customerFee = 0.0;
         order.setDeliveryFee(customerFee);
-        order.setFinalAmount(itemsTotal + customerFee);
 
-        // save
+        order.setFinalAmount(discountedTotal + customerFee);
+
         Order saved = orderRepository.save(order);
 
-        // 🔔 send the same rich HTML emails as COD
         try {
             UserDTO user = userClient.getUserById(systemJwtToken, order.getUserId());
             new Thread(() -> sendOrderPlacedEmails(saved, user, orderItems)).start();
         } catch (Exception e) {
-            System.err.println("⚠ Failed to send Razorpay order-placed emails for order " + saved.getId() + ": " + e.getMessage());
+            System.err.println("⚠ Failed to send Razorpay order-placed emails for order "
+                + saved.getId() + ": " + e.getMessage());
         }
 
         return new OrderResponse(saved);
     }
+
+
 
     private void sendOrderPlacedEmails(Order order, UserDTO user, List<OrderItem> orderItems) {
         String fe = System.getenv().getOrDefault("http://localhost:5173","https://carocart.com");

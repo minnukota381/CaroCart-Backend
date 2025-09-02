@@ -83,7 +83,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public OrderResponseDTO verifyAndCreateOrder(PaymentAndOrderRequest request) {
-    	
+
         boolean valid = validator.verifySignature(
             request.getRazorpayOrderId(),
             request.getRazorpayPaymentId(),
@@ -93,7 +93,6 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException("Invalid Razorpay signature");
         }
 
-        // --- Fetch formatted address using AddressClient
         String formattedAddress = null;
         try {
             AddressResponseDTO addressDto = addressClient.getAddressById(request.getAddressId());
@@ -103,30 +102,27 @@ public class PaymentServiceImpl implements PaymentService {
                     + ". Phone: " + addressDto.getPhoneNumber();
             }
         } catch (Exception ex) {
-            System.out.println("Failed to fetch or format address: " + ex.getMessage());
-            formattedAddress = null; // fallback if call fails
+            System.out.println("Failed to fetch/format address: " + ex.getMessage());
         }
 
         OrderRequestDTO orderReq = new OrderRequestDTO();
         orderReq.setUserId(request.getUserId());
         orderReq.setAddressId(request.getAddressId());
         orderReq.setItems(convertCartToOrderItems(request.getCartItems()));
-        orderReq.setTotalAmount(request.getAmount());
-        orderReq.setShippingAddress(formattedAddress); // <-- set the address!
+        orderReq.setShippingAddress(formattedAddress);
+        orderReq.setPaymentMethod("RAZORPAY");
+        orderReq.setCouponCode(request.getCouponCode()); // 🔒 important
 
-        // create order
-        System.out.println("OrderRequestDTO userId: " + orderReq.getUserId());
         ResponseEntity<OrderResponseDTO> orderResp = orderClient.createOrder(orderReq);
-        if (!orderResp.getStatusCode().is2xxSuccessful()) {
+        if (!orderResp.getStatusCode().is2xxSuccessful() || orderResp.getBody() == null) {
             throw new RuntimeException("Order creation failed: " + orderResp.getBody());
         }
         OrderResponseDTO created = orderResp.getBody();
 
-        // save payment record (same as before)
         Payment p = new Payment();
         p.setOrderId(created.getOrderId());
         p.setUserId(request.getUserId());
-        p.setAmount(request.getAmount());
+        p.setAmount(request.getAmount()); // for reference; source of truth is order.finalAmount
         p.setPaymentMethod("RAZORPAY");
         p.setPaymentId(request.getRazorpayPaymentId());
         p.setStatus("PAID");
@@ -136,6 +132,8 @@ public class PaymentServiceImpl implements PaymentService {
 
         return created;
     }
+
+
 
     @Override
     public String refundPayment(String paymentId, double amount) {

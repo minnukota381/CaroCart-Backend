@@ -1,25 +1,36 @@
 package com.carocart.paymentservice.dto;
 
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public class OrderRequestDTO {
-	 @JsonProperty("userId")
-	    private Long userId;
-	    @JsonProperty("addressId")
-	    private Long addressId;
-	    @JsonProperty("shippingAddress")
-	    private String shippingAddress;
-	    @JsonProperty("items")
-	    private List<OrderItemDTO> items;
-	    @JsonProperty("totalAmount")
-	    private Double totalAmount;
+
+    @JsonProperty("userId")
+    private Long userId;
+
+    @JsonProperty("addressId")
+    private Long addressId;
+
+    @JsonProperty("shippingAddress")
+    private String shippingAddress;
+
+    @JsonProperty("items")
+    private List<OrderItemDTO> items;
+
+    @JsonProperty("totalAmount")
+    private Double totalAmount;
+
+    // ✅ added
+    @JsonProperty("paymentMethod")
+    private String paymentMethod;
+
+    // ✅ added
+    @JsonProperty("couponCode")
+    private String couponCode;
 
     public OrderRequestDTO() {}
 
     // --- Getters and Setters ---
-
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
 
@@ -34,4 +45,10 @@ public class OrderRequestDTO {
 
     public Double getTotalAmount() { return totalAmount; }
     public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
+
+    public String getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+
+    public String getCouponCode() { return couponCode; }
+    public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
 }

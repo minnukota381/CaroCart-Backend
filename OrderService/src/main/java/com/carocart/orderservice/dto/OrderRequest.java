@@ -23,6 +23,17 @@ public class OrderRequest {
 	    @JsonProperty("paymentId")
 	    private String paymentId;
 
+	    @JsonProperty("couponCode")
+	    private String couponCode;
+	    @JsonProperty("discountAmount")
+	    private Double discountAmount = 0.0;
+
+	    // getters & setters
+	    public String getCouponCode() { return couponCode; }
+	    public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
+	    public Double getDiscountAmount() { return discountAmount; }
+	    public void setDiscountAmount(Double discountAmount) { this.discountAmount = discountAmount; }
+
 	    public String getPaymentId() { 
 	        return paymentId; 
 	    }

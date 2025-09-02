@@ -18,20 +18,15 @@ public interface OrderService {
     void approveOrderItem(Long itemId, String vendorEmail);
     void rejectOrderItem(Long itemId, String vendorEmail);
 
-    // Delivery (ORDER LEVEL) ✅ only order-level methods remain
+    // Delivery (ORDER LEVEL)
     List<OrderResponse> getOrdersAvailableForDelivery(String token);
     void assignOrderToDeliveryBoy(String token, Long orderId);
     void updateOrderDeliveryStatus(String token, Long orderId, String status);
     List<OrderResponse> getAssignedOrdersForRider(String token);
     Map<String, Object> getAssignedDeliveryBoyLocation(Long orderId);
 
-    // ⛔️ Removed item-level delivery methods:
-    // void assignOrderItemToDeliveryBoy(Long orderItemId, Long deliveryBoyId);
-    // void updateOrderItemDeliveryStatus(Long orderItemId, String status);
-    // List<OrderItemDTO> getAvailableOrderItemsForDelivery();
-
     // User
-    OrderResponse placeOrder(String token, OrderRequest orderRequest);
+    OrderResponse placeOrder(String token, OrderRequest orderRequest, String couponCode);
     List<OrderResponse> getOrdersForUser(String token);
     OrderResponse getOrderById(String token, Long orderId);
     void cancelOrder(String token, Long orderId);
@@ -46,9 +41,8 @@ public interface OrderService {
     void markAsCod(Long orderId);
     void markOrderAsShipped(Long orderId);
     long getTotalOrdersCount();
-    OrderResponse placeOrderInternal(OrderRequest orderRequest);
+    OrderResponse placeOrderInternal(OrderRequest orderRequest, String couponCode);
     Order getOrderEntity(Long orderId);
-
     // Internal token for Feign use
     String getInternalToken();
 
@@ -61,4 +55,5 @@ public interface OrderService {
     List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate);
     List<VendorEarningsDTO> getVendorEarningsByPeriod(String period);
     VendorEarningsDTO getMyVendorEarnings(String token, String period);
+    
 }
