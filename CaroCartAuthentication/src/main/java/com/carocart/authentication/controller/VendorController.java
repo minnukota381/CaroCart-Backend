@@ -33,13 +33,10 @@ public class VendorController {
     // ===== Signup with OTP =====
     @PostMapping("/signup/request-otp")
     public ResponseEntity<String> requestOtp(@Valid @RequestBody VendorRegistrationDTO dto) {
-        try {
-            String response = vendorService.requestSignupOtp(dto);
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
-        }
+        String response = vendorService.requestSignupOtp(dto); // may throw DuplicateResourceException elsewhere
+        return ResponseEntity.ok(response);
     }
+
 
     @PostMapping("/signup/verify-otp")
     public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {

@@ -5,10 +5,13 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "CaroCartProductService")
-
+@FeignClient(
+    name = "CAROCARTPRODUCTSERVICE",       // Dev: Eureka
+    url  = "${product.service.url:}",      // Prod: Cloud Run URL
+    path = "/products"
+)
 public interface ProductClient {
 
-    @GetMapping("/products/dto/{id}")
+    @GetMapping("/dto/{id}")
     ProductDTO getProductDTOById(@PathVariable("id") Long id);
 }

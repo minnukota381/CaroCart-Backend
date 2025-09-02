@@ -1,5 +1,6 @@
 package com.carocart.authentication.service;
 
+import com.carocart.authentication.config.DuplicateResourceException;
 import com.carocart.authentication.dto.EmailRequest;
 import com.carocart.authentication.dto.UserRegistrationDTO;
 import com.carocart.authentication.entity.User;
@@ -26,15 +27,17 @@ public class UserService {
     @Autowired
     private NotificationClient notificationClient;
 
-    
     @Transactional
     public void saveAndFlush(User user) {
         userRepository.saveAndFlush(user);
     }
+
     public String signup(UserRegistrationDTO dto) {
+        // If email exists, throw a field-specific exception (handled as 409 with { errors: { email: ... } })
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            return "Email already registered";
+            throw new DuplicateResourceException("email", "Email already registered");
         }
+
         User user = new User();
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
@@ -45,7 +48,7 @@ public class UserService {
         user.setRole("USER");
         userRepository.save(user);
 
-        // Send welcome email
+        // Send welcome email (best-effort)
         EmailRequest emailRequest = new EmailRequest();
         emailRequest.setToEmail(user.getEmail());
         emailRequest.setSubject("Welcome to CaroCart!");
@@ -134,8 +137,8 @@ public class UserService {
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
+
     public void save(User user) {
         userRepository.save(user);
     }
-
 }

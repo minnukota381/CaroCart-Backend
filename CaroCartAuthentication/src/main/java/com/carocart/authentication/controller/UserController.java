@@ -28,11 +28,10 @@ public class UserController {
     // === USER REGISTRATION ===
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@Valid @RequestBody UserRegistrationDTO dto) {
-        String result = userService.signup(dto);
-        return "User registered successfully".equals(result)
-                ? ResponseEntity.ok(result)
-                : ResponseEntity.badRequest().body(result);
+        String result = userService.signup(dto); // throws DuplicateResourceException if email taken
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
+
 
     // === LOGIN ===
     @PostMapping("/login")
