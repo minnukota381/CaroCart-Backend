@@ -56,7 +56,14 @@ public class Order {
     private List<OrderItem> orderItems;
 
     private LocalDateTime updatedAt;
+    @Column(name = "coupon_code")
+    private String couponCode;
 
+    @Column(name = "coupon_applied")
+    private String couponApplied;
+    
+    @Column(name = "discount_amount")
+    private Double discountAmount = 0.0;
     // --- Getters and Setters ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -114,7 +121,14 @@ public class Order {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getCouponCode() { return couponCode; }
+    public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
 
+    public Double getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(Double discountAmount) { this.discountAmount = discountAmount; }
+    
+    public String getCouponApplied() { return couponApplied; }
+    public void setCouponApplied(String couponApplied) { this.couponApplied = couponApplied; }
     // --- JPA Lifecycle ---
     @PrePersist
     public void onCreate() {

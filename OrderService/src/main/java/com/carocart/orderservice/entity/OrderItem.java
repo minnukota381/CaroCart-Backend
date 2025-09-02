@@ -41,7 +41,8 @@ public class OrderItem {
     
     @Column(name = "product_image_url")
     private String productImageUrl;
-
+    @Column(name = "discount_amount")
+    private Double discountAmount = 0.0;
 
     // ---------------- Getters & Setters ----------------
 
@@ -148,5 +149,6 @@ public class OrderItem {
 	public void setDeliveryStatus(String deliveryStatus) {
 		this.deliveryStatus = deliveryStatus;
 	}
-    
+	public Double getDiscountAmount() { return discountAmount; }
+	public void setDiscountAmount(Double discountAmount) { this.discountAmount = discountAmount; }
 }

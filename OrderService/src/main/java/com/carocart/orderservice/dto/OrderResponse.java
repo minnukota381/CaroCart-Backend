@@ -41,6 +41,9 @@ public class OrderResponse {
     private String productName;  // sample/first item name
     private Integer quantity;    // sum qty across items (or first item)
 
+    private String couponCode;
+    private Double discountAmount;
+
     public OrderResponse() {}
 
     public OrderResponse(com.carocart.orderservice.entity.Order order) {
@@ -59,7 +62,8 @@ public class OrderResponse {
         this.vendorId = order.getVendorId();
         this.deliveryFee = order.getDeliveryFee();
         this.finalAmount = order.getFinalAmount();
-
+        this.couponCode = order.getCouponCode();
+        this.discountAmount = order.getDiscountAmount();
         if (order.getOrderItems() != null) {
             this.items = order.getOrderItems().stream()
                     .map(OrderItemDTO::new)
@@ -275,6 +279,11 @@ public class OrderResponse {
 		this.quantity = quantity;
 	}
 
+    // getters & setters
+    public String getCouponCode() { return couponCode; }
+    public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
+    public Double getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(Double discountAmount) { this.discountAmount = discountAmount; }
     // Getters & setters (include the new ones!)
     // ... generate for all fields above ...
 }
