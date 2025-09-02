@@ -62,20 +62,26 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest orderRequest) {
-        return ResponseEntity.ok(orderService.placeOrderInternal(orderRequest));
+        return ResponseEntity.ok(orderService.placeOrderInternal(
+            orderRequest, 
+            orderRequest.getCouponCode()  // pass couponCode explicitly
+        ));
     }
 
     @PostMapping("/internal/place")
-    public ResponseEntity<OrderResponse> placeOrderInternal(@RequestBody OrderRequest orderRequest) {
-        return ResponseEntity.ok(orderService.placeOrderInternal(orderRequest));
+    public ResponseEntity<OrderResponse> placeOrderInternal(
+            @RequestBody OrderRequest orderRequest,
+            @RequestParam(required = false) String couponCode) {
+        return ResponseEntity.ok(orderService.placeOrderInternal(orderRequest, couponCode));
     }
 
     @PostMapping("/place")
-    public ResponseEntity<OrderResponse> placeOrder(@RequestHeader("Authorization") String token,
-                                                    @RequestBody OrderRequest orderRequest) {
-        return ResponseEntity.ok(orderService.placeOrder(token, orderRequest));
+    public ResponseEntity<OrderResponse> placeOrder(
+            @RequestHeader("Authorization") String token,
+            @RequestBody OrderRequest orderRequest,
+            @RequestParam(required = false) String couponCode) {
+        return ResponseEntity.ok(orderService.placeOrder(token, orderRequest, couponCode));
     }
-
     @GetMapping("/my")
     public ResponseEntity<List<OrderResponse>> getMyOrders(@RequestHeader("Authorization") String token) {
         return ResponseEntity.ok(orderService.getOrdersForUser(token));
@@ -274,5 +280,29 @@ public class OrderController {
             @RequestHeader("Authorization") String token) {
         return ResponseEntity.ok(orderService.getMyVendorEarnings(token, period));
     }
+    
+    @GetMapping("/me/count")
+        public ResponseEntity<Long> getMyOrderCount(@RequestHeader("Authorization") String token) {
+            // token is "Bearer xxx"
+            String rawJwt = token.startsWith("Bearer ") ? token.substring(7) : token;
+    
+            // If you already have a method:
+           // Long userId = jwtUtil.extractUserId(rawJwt);
+           // If not, and extractUsername returns email/phone, fetch profile to get the ID:
+            Long userId;
+           try {
+                UserDTO me = userClient.getCurrentUser("Bearer " + rawJwt); // adjust to your userClient method
+               userId = me.getId();
+            } catch (Exception e) {
+                // As a fallback, deny first-order coupon by claiming non-zero
+                return ResponseEntity.ok(1L);
+           }
+    
+           long count = orderRepository.countByUserIdAndStatusIn(
+                    userId,
+                    List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
+            );
+            return ResponseEntity.ok(count);
+        }
     // ⛔️ Legacy item-level delivery endpoints removed
 }

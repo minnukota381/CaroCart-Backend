@@ -6,7 +6,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@FeignClient(name = "carocartauthentication", path="/vendors") 
+@FeignClient(
+    name = "CAROCARTAUTHENTICATION",            // Eureka name (dev)
+    url  = "${authentication.service.url:}",    // Prod override (Cloud Run URL)
+    path = "/vendors"
+)
 public interface VendorClient {
 
     @GetMapping("/me")
@@ -29,7 +33,6 @@ public interface VendorClient {
     @PostMapping("/by-ids")
     List<VendorResponseDTO> getVendorsByIds(@RequestBody List<Long> vendorIds);
 
-    // ✅ New: search restaurants
     @GetMapping("/search")
     List<VendorResponseDTO> searchRestaurants(
         @RequestParam("q") String query,
