@@ -2,6 +2,8 @@ package com.carocart.orderservice.entity;
 
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -64,6 +66,26 @@ public class Order {
     
     @Column(name = "discount_amount")
     private Double discountAmount = 0.0;
+
+    // OPTIONAL but useful so net = total - commission - penalty + adj
+    @Column(name = "vendor_penalty_amount", precision=12, scale=2, nullable = false)
+    private BigDecimal vendorPenaltyAmount = BigDecimal.ZERO;
+
+    @Column(name = "vendor_adjustment_amount", precision=12, scale=2, nullable = false)
+    private BigDecimal vendorAdjustmentAmount = BigDecimal.ZERO;
+
+    // Delivery completion moment used for payout windows
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    // Settlement state for vendor’s payout
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vendor_settlement_status", length = 10, nullable = false)
+    private VendorSettlementStatus vendorSettlementStatus = VendorSettlementStatus.UNPAID;
+
+    // Set after payout
+    @Column(name = "vendor_payout_id", length = 64)
+    private String vendorPayoutId;
     // --- Getters and Setters ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -129,7 +151,39 @@ public class Order {
     
     public String getCouponApplied() { return couponApplied; }
     public void setCouponApplied(String couponApplied) { this.couponApplied = couponApplied; }
-    // --- JPA Lifecycle ---
+    
+	public String getVendorPayoutId() {
+		return vendorPayoutId;
+	}
+	public void setVendorPayoutId(String vendorPayoutId) {
+		this.vendorPayoutId = vendorPayoutId;
+	}
+	public LocalDateTime getDeliveredAt() {
+		return deliveredAt;
+	}
+	public void setDeliveredAt(LocalDateTime deliveredAt) {
+		this.deliveredAt = deliveredAt;
+	}
+
+	public BigDecimal getVendorPenaltyAmount() {
+		return vendorPenaltyAmount;
+	}
+	public void setVendorPenaltyAmount(BigDecimal vendorPenaltyAmount) {
+		this.vendorPenaltyAmount = vendorPenaltyAmount;
+	}
+	public BigDecimal getVendorAdjustmentAmount() {
+		return vendorAdjustmentAmount;
+	}
+	public void setVendorAdjustmentAmount(BigDecimal vendorAdjustmentAmount) {
+		this.vendorAdjustmentAmount = vendorAdjustmentAmount;
+	}
+	public VendorSettlementStatus getVendorSettlementStatus() {
+		return vendorSettlementStatus;
+	}
+	public void setVendorSettlementStatus(VendorSettlementStatus vendorSettlementStatus) {
+		this.vendorSettlementStatus = vendorSettlementStatus;
+	}
+	// --- JPA Lifecycle ---
     @PrePersist
     public void onCreate() {
         if (this.orderDate == null) {
