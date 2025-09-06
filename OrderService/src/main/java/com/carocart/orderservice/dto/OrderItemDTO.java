@@ -27,27 +27,6 @@ public class OrderItemDTO {
     private String vendorPhone;
 
 
-    public String getVendorPhone() { return vendorPhone; }
-    public void setVendorPhone(String vendorPhone) { this.vendorPhone = vendorPhone; }
-    public String getProductImageUrl() { return productImageUrl; }
-    public void setProductImageUrl(String productImageUrl) { this.productImageUrl = productImageUrl; }
-
-    
-    public Double getVendorLat() {
-        return vendorLat;
-    }
-
-    public void setVendorLat(Double vendorLat) {
-        this.vendorLat = vendorLat;
-    }
-
-    public Double getVendorLng() {
-        return vendorLng;
-    }
-
-    public void setVendorLng(Double vendorLng) {
-        this.vendorLng = vendorLng;
-    }
 
     public OrderItemDTO() {}
 
@@ -84,6 +63,27 @@ public class OrderItemDTO {
         }
     }
 
+    public String getVendorPhone() { return vendorPhone; }
+    public void setVendorPhone(String vendorPhone) { this.vendorPhone = vendorPhone; }
+    public String getProductImageUrl() { return productImageUrl; }
+    public void setProductImageUrl(String productImageUrl) { this.productImageUrl = productImageUrl; }
+
+    
+    public Double getVendorLat() {
+        return vendorLat;
+    }
+
+    public void setVendorLat(Double vendorLat) {
+        this.vendorLat = vendorLat;
+    }
+
+    public Double getVendorLng() {
+        return vendorLng;
+    }
+
+    public void setVendorLng(Double vendorLng) {
+        this.vendorLng = vendorLng;
+    }
 	public Long getId() {
 		return id;
 	}

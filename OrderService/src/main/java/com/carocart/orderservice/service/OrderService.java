@@ -4,6 +4,8 @@ import com.carocart.orderservice.dto.OrderItemDTO;
 import com.carocart.orderservice.dto.OrderRequest;
 import com.carocart.orderservice.dto.OrderResponse;
 import com.carocart.orderservice.dto.VendorEarningsDTO;
+import com.carocart.orderservice.dto.VendorPayoutPreviewDTO;
+import com.carocart.orderservice.dto.VendorPayoutResponseDTO;
 import com.carocart.orderservice.entity.Order;
 
 import java.util.List;
@@ -55,5 +57,8 @@ public interface OrderService {
     List<VendorEarningsDTO> getVendorEarnings(String fromDate, String toDate);
     List<VendorEarningsDTO> getVendorEarningsByPeriod(String period);
     VendorEarningsDTO getMyVendorEarnings(String token, String period);
-    
+ // OrderService.java
+    VendorPayoutPreviewDTO previewVendorUnpaid(Long vendorId);
+    VendorPayoutResponseDTO payVendorUnpaid(Long vendorId, String note);
+
 }
