@@ -116,10 +116,12 @@ public class OrderServiceImpl implements OrderService {
     // If you want to fetch slabs from config later, you can.
     // For now, keep the logic centralized here with defaults.
     private double feeFromSlab(double km) {
+        if (km <= 1)  return 0.0;  // Free ≤1 km
+        if (km <= 2)  return 15.0;
         if (km <= 3)  return 19.0;
-        if (km <= 6)  return 29.0;
-        if (km <= 9)  return 39.0;
-        if (km <= 12) return 59.0;
+        if (km <  6)  return 29.0;
+        if (km <  9)  return 39.0;
+        if (km < 12)  return 59.0;
         throw new RuntimeException("Delivery not available for this distance.");
     }
 
@@ -262,8 +264,9 @@ public class OrderServiceImpl implements OrderService {
                 List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
             );
             if (priorRealOrders == 0) {
-                discount = itemsTotal * 0.20;
-                order.setCouponApplied("FIRST20");
+            	discount = itemsTotal * 0.15;
+            	order.setCouponApplied("FIRST15");
+
             } else {
                 throw new IllegalArgumentException("FIRST20 is valid only on your first order.");
             }
@@ -361,8 +364,9 @@ public class OrderServiceImpl implements OrderService {
                 List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
             );
             if (priorRealOrders == 0) {
-                discount = itemsTotal * 0.20;
-                order.setCouponApplied("FIRST20");
+            	discount = itemsTotal * 0.15;
+            	order.setCouponApplied("FIRST15");
+
             } else {
                 throw new IllegalArgumentException("FIRST20 is valid only on your first order.");
             }
