@@ -15,6 +15,8 @@ public class OrderResponse {
     private String paymentId;
     private LocalDateTime orderDate;
     private LocalDateTime updatedAt;
+    private String deliveryBoyName;   // NEW
+    private String deliveryBoyPhone;
 
     // Items (still included for detail pages)
     private List<OrderItemDTO> items;
@@ -279,7 +281,23 @@ public class OrderResponse {
 		this.quantity = quantity;
 	}
 
-    // getters & setters
+    public String getDeliveryBoyName() {
+		return deliveryBoyName;
+	}
+
+	public void setDeliveryBoyName(String deliveryBoyName) {
+		this.deliveryBoyName = deliveryBoyName;
+	}
+
+	public String getDeliveryBoyPhone() {
+		return deliveryBoyPhone;
+	}
+
+	public void setDeliveryBoyPhone(String deliveryBoyPhone) {
+		this.deliveryBoyPhone = deliveryBoyPhone;
+	}
+
+	// getters & setters
     public String getCouponCode() { return couponCode; }
     public void setCouponCode(String couponCode) { this.couponCode = couponCode; }
     public Double getDiscountAmount() { return discountAmount; }
