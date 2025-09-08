@@ -1170,6 +1170,20 @@ public class OrderServiceImpl implements OrderService {
                 qtyField.set(resp, totalQty);
             } catch (Exception ignore) {}
         }
+     // OrderServiceImpl.java  -> inside toEnrichedResponse(Order order) just before 'return resp;'
+        try {
+            if (order.getDeliveryBoyId() != null) {
+                DeliveryBoyDTO rider = deliveryBoyClient.getById(systemJwtToken, order.getDeliveryBoyId());
+                if (rider != null) {
+                    String fullRiderName = ((rider.getFirstName() == null ? "" : rider.getFirstName()) + " " +
+                                            (rider.getLastName() == null ? "" : rider.getLastName())).trim();
+                    resp.setDeliveryBoyName(fullRiderName.isBlank() ? "Delivery Partner" : fullRiderName);
+                    resp.setDeliveryBoyPhone(rider.getPhone());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load delivery boy for order " + order.getId() + ": " + e.getMessage());
+        }
 
         return resp;
     }
