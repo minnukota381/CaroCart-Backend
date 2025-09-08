@@ -272,6 +272,19 @@ public class OrderController {
     public ResponseEntity<List<VendorEarningsDTO>> getVendorEarningsByPeriod(@PathVariable String period) {
         return ResponseEntity.ok(orderService.getVendorEarningsByPeriod(period));
     }
+ // OrderController.java
+    @GetMapping("/admin/vendors/{vendorId}/payouts/preview")
+    public ResponseEntity<VendorPayoutPreviewDTO> previewVendorUnpaid(@PathVariable Long vendorId) {
+        return ResponseEntity.ok(orderService.previewVendorUnpaid(vendorId));
+    }
+
+    @PostMapping("/admin/vendors/{vendorId}/payouts/pay")
+    public ResponseEntity<VendorPayoutResponseDTO> payVendorUnpaid(
+            @PathVariable Long vendorId,
+            @RequestBody VendorPayoutRequestDTO body
+    ) {
+        return ResponseEntity.ok(orderService.payVendorUnpaid(vendorId, body.getNote()));
+    }
 
     // Vendor → see only their own earnings by period
     @GetMapping("/vendor/earnings/{period}")

@@ -229,5 +229,14 @@ public class VendorController {
                 .toList();
         return ResponseEntity.ok(dtos);
     }
+ // ADD inside VendorController
+    @GetMapping("/email/{email}")
+    public ResponseEntity<VendorResponseDTO> getVendorByEmailPublic(@PathVariable String email) {
+        var v = vendorService.getVendorByEmail(email);
+        if (v == null || !v.isApproved()) {
+            return ResponseEntity.status(404).body(null);
+        }
+        return ResponseEntity.ok(VendorService.toResponseDTO(v));
+    }
 
 }

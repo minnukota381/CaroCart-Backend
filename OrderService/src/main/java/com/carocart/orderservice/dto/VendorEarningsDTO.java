@@ -6,6 +6,7 @@ public class VendorEarningsDTO {
     private String upiId;
     private double totalSales;
     private double commissionAmount;
+    private Integer orderCount;
     private double vendorPayable;
 
     public VendorEarningsDTO() {}
@@ -66,6 +67,14 @@ public class VendorEarningsDTO {
 
 	public void setVendorPayable(double vendorPayable) {
 		this.vendorPayable = vendorPayable;
+	}
+
+	public Integer getOrderCount() {
+		return orderCount;
+	}
+
+	public void setOrderCount(Integer orderCount) {
+		this.orderCount = orderCount;
 	}
 
     // getters & setters...

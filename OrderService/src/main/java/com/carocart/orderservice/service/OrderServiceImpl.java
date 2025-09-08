@@ -11,7 +11,9 @@ import com.carocart.orderservice.repository.OrderItemRepository;
 import com.carocart.orderservice.util.JwtUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
-
+import java.util.stream.Collectors;
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,6 +25,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.text.NumberFormat;
 import java.util.Locale;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.HexFormat;
+import java.util.Optional;
+
+import com.carocart.orderservice.entity.VendorSettlementStatus;
+
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -35,7 +46,10 @@ public class OrderServiceImpl implements OrderService {
     
 	private String systemJwtToken;
 
-	
+	// default-zero helpers
+	private static double dz(Double v) { return v == null ? 0.0 : v; }
+	private static double bz(java.math.BigDecimal v) { return v == null ? 0.0 : v.doubleValue(); }
+
 	public boolean isFirstOrder(Long userId) {
 	    return orderRepository.countByUserId(userId) == 0;
 	}
@@ -45,6 +59,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductClient productClient;
     private final UserClient userClient;
     private final AddressClient addressClient;
+    private final PaymentClient paymentClient;
     private final NotificationClient notificationClient;
     private final VendorClient vendorClient;
     private final DeliveryBoyClient deliveryBoyClient;
@@ -55,6 +70,8 @@ public class OrderServiceImpl implements OrderService {
 
 	@Autowired
     private final JwtUtil jwtUtil;
+	// at top of OrderServiceImpl
+	private static final LocalDateTime SQL_MIN = LocalDateTime.of(1970, 1, 1, 0, 0);
 
 
     public OrderServiceImpl(
@@ -63,6 +80,7 @@ public class OrderServiceImpl implements OrderService {
     	    ProductClient productClient,
     	    UserClient userClient,
     	    AddressClient addressClient,
+    	    PaymentClient paymentClient,
     	    OrdersInternalUserClient ordersInternalUserClient,
     	    NotificationClient notificationClient,
     	    VendorClient vendorClient,
@@ -78,6 +96,7 @@ public class OrderServiceImpl implements OrderService {
     	    this.productClient = productClient;
     	    this.userClient = userClient;
     	    this.addressClient = addressClient;
+    	    this.paymentClient = paymentClient;
     	    this.ordersInternalUserClient = ordersInternalUserClient;
     	    this.notificationClient = notificationClient;
     	    this.vendorClient = vendorClient;
@@ -97,10 +116,12 @@ public class OrderServiceImpl implements OrderService {
     // If you want to fetch slabs from config later, you can.
     // For now, keep the logic centralized here with defaults.
     private double feeFromSlab(double km) {
+        if (km <= 1)  return 0.0;  // Free ≤1 km
+        if (km <= 2)  return 15.0;
         if (km <= 3)  return 19.0;
-        if (km <= 6)  return 29.0;
-        if (km <= 9)  return 39.0;
-        if (km <= 12) return 59.0;
+        if (km <  6)  return 29.0;
+        if (km <  9)  return 39.0;
+        if (km < 12)  return 59.0;
         throw new RuntimeException("Delivery not available for this distance.");
     }
 
@@ -243,8 +264,9 @@ public class OrderServiceImpl implements OrderService {
                 List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
             );
             if (priorRealOrders == 0) {
-                discount = itemsTotal * 0.20;
-                order.setCouponApplied("FIRST20");
+            	discount = itemsTotal * 0.15;
+            	order.setCouponApplied("FIRST15");
+
             } else {
                 throw new IllegalArgumentException("FIRST20 is valid only on your first order.");
             }
@@ -342,8 +364,9 @@ public class OrderServiceImpl implements OrderService {
                 List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
             );
             if (priorRealOrders == 0) {
-                discount = itemsTotal * 0.20;
-                order.setCouponApplied("FIRST20");
+            	discount = itemsTotal * 0.15;
+            	order.setCouponApplied("FIRST15");
+
             } else {
                 throw new IllegalArgumentException("FIRST20 is valid only on your first order.");
             }
@@ -524,14 +547,15 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<OrderResponse> getAllOrders() {
         return orderRepository.findAll().stream()
-                .map(OrderResponse::new).collect(Collectors.toList());
+                .map(this::toEnrichedResponse)   // <— was OrderResponse::new
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Override
     public OrderResponse getOrderByIdForAdmin(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
-        return new OrderResponse(order);
+        return toEnrichedResponse(order);        // <— was new OrderResponse(order)
     }
 
     @Override
@@ -744,8 +768,16 @@ public class OrderServiceImpl implements OrderService {
             case "ASSIGNED" -> order.setStatus("PROCESSING");
             case "PICKED_UP" -> order.setStatus("PREPARING");
             case "OUT_FOR_DELIVERY" -> order.setStatus("OUT_FOR_DELIVERY");
-            case "DELIVERED" -> order.setStatus("DELIVERED");
-            default -> { /* leave as-is for unknown states */ }
+            case "DELIVERED" -> {
+                order.setStatus("DELIVERED");
+               // ✅ mark the moment it became payout-eligible
+              order.setDeliveredAt(LocalDateTime.now());
+               // keep/ensure vendor settlement flag is UNPAID until payout runs
+               if (order.getVendorSettlementStatus() == null) {
+                   order.setVendorSettlementStatus(VendorSettlementStatus.UNPAID);
+               }
+            }
+            default -> { /* no-op */ }
         }
 
         orderRepository.save(order);
@@ -940,7 +972,120 @@ public class OrderServiceImpl implements OrderService {
             );
         }).collect(Collectors.toList());
     }
-    
+    @Override
+    public VendorPayoutPreviewDTO previewVendorUnpaid(Long vendorId) {
+        LocalDateTime now   = LocalDateTime.now();
+        LocalDateTime since = resolveLastPayoutToTime(vendorId).orElse(SQL_MIN);
+
+        List<Order> rows = orderRepository.findDeliveredUnpaidSince(
+            vendorId, since, now, VendorSettlementStatus.UNPAID
+        );
+
+        VendorResponseDTO v = vendorClient.getVendorById(systemJwtToken, vendorId);
+
+        List<VendorEarningLineDTO> items = rows.stream().map(o -> {
+            BigDecimal gross      = BigDecimal.valueOf(o.getTotalAmount() == null ? 0.0 : o.getTotalAmount());
+            BigDecimal commission = BigDecimal.valueOf(o.getPlatformCommissionAmount() == null ? 0.0 : o.getPlatformCommissionAmount());
+            BigDecimal penalty    = (o.getVendorPenaltyAmount() == null)    ? BigDecimal.ZERO : o.getVendorPenaltyAmount();
+            BigDecimal adjustment = (o.getVendorAdjustmentAmount() == null) ? BigDecimal.ZERO : o.getVendorAdjustmentAmount();
+            BigDecimal net        = gross.subtract(commission).subtract(penalty).add(adjustment);
+
+            return new VendorEarningLineDTO(
+                o.getId(),
+                (o.getDeliveredAt() == null ? null
+                    : o.getDeliveredAt().atZone(java.time.ZoneId.systemDefault()).toInstant()),
+                gross, commission, penalty, adjustment, net, "UNPAID"
+            );
+        }).collect(java.util.stream.Collectors.toList());
+
+        java.time.Instant sinceInstant = (since.equals(SQL_MIN))
+            ? null
+            : since.atZone(java.time.ZoneId.systemDefault()).toInstant();
+
+        return new VendorPayoutPreviewDTO(
+            sinceInstant,
+            v.getCompanyName(),
+            v.getUpiId(),
+            items
+        );
+    }
+
+    @Override
+    @jakarta.transaction.Transactional
+    public VendorPayoutResponseDTO payVendorUnpaid(Long vendorId, String note) {
+        LocalDateTime now   = LocalDateTime.now();
+        LocalDateTime since = resolveLastPayoutToTime(vendorId).orElse(SQL_MIN);
+
+        List<Order> rows = orderRepository.findDeliveredUnpaidSince(
+            vendorId, since, now, VendorSettlementStatus.UNPAID
+        );
+
+        if (rows.isEmpty()) {
+            return new VendorPayoutResponseDTO(
+                null,
+                vendorId,
+                (since.equals(SQL_MIN) ? null : since.atZone(ZoneId.systemDefault()).toInstant()),
+                now.atZone(ZoneId.systemDefault()).toInstant(),
+                0,
+                BigDecimal.ZERO
+            );
+        }
+
+        BigDecimal total = rows.stream().map(o -> {
+            BigDecimal gross      = BigDecimal.valueOf(o.getTotalAmount() == null ? 0.0 : o.getTotalAmount());
+            BigDecimal commission = BigDecimal.valueOf(o.getPlatformCommissionAmount() == null ? 0.0 : o.getPlatformCommissionAmount());
+            BigDecimal penalty    = (o.getVendorPenaltyAmount() == null)    ? BigDecimal.ZERO : o.getVendorPenaltyAmount();
+            BigDecimal adjustment = (o.getVendorAdjustmentAmount() == null) ? BigDecimal.ZERO : o.getVendorAdjustmentAmount();
+            return gross.subtract(commission).subtract(penalty).add(adjustment);
+        }).reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // ✅ never send null: first window starts at epoch
+        Instant fromInstant = since.equals(SQL_MIN)
+            ? Instant.EPOCH
+            : since.atZone(ZoneId.systemDefault()).toInstant();
+        Instant toInstant   = now.atZone(ZoneId.systemDefault()).toInstant();
+
+     // compute idempotency window hash (no checked exception leaks)
+        String hash;
+        try {
+            hash = HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256")
+                    .digest((vendorId + "|" + fromInstant + "|" + toInstant).getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            );
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available on this JRE", e);
+        }
+
+        CreateVendorPayoutRequest req = new CreateVendorPayoutRequest();
+        req.setVendorId(vendorId);
+        req.setFrom(fromInstant);
+        req.setTo(toInstant);
+        req.setCount(rows.size());
+        req.setTotalAmount(total);
+        req.setNote(note);
+        req.setWindowHash(hash);
+
+        var payout = paymentClient.createVendorPayout(getInternalToken(), req);
+
+        List<Long> ids = rows.stream().map(Order::getId).toList();
+        orderRepository.markOrdersPaid(ids, payout.getPayoutId(), VendorSettlementStatus.PAID);
+
+        return payout;
+    }
+ // put this anywhere inside OrderServiceImpl (e.g., near other helpers)
+    private static MessageDigest sha256Digest() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
+
+    private java.util.Optional<LocalDateTime> resolveLastPayoutToTime(Long vendorId) {
+        LocalDateTime maxDeliveredPaid = orderRepository.findMaxDeliveredAtWherePaid(vendorId, VendorSettlementStatus.PAID);
+        return Optional.ofNullable(maxDeliveredPaid);
+    }
+
     @Override
     public List<OrderResponse> getOrdersAvailableForDelivery(String token) {
         return orderRepository.findAll().stream()
@@ -993,7 +1138,16 @@ public class OrderServiceImpl implements OrderService {
                 VendorResponseDTO v = vendorClient.getVendorById(systemJwtToken, order.getVendorId());
                 resp.setVendorLat(v.getLatitude());
                 resp.setVendorLng(v.getLongitude());
-                resp.setVendorPhone(v.getContactNumber());
+
+                // 🔑 Populate vendor phone at both order and item level
+                String phone = v.getContactNumber(); // adjust if field name differs
+                resp.setVendorPhone(phone);
+
+                if (resp.getItems() != null) {
+                    for (OrderItemDTO it : resp.getItems()) {
+                        it.setVendorPhone(phone);
+                    }
+                }
             }
         } catch (Exception e) {
             System.err.println("Could not load vendor for order " + order.getId() + ": " + e.getMessage());
@@ -1005,7 +1159,6 @@ public class OrderServiceImpl implements OrderService {
             int totalQty = order.getOrderItems().stream()
                     .mapToInt(oi -> oi.getQuantity() == null ? 0 : oi.getQuantity())
                     .sum();
-            // If your OrderResponse has these fields, set them:
             try {
                 var firstNameField = OrderResponse.class.getDeclaredField("firstProductName");
                 firstNameField.setAccessible(true);
@@ -1020,6 +1173,7 @@ public class OrderServiceImpl implements OrderService {
 
         return resp;
     }
+
 
 
     // Runs every 30s; approve anything older than delaySeconds
