@@ -76,7 +76,7 @@ public class Vendor {
     private Double longitude;
 
     // Profile image URL (Firebase/public link)
-    @Column(name = "profile_image_url")
+    @Column(name = "profile_image_url", length = 2048) // match DB length
     private String profileImageUrl;
 
     @Column(name = "upi_id", length = 50)
