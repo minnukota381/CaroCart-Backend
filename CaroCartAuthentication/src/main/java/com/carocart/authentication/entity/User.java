@@ -2,6 +2,7 @@ package com.carocart.authentication.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
 import org.hibernate.annotations.CreationTimestamp;
 import jakarta.persistence.*;
 
@@ -17,13 +18,17 @@ public class User {
     private String firstName;
     private String lastName;
 
-    @Column(unique = true, nullable = false)
+    // Email OPTIONAL but UNIQUE if present
+    @Column(unique = true)
     private String email;
 
-    @Column(nullable = false)
+    // Password OPTIONAL (phone-OTP users won't have a password)
     private String password;
 
+    // Phone REQUIRED and UNIQUE (primary identity)
+    @Column(name = "phone_number", nullable = false, unique = true, length = 20)
     private String phoneNumber;
+
     private LocalDate dob;
 
     @Column(nullable = false)
@@ -33,8 +38,7 @@ public class User {
     @Column(name = "registered_at", nullable = false, updatable = false)
     private LocalDateTime registeredAt;
 
-
-
+    // --- Getters / Setters ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -53,16 +57,15 @@ public class User {
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
-
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
     public LocalDate getDob() { return dob; }
     public void setDob(LocalDate dob) { this.dob = dob; }
 
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
     public LocalDateTime getRegisteredAt() { return registeredAt; }
     public void setRegisteredAt(LocalDateTime registeredAt) { this.registeredAt = registeredAt; }
-	
 }
