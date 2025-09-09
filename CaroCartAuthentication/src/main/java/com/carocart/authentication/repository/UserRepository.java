@@ -8,5 +8,7 @@ import com.carocart.authentication.entity.User;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
-    Optional<User> findByPhoneNumber(String phoneNumber); // <-- required
+    Optional<User> findByPhoneNumber(String phoneNumber);
+    boolean existsByPhoneNumber(String phoneNumber);  // <-- added
+    boolean existsByEmail(String email);              // (optional convenience)
 }

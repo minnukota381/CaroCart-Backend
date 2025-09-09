@@ -18,14 +18,13 @@ public class User {
     private String firstName;
     private String lastName;
 
-    // Email OPTIONAL but UNIQUE if present
+    // Email OPTIONAL in table but you require it via DTO; uniqueness enforced
     @Column(unique = true)
     private String email;
 
-    // Password OPTIONAL (phone-OTP users won't have a password)
     private String password;
 
-    // Phone REQUIRED and UNIQUE (primary identity)
+    // Phone REQUIRED & UNIQUE (one-to-one)
     @Column(name = "phone_number", nullable = false, unique = true, length = 20)
     private String phoneNumber;
 
@@ -38,34 +37,25 @@ public class User {
     @Column(name = "registered_at", nullable = false, updatable = false)
     private LocalDateTime registeredAt;
 
-    // --- Getters / Setters ---
+    // Getters / Setters ...
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-
     public String getProfileImageUrl() { return profileImageUrl; }
     public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
-
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
-
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
-
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
-
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
-
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
-
     public LocalDate getDob() { return dob; }
     public void setDob(LocalDate dob) { this.dob = dob; }
-
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
-
     public LocalDateTime getRegisteredAt() { return registeredAt; }
     public void setRegisteredAt(LocalDateTime registeredAt) { this.registeredAt = registeredAt; }
 }
