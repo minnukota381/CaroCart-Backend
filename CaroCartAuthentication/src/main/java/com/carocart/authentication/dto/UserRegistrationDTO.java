@@ -13,22 +13,25 @@ public class UserRegistrationDTO {
     @Size(max = 30, message = "Last name must be at most 30 characters")
     private String lastName;
 
+    // Email REQUIRED
     @NotBlank(message = "Email is required")
     @Email(message = "Enter a valid email")
     private String email;
 
+    // Password REQUIRED
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
 
-//    @NotBlank(message = "Phone number is required")
+    // Phone REQUIRED (10 digits on input; stored normalized)
+    @NotBlank(message = "Phone number is required")
     @Pattern(regexp = "^\\d{10}$", message = "Phone number must be 10 digits")
     private String phoneNumber;
 
     @Past(message = "DOB must be in the past")
-    private LocalDate dob; // optional, allow null
+    private LocalDate dob; // optional
 
-    // Getters and setters
+    // Getters / Setters
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
 

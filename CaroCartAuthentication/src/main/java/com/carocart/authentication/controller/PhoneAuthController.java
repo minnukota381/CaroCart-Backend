@@ -10,10 +10,13 @@ import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/users/phone")
+@RequestMapping("/auth/phone")
 public class PhoneAuthController {
 
     private final UserRepository userRepository;
@@ -28,61 +31,69 @@ public class PhoneAuthController {
         this.jwtUtil = jwtUtil;
     }
 
-    // Client does OTP with Firebase JS → sends Firebase ID token here.
+    /**
+     * Frontend sends Firebase ID token after successful phone OTP.
+     * Response: { token, userId, phone, newUser }
+     */
     @PostMapping("/verify")
     public ResponseEntity<?> verify(@RequestBody Map<String, String> body) {
         String idToken = body.get("idToken");
         if (idToken == null || idToken.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "idToken required"));
+            return ResponseEntity.badRequest().body(Map.of("message", "idToken required"));
         }
 
         final FirebaseToken decoded;
         try {
+            // If you want to reject revoked tokens, use verifyIdToken(idToken, true)
             decoded = FirebaseAuth.getInstance().verifyIdToken(idToken);
         } catch (FirebaseAuthException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                                 .body(Map.of("error", "invalid_id_token"));
+                    .body(Map.of("message", "invalid_id_token"));
         }
 
-        // Firebase Admin SDK exposes phone for phone-auth as "phone_number" claim
         String phone = Optional.ofNullable(decoded.getClaims().get("phone_number"))
                                .map(Object::toString)
                                .orElse(null);
-
         if (phone == null || phone.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "token_has_no_phone"));
+            return ResponseEntity.badRequest().body(Map.of("message", "token_has_no_phone"));
         }
 
-        // Optional display name (often absent for phone auth)
-        String displayName = Optional.ofNullable(decoded.getClaims().get("name"))
-                                     .map(Object::toString)
-                                     .orElse("CaroCart");
+        boolean newUser = false;
 
-        // Satisfy NOT NULL + UNIQUE email constraint via synthetic email
-        String syntheticEmail = "phone_" + phone.replace("+", "") + "@carocart.local";
+        // 1) Find by phone
+        User user = userRepository.findByPhoneNumber(phone).orElse(null);
 
-        User user = userRepository.findByEmail(syntheticEmail).orElseGet(() -> {
-            User u = new User();
-            u.setEmail(syntheticEmail);
-            u.setFirstName(displayName);
-            u.setLastName("");
-            u.setPassword(passwordEncoder.encode(UUID.randomUUID().toString())); // random/unused
-            u.setPhoneNumber(phone);
-            u.setRole("USER");
-            return userRepository.save(u);
-        });
-
-        // keep phone synced
-        if (!phone.equals(user.getPhoneNumber())) {
-            user.setPhoneNumber(phone);
-            userRepository.save(user);
+        // 2) If not found, create a minimal user (phone-first)
+        if (user == null) {
+            user = new User();
+            user.setPhoneNumber(phone);                 // REQUIRED + UNIQUE in your entity
+            user.setFirstName("CaroCart");              // optional default
+            user.setLastName("");
+            user.setRole("USER");
+            // Random password (unused for phone-only accounts, keep nullable if you made it optional)
+            user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+            user = userRepository.save(user);
+            newUser = true;
         }
 
+        // (Optional) Keep any updates in sync (e.g., if you later collect email/name)
+        // userRepository.save(user);
+
+        // 3) Issue your own app JWT
         String jwt = jwtUtil.generateToken(
-            user.getId(), user.getEmail(), user.getRole(),
-            user.getFirstName(), user.getLastName()
+                user.getId(),
+                user.getEmail(),    // can be null
+                user.getRole(),
+                user.getFirstName(),
+                user.getLastName()
         );
 
-        return ResponseEntity.ok(Map.of("token", jwt));
+        return ResponseEntity.ok(Map.of(
+                "token", jwt,
+                "userId", user.getId(),
+                "phone", phone,
+                "newUser", newUser,
+                "issuedAt", Instant.now().toString()
+        ));
     }
 }
