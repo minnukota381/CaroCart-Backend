@@ -67,6 +67,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrdersInternalUserClient ordersInternalUserClient;
  // fields
     private final DeliveryEarningClient deliveryEarningClient;
+	private final LocationClient locationClient; // NEW
 
 	@Autowired
     private final JwtUtil jwtUtil;
@@ -87,7 +88,8 @@ public class OrderServiceImpl implements OrderService {
     	    DeliveryBoyClient deliveryBoyClient,  // <--- ADD THIS PARAM
     	    OrderItemRepository orderItemRepository,
     	    JwtUtil jwtUtil,
-    	    DeliveryEarningClient deliveryEarningClient
+    	    DeliveryEarningClient deliveryEarningClient,
+    	    LocationClient locationClient
     	    
 
     	) {
@@ -104,6 +106,8 @@ public class OrderServiceImpl implements OrderService {
     	    this.orderItemRepository = orderItemRepository;
     	    this.jwtUtil = jwtUtil;
     	    this.deliveryEarningClient = deliveryEarningClient;
+    	    this.locationClient = locationClient;
+
     	}
 
  // ====== Delivery pricing config with safe defaults ======
@@ -134,18 +138,31 @@ public class OrderServiceImpl implements OrderService {
         return feeFromSlab(km);
     }
 
-    /** Compute vendor→user distance for an ORDER */
     private double distanceKmForOrder(Long vendorId, Long addressId) {
         VendorResponseDTO vendor = vendorClient.getVendorById(systemJwtToken, vendorId);
         AddressDTO address = addressClient.getAddressById(systemJwtToken, addressId);
 
         if (vendor.getLatitude() == null || vendor.getLongitude() == null
-                || address.getLatitude() == null || address.getLongitude() == null) {
+            || address.getLatitude() == null || address.getLongitude() == null) {
             throw new RuntimeException("Cannot compute distance: vendor or address lat/lng missing.");
         }
+
+        try {
+            Double km = locationClient.drivingKm(
+                vendor.getLatitude(), vendor.getLongitude(),
+                address.getLatitude(), address.getLongitude()
+            );
+            if (km != null && km > 0) return km;
+        } catch (Exception e) {
+            System.err.println("⚠ Driving distance fetch failed, fallback to Haversine: " + e.getMessage());
+        }
+
+        // fallback
         return haversine(vendor.getLatitude(), vendor.getLongitude(),
-                         address.getLatitude(), address.getLongitude());
+                         address.getLatitude(), address.getLongitude()) * 1.3;
     }
+
+
 
     /** Food/Grocery */
     private boolean isGroceryVendor(Long vendorId) {
@@ -470,15 +487,18 @@ public class OrderServiceImpl implements OrderService {
         notificationClient.sendEmail(new EmailRequest("carocartteam@gmail.com", "Order Shipped – #"+order.getId(), ahtml, true));
     }
 
+ // OrderServiceImpl.java
     @Override
     public List<OrderResponse> getOrdersForUser(String token) {
         UserDTO user = userClient.getCurrentUser(token);
-        List<OrderResponse> responses = orderRepository.findByUserId(user.getId())
-                .stream()
-                .map(OrderResponse::new)
-                .collect(Collectors.toList());
 
-        // Fill missing product info
+        List<Order> orders = orderRepository.findByUserIdWithItems(user.getId());
+
+        List<OrderResponse> responses = orders.stream()
+            .map(OrderResponse::new)
+            .collect(Collectors.toList());
+
+        // (Optional) enrich product name/image safely
         responses.forEach(orderResp -> {
             if (orderResp.getItems() != null) {
                 orderResp.getItems().forEach(item -> {
@@ -486,15 +506,14 @@ public class OrderServiceImpl implements OrderService {
                         ProductDTO product = productClient.getProductById(item.getProductId());
                         item.setProductName(product.getName());
                         item.setProductImageUrl(product.getImageUrl());
-                    } catch (Exception e) {
-                        System.err.println("⚠ Could not fetch product for ID " + item.getProductId());
-                    }
+                    } catch (Exception ignored) {}
                 });
             }
         });
 
         return responses;
     }
+
 
     @Override
     public OrderResponse getOrderById(String token, Long orderId) {
