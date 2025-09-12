@@ -17,6 +17,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByVendorIdAndStatus(Long vendorId, String status);
     long countByUserId(Long userId);
     long countByUserIdAndStatusIn(Long userId, Collection<String> statuses);
+ // OrderRepository.java
+    @Query("""
+      select distinct o
+      from Order o
+      left join fetch o.orderItems i
+      where o.userId = :uid
+      order by o.orderDate desc, o.id desc
+    """)
+    List<Order> findByUserIdWithItems(@Param("uid") Long uid);
 
     @Query("""
       select o from Order o
