@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -294,6 +295,50 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getMyVendorEarnings(token, period));
     }
     
+    
+    @GetMapping("/internal/order-items/{orderItemId}/mini")
+    @Transactional(readOnly = true)
+    public ResponseEntity<RatingEligibilityDTO> getRatingsMini(
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @PathVariable Long orderItemId
+    ) {
+        // Optional: enforce SYSTEM/ADMIN if you want to lock this down:
+        // try {
+        //     String raw = (token != null && token.startsWith("Bearer ")) ? token.substring(7) : token;
+        //     String role = jwtUtil.extractRole(raw);
+        //     if (role == null || !role.matches("SYSTEM|ADMIN")) {
+        //         return ResponseEntity.status(403).build();
+        //     }
+        // } catch (Exception ignored) {}
+
+        // 1) Find order item
+        OrderItem oi = orderItemRepository.findById(orderItemId)
+                .orElseThrow(() -> new RuntimeException("Order item not found"));
+
+        // 2) Resolve its order (ManyToOne defaults to EAGER; still handling defensive lookup)
+        Order order = oi.getOrder();
+        if (order == null) {
+            order = orderRepository.findById(
+                        // if oi.getOrder() was proxied-or-null, this fetch is a fallback
+                        orderItemRepository.findById(orderItemId)
+                            .orElseThrow(() -> new RuntimeException("Order item not found (2)"))
+                            .getOrder()
+                            .getId()
+                    )
+                    .orElseThrow(() -> new RuntimeException("Order not found for item"));
+        }
+
+        // 3) Build DTO (your DTO comment says: itemStatus from item.deliveryStatus, orderStatus from order.status)
+        RatingEligibilityDTO dto = new RatingEligibilityDTO();
+        dto.setOrderItemId(oi.getId());
+        dto.setOrderId(order.getId());
+        dto.setUserId(order.getUserId());
+        dto.setProductId(oi.getProductId());
+        dto.setItemStatus(oi.getDeliveryStatus());     // item-level status
+        dto.setOrderStatus(order.getStatus());         // order business status
+
+        return ResponseEntity.ok(dto);
+    }
     @GetMapping("/me/count")
         public ResponseEntity<Long> getMyOrderCount(@RequestHeader("Authorization") String token) {
             // token is "Bearer xxx"
