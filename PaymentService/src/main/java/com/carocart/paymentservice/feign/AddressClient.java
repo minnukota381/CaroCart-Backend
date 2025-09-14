@@ -1,15 +1,17 @@
 package com.carocart.paymentservice.feign;
 
-
+import com.carocart.paymentservice.dto.AddressResponseDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
-import com.carocart.paymentservice.dto.AddressResponseDTO;
-@FeignClient(name = "CaroCartAddress")
+@FeignClient(
+    name = "CAROCARTADDRESS",               // Local (Eureka)
+    url  = "${address.service.url:}",       // Prod (Cloud Run)
+    path = "/api/addresses",
+    contextId = "paymentAddressClient"
+)
 public interface AddressClient {
-    // Update the path to match the actual controller mapping!
-    @GetMapping("/api/addresses/{addressId}")
+
+    @GetMapping("/{addressId}")
     AddressResponseDTO getAddressById(@PathVariable("addressId") Long addressId);
 }
-
-
