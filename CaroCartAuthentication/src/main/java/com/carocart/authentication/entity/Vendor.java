@@ -34,15 +34,18 @@ public class Vendor {
     @NotBlank(message = "Contact number is mandatory")
     private String contactNumber;
 
+    // ✅ NEW: Optional alternate phone
+    @Column(name = "alternate_phone", length = 20)
+    private String alternatePhone;
+
     private String gstNumber;
 
     private boolean isApproved = false;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
 
-	private String manualCloseReason;
+    private String manualCloseReason;
     private LocalDateTime manualCloseUntil;
 
     @Column(nullable = false)
@@ -76,22 +79,31 @@ public class Vendor {
     private Double longitude;
 
     // Profile image URL (Firebase/public link)
-    @Column(name = "profile_image_url", length = 2048) // match DB length
+    @Column(name = "profile_image_url", length = 2048)
     private String profileImageUrl;
 
     @Column(name = "upi_id", length = 50)
     private String upiId;
+
+    // ✅ Morning timings (existing names; keep your current logic untouched)
     @Column(name = "opening_time", nullable = false)
     private String openingTime;
 
     @Column(name = "closing_time", nullable = false)
     private String closingTime;
 
- // Availability Controls
+    // ✅ NEW: Optional evening split-shift timings
+    @Column(name = "evening_opening_time")
+    private String eveningOpeningTime;  // e.g., "17:00" or null
+
+    @Column(name = "evening_closing_time")
+    private String eveningClosingTime;  // e.g., "22:00" or null
+
+    // Availability Controls
     @Column(name = "accepting_orders", nullable = false)
-    private Boolean acceptingOrders = Boolean.TRUE; // Manual toggle, default true
-    
- // === Lifecycle hooks ===
+    private Boolean acceptingOrders = Boolean.TRUE;
+
+    // === Lifecycle hooks ===
     @PrePersist
     protected void onCreate() {
         if (acceptingOrders == null) acceptingOrders = Boolean.TRUE;
@@ -104,17 +116,7 @@ public class Vendor {
         if (acceptingOrders == null) acceptingOrders = Boolean.TRUE;
         updatedAt = LocalDateTime.now();
     }
-    public Boolean getAcceptingOrders() { return acceptingOrders; }
-    public void setAcceptingOrders(Boolean acceptingOrders) { this.acceptingOrders = acceptingOrders; }
-    public String getOpeningTime() { return openingTime; }
-    public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
 
-    public String getClosingTime() { return closingTime; }
-    public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
-
-
-    public String getUpiId() { return upiId; }
-    public void setUpiId(String upiId) { this.upiId = upiId; }
     // === Getters and Setters ===
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -136,6 +138,9 @@ public class Vendor {
 
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+
+    public String getAlternatePhone() { return alternatePhone; }
+    public void setAlternatePhone(String alternatePhone) { this.alternatePhone = alternatePhone; }
 
     public String getGstNumber() { return gstNumber; }
     public void setGstNumber(String gstNumber) { this.gstNumber = gstNumber; }
@@ -179,19 +184,27 @@ public class Vendor {
     public String getProfileImageUrl() { return profileImageUrl; }
     public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
 
-	public LocalDateTime getManualCloseUntil() {
-		return manualCloseUntil;
-	}
+    public String getUpiId() { return upiId; }
+    public void setUpiId(String upiId) { this.upiId = upiId; }
 
-	public void setManualCloseUntil(LocalDateTime manualCloseUntil) {
-		this.manualCloseUntil = manualCloseUntil;
-	}
+    public String getOpeningTime() { return openingTime; }
+    public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
 
-	public String getManualCloseReason() {
-		return manualCloseReason;
-	}
+    public String getClosingTime() { return closingTime; }
+    public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
 
-	public void setManualCloseReason(String manualCloseReason) {
-		this.manualCloseReason = manualCloseReason;
-	}
+    public String getEveningOpeningTime() { return eveningOpeningTime; }
+    public void setEveningOpeningTime(String eveningOpeningTime) { this.eveningOpeningTime = eveningOpeningTime; }
+
+    public String getEveningClosingTime() { return eveningClosingTime; }
+    public void setEveningClosingTime(String eveningClosingTime) { this.eveningClosingTime = eveningClosingTime; }
+
+    public Boolean getAcceptingOrders() { return acceptingOrders; }
+    public void setAcceptingOrders(Boolean acceptingOrders) { this.acceptingOrders = acceptingOrders; }
+
+    public LocalDateTime getManualCloseUntil() { return manualCloseUntil; }
+    public void setManualCloseUntil(LocalDateTime manualCloseUntil) { this.manualCloseUntil = manualCloseUntil; }
+
+    public String getManualCloseReason() { return manualCloseReason; }
+    public void setManualCloseReason(String manualCloseReason) { this.manualCloseReason = manualCloseReason; }
 }
