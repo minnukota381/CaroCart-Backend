@@ -10,19 +10,24 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@FeignClient(name = "OrderService", configuration = FeignConfig.class)
+@FeignClient(
+    name = "CAROCARTORDER",                // Local (Eureka)
+    url  = "${order.service.url:}",        // Prod (Cloud Run)
+    path = "/orders",
+    contextId = "paymentOrderClient",
+    configuration = FeignConfig.class
+)
 public interface OrderClient {
-    @PostMapping("/orders/internal/place")
-    ResponseEntity<OrderResponseDTO> createOrder(@RequestBody OrderRequestDTO orderRequest);
-//
-//    @PostMapping("/orders")
-//    ResponseEntity<OrderResponseDTO> createOrder(@RequestBody OrderRequestDTO orderRequest);
 
-    @GetMapping("/orders/{orderId}")
+    @PostMapping("/internal/place")
+    ResponseEntity<OrderResponseDTO> createOrder(@RequestBody OrderRequestDTO orderRequest);
+
+    @GetMapping("/{orderId}")
     ResponseEntity<Map<String, Object>> getOrderById(@PathVariable("orderId") Long orderId);
 
-    @PutMapping("/orders/update-payment-status/{orderId}")
+    @PutMapping("/update-payment-status/{orderId}")
     ResponseEntity<?> updatePaymentStatus(
         @PathVariable("orderId") Long orderId,
-        @RequestBody PaymentUpdateRequestDTO request);
+        @RequestBody PaymentUpdateRequestDTO request
+    );
 }

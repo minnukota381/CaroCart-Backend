@@ -6,9 +6,13 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "DeliveryService")
+@FeignClient(
+    name = "CAROCARTDELIVERY",               // Local (Eureka)
+    url  = "${delivery.service.url:}",       // Prod (Cloud Run)
+    path = "/delivery"
+)
 public interface DeliveryFeeClient {
 
-    @PostMapping("/delivery/fee/calculate")
+    @PostMapping("/fee/calculate")
     DeliveryFeeResponse calculateDeliveryFee(@RequestBody DeliveryFeeRequest request);
 }

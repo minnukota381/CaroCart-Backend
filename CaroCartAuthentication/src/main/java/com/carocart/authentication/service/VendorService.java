@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.PageRequest;
 
-
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -143,6 +142,10 @@ public class VendorService {
         existing.setLastName(updated.getLastName());
         existing.setCompanyName(updated.getCompanyName());
         existing.setContactNumber(updated.getContactNumber());
+
+        // ✅ NEW
+        existing.setAlternatePhone(updated.getAlternatePhone());
+
         existing.setGstNumber(updated.getGstNumber());
         existing.setVendorType(updated.getVendorType());
         existing.setAddressLine1(updated.getAddressLine1());
@@ -152,8 +155,15 @@ public class VendorService {
         existing.setPinCode(updated.getPinCode());
         existing.setLatitude(updated.getLatitude());
         existing.setLongitude(updated.getLongitude());
+
+        // Morning timings (existing)
         existing.setOpeningTime(updated.getOpeningTime());
         existing.setClosingTime(updated.getClosingTime());
+
+        // ✅ NEW evening (optional)
+        existing.setEveningOpeningTime(updated.getEveningOpeningTime());
+        existing.setEveningClosingTime(updated.getEveningClosingTime());
+
         return vendorRepository.save(existing);
     }
 
@@ -204,6 +214,10 @@ public class VendorService {
         vendor.setCompanyName(dto.getCompanyName());
         vendor.setEmail(dto.getEmail());
         vendor.setContactNumber(dto.getContactNumber());
+
+        // ✅ NEW
+        vendor.setAlternatePhone(dto.getAlternatePhone());
+
         vendor.setGstNumber(dto.getGstNumber());
         vendor.setVendorType(dto.getVendorType());
         vendor.setAddressLine1(dto.getAddressLine1());
@@ -214,8 +228,15 @@ public class VendorService {
         vendor.setLatitude(dto.getLatitude());
         vendor.setLongitude(dto.getLongitude());
         vendor.setRole("VENDOR");
+
+        // Morning timings (existing)
         vendor.setOpeningTime(dto.getOpeningTime());
         vendor.setClosingTime(dto.getClosingTime());
+
+        // ✅ NEW evening (optional)
+        vendor.setEveningOpeningTime(dto.getEveningOpeningTime());
+        vendor.setEveningClosingTime(dto.getEveningClosingTime());
+
         return vendor;
     }
 
@@ -228,6 +249,10 @@ public class VendorService {
         dto.setRole(vendor.getRole());
         dto.setCompanyName(vendor.getCompanyName());
         dto.setContactNumber(vendor.getContactNumber());
+
+        // ✅ NEW
+        dto.setAlternatePhone(vendor.getAlternatePhone());
+
         dto.setGstNumber(vendor.getGstNumber());
         dto.setVendorType(vendor.getVendorType());
         dto.setAddressLine1(vendor.getAddressLine1());
@@ -240,10 +265,15 @@ public class VendorService {
         dto.setProfileImageUrl(vendor.getProfileImageUrl());
         dto.setApproved(vendor.isApproved());
         dto.setUpiId(vendor.getUpiId());
+
+        // Morning
         dto.setOpeningTime(vendor.getOpeningTime());
         dto.setClosingTime(vendor.getClosingTime());
 
-        // ✅ Make sure this is included so frontend can read it
+        // ✅ Evening
+        dto.setEveningOpeningTime(vendor.getEveningOpeningTime());
+        dto.setEveningClosingTime(vendor.getEveningClosingTime());
+
         dto.setAcceptingOrders(vendor.getAcceptingOrders());
         dto.setEtaMinutes(null);
         return dto;
@@ -265,7 +295,7 @@ public class VendorService {
         return vendorRepository.findAllById(ids);
     }
 
-    // ===== Availability toggle (no DTO; just a param) =====
+    // ===== Availability toggle =====
     public VendorResponseDTO updateAvailability(Long vendorId, boolean acceptingOrders) {
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
@@ -273,10 +303,9 @@ public class VendorService {
         Vendor saved = vendorRepository.save(vendor);
         return toResponseDTO(saved);
     }
-    
+
     public List<Vendor> searchRestaurants(String query, int limit) {
         String q = (query == null) ? "" : query.trim();
         return vendorRepository.searchVendorsAnyType(q, PageRequest.of(0, limit));
     }
-
 }

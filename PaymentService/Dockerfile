@@ -1,13 +1,14 @@
 # ---- Build Stage ----
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
-COPY pom.xml .
+COPY pom.xml ./
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn -B -DskipTests clean package
 
-# ---- Package Stage ----
-FROM eclipse-temurin:17-jdk-jammy
+# ---- Runtime Stage (distroless) ----
+FROM gcr.io/distroless/java17
 WORKDIR /app
-COPY --from=build /app/target/PaymentService-0.0.1-SNAPSHOT.jar app.jar
+# safer to wildcard in case version changes
+COPY --from=build /app/target/*PaymentService*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=prod"]
+ENTRYPOINT ["java","-jar","app.jar","--spring.profiles.active=prod"]

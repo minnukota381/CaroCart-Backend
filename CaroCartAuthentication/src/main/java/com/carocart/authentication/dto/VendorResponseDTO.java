@@ -10,6 +10,10 @@ public class VendorResponseDTO {
     private String role;
     private String companyName;
     private String contactNumber;
+
+    // ✅ NEW
+    private String alternatePhone;
+
     private String gstNumber;
 
     // Vendor type
@@ -26,27 +30,30 @@ public class VendorResponseDTO {
     private Double latitude;
     private Double longitude;
 
-    // Profile image URL (Firebase/public link)
+    // Profile image URL
     private String profileImageUrl;
 
     // Approved status
     private Boolean approved;
     private String upiId;
 
-    // Opening/closing (store as plain strings)
+    // Morning timings
     private String openingTime;
     private String closingTime;
+
+    // ✅ NEW: Optional evening timings
+    private String eveningOpeningTime;
+    private String eveningClosingTime;
 
     // Extras
     private Integer etaMinutes;
     private Boolean acceptingOrders;
 
-    // ✅ NEW: manual close info
-    private String manualCloseReason;   // optional note shown in admin
-    private String manualCloseUntil;    // ISO-8601 string, e.g. "2025-08-16T23:00:00"
+    // manual close info
+    private String manualCloseReason;
+    private String manualCloseUntil;
 
     // ===== getters/setters =====
-
     public Boolean getAcceptingOrders() { return acceptingOrders; }
     public void setAcceptingOrders(Boolean acceptingOrders) { this.acceptingOrders = acceptingOrders; }
 
@@ -64,6 +71,12 @@ public class VendorResponseDTO {
 
     public String getClosingTime() { return closingTime; }
     public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
+
+    public String getEveningOpeningTime() { return eveningOpeningTime; }
+    public void setEveningOpeningTime(String eveningOpeningTime) { this.eveningOpeningTime = eveningOpeningTime; }
+
+    public String getEveningClosingTime() { return eveningClosingTime; }
+    public void setEveningClosingTime(String eveningClosingTime) { this.eveningClosingTime = eveningClosingTime; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -85,6 +98,9 @@ public class VendorResponseDTO {
 
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+
+    public String getAlternatePhone() { return alternatePhone; }
+    public void setAlternatePhone(String alternatePhone) { this.alternatePhone = alternatePhone; }
 
     public String getGstNumber() { return gstNumber; }
     public void setGstNumber(String gstNumber) { this.gstNumber = gstNumber; }
