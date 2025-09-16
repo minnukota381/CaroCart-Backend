@@ -28,6 +28,10 @@ public class VendorRegistrationDTO {
     @Pattern(regexp = "^\\d{10}$", message = "Contact number must be 10 digits")
     private String contactNumber;
 
+    // ✅ NEW: Optional alternate phone (loose validation; allow +, -, spaces)
+    @Pattern(regexp = "^$|^[0-9+\\-\\s]{7,20}$", message = "Alternate number is invalid")
+    private String alternatePhone;
+
     // Optional, but if provided must match GSTIN format
     @Pattern(regexp = "^$|^[0-9A-Z]{15}$", message = "GST number must be 15 characters or empty")
     private String gstNumber;
@@ -57,17 +61,17 @@ public class VendorRegistrationDTO {
 
     @NotNull(message = "Longitude is required")
     private Double longitude;
+
+    // Morning timings (required)
     @NotBlank(message = "Opening time is required")
     private String openingTime;
 
     @NotBlank(message = "Closing time is required")
     private String closingTime;
 
-    public String getOpeningTime() { return openingTime; }
-    public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
-
-    public String getClosingTime() { return closingTime; }
-    public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
+    // ✅ NEW: Optional evening split timings
+    private String eveningOpeningTime;  // nullable
+    private String eveningClosingTime;  // nullable
 
     // Getters and Setters
     public String getFirstName() { return firstName; }
@@ -87,6 +91,9 @@ public class VendorRegistrationDTO {
 
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+
+    public String getAlternatePhone() { return alternatePhone; }
+    public void setAlternatePhone(String alternatePhone) { this.alternatePhone = alternatePhone; }
 
     public String getGstNumber() { return gstNumber; }
     public void setGstNumber(String gstNumber) { this.gstNumber = gstNumber; }
@@ -114,4 +121,16 @@ public class VendorRegistrationDTO {
 
     public Double getLongitude() { return longitude; }
     public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+    public String getOpeningTime() { return openingTime; }
+    public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
+
+    public String getClosingTime() { return closingTime; }
+    public void setClosingTime(String closingTime) { this.closingTime = closingTime; }
+
+    public String getEveningOpeningTime() { return eveningOpeningTime; }
+    public void setEveningOpeningTime(String eveningOpeningTime) { this.eveningOpeningTime = eveningOpeningTime; }
+
+    public String getEveningClosingTime() { return eveningClosingTime; }
+    public void setEveningClosingTime(String eveningClosingTime) { this.eveningClosingTime = eveningClosingTime; }
 }
