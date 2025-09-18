@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 @FeignClient(
-    name = "CAROCARTDELIVERY",                 // Local (Eureka)
+    name = "CaroCartDeliveryService",                 // Local (Eureka)
     url  = "${delivery.service.url:}",         // Prod (Cloud Run)
     path = "/deliveryboys"
 )
@@ -20,3 +20,4 @@ public interface DeliveryBoyClient {
         @PathVariable("id") Long id
     );
 }
+
