@@ -46,10 +46,6 @@ public class OrderServiceImpl implements OrderService {
     
 	private String systemJwtToken;
 
-	// default-zero helpers
-	private static double dz(Double v) { return v == null ? 0.0 : v; }
-	private static double bz(java.math.BigDecimal v) { return v == null ? 0.0 : v.doubleValue(); }
-
 	public boolean isFirstOrder(Long userId) {
 	    return orderRepository.countByUserId(userId) == 0;
 	}
@@ -65,7 +61,6 @@ public class OrderServiceImpl implements OrderService {
     private final DeliveryBoyClient deliveryBoyClient;
     private final OrderItemRepository orderItemRepository;
     private final OrdersInternalUserClient ordersInternalUserClient;
- // fields
     private final DeliveryEarningClient deliveryEarningClient;
 	private final LocationClient locationClient; // NEW
 
@@ -73,7 +68,6 @@ public class OrderServiceImpl implements OrderService {
     private final JwtUtil jwtUtil;
 	// at top of OrderServiceImpl
 	private static final LocalDateTime SQL_MIN = LocalDateTime.of(1970, 1, 1, 0, 0);
-
 
     public OrderServiceImpl(
     	    OrderRepository orderRepository,
@@ -114,9 +108,10 @@ public class OrderServiceImpl implements OrderService {
     @Value("${delivery.threshold.grocery:349}")
     private double FREE_GROCERY;
 
-    @Value("${delivery.threshold.food:399}")
+    @Value("${delivery.threshold.food:499}")
     private double FREE_FOOD;
-
+    @Value("${orders.minAmount:149}")
+    private double MIN_ORDER_AMOUNT;
     // If you want to fetch slabs from config later, you can.
     // For now, keep the logic centralized here with defaults.
     private double feeFromSlab(double km) {
@@ -132,7 +127,6 @@ public class OrderServiceImpl implements OrderService {
     private boolean qualifiesForFree(double cartAmount, boolean isGrocery) {
         return cartAmount >= (isGrocery ? FREE_GROCERY : FREE_FOOD);
     }
-
     /** Always the slab payout for the rider, regardless of what the customer pays */
     private double riderPayoutByDistance(double km) {
         return feeFromSlab(km);
@@ -184,20 +178,6 @@ public class OrderServiceImpl implements OrderService {
         return R * c;
     }
 
-    // --- Delivery Fee Logic ---
-    private double calculateDeliveryFee(double distanceKm, double cartAmount, boolean isGrocery) {
-        double freeThreshold = isGrocery ? 149.0 : 199.0;
-        if (cartAmount >= freeThreshold) return 0.0;
-
-        if (distanceKm <= 3) return 19.0;
-        if (distanceKm <= 6) return 29.0;
-        if (distanceKm <= 9) return 39.0;
-        if (distanceKm <= 12 && !isGrocery) return 59.0;
-
-        throw new RuntimeException("❌ Delivery not available for this distance.");
-    }
-
-    
     @PostConstruct
     public void init() {
         String token = jwtUtil.generateInternalToken();
@@ -268,7 +248,7 @@ public class OrderServiceImpl implements OrderService {
         // 6) totals
         double itemsTotal = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
 
-        // 🔒 Coupon validation: only FIRST20 allowed, and only on first real order
+        // 🔒 Coupon validation: only FIRST20 allowed, 15% off, first order only
         double discount = 0.0;
         String c = (orderRequest.getCouponCode() == null) ? null : orderRequest.getCouponCode().trim();
 
@@ -281,9 +261,8 @@ public class OrderServiceImpl implements OrderService {
                 List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
             );
             if (priorRealOrders == 0) {
-            	discount = itemsTotal * 0.15;
-            	order.setCouponApplied("FIRST15");
-
+                discount = itemsTotal * 0.15;
+                order.setCouponApplied("FIRST15");
             } else {
                 throw new IllegalArgumentException("FIRST20 is valid only on your first order.");
             }
@@ -293,16 +272,20 @@ public class OrderServiceImpl implements OrderService {
 
         double discountedTotal = itemsTotal - discount;
 
+        // ✅ enforce minimum order (after discounts)
+        if (discountedTotal < MIN_ORDER_AMOUNT) {
+            throw new IllegalArgumentException("Minimum order amount is ₹" + MIN_ORDER_AMOUNT + " after discounts.");
+        }
+
         order.setOrderItems(orderItems);
         order.setTotalAmount(itemsTotal);
         order.setPlatformCommissionPct(20.0);
         order.setPlatformCommissionAmount(itemsTotal * 0.20);
 
-        // delivery fee
+        // ✅ delivery fee: free at ₹499+, else distance slab
         double distanceKm = distanceKmForOrder(order.getVendorId(), order.getAddressId());
         boolean isGrocery = isGroceryVendor(order.getVendorId());
-        double customerFee = feeFromSlab(distanceKm);
-        if (qualifiesForFree(discountedTotal, isGrocery)) customerFee = 0.0;
+        double customerFee = qualifiesForFree(discountedTotal, isGrocery) ? 0.0 : feeFromSlab(distanceKm);
         order.setDeliveryFee(customerFee);
 
         order.setFinalAmount(discountedTotal + customerFee);
@@ -368,7 +351,7 @@ public class OrderServiceImpl implements OrderService {
 
         double itemsTotal = orderItems.stream().mapToDouble(OrderItem::getTotalPrice).sum();
 
-        // 🔒 Coupon validation: only FIRST20 allowed, and only on first real order
+        // 🔒 Coupon validation: only FIRST20 allowed, 15% off, first order only
         double discount = 0.0;
         String c = (couponCode == null) ? null : couponCode.trim();
 
@@ -381,9 +364,8 @@ public class OrderServiceImpl implements OrderService {
                 List.of("PLACED", "PAID", "COMPLETED", "DELIVERED")
             );
             if (priorRealOrders == 0) {
-            	discount = itemsTotal * 0.15;
-            	order.setCouponApplied("FIRST15");
-
+                discount = itemsTotal * 0.15;
+                order.setCouponApplied("FIRST15");
             } else {
                 throw new IllegalArgumentException("FIRST20 is valid only on your first order.");
             }
@@ -393,16 +375,20 @@ public class OrderServiceImpl implements OrderService {
 
         double discountedTotal = itemsTotal - discount;
 
+        // ✅ enforce minimum order (after discounts)
+        if (discountedTotal < MIN_ORDER_AMOUNT) {
+            throw new IllegalArgumentException("Minimum order amount is ₹" + MIN_ORDER_AMOUNT + " after discounts.");
+        }
+
         order.setOrderItems(orderItems);
         order.setTotalAmount(itemsTotal);
         order.setPlatformCommissionPct(20.0);
         order.setPlatformCommissionAmount(itemsTotal * 0.20);
 
-        // delivery fee
+        // ✅ delivery fee: free at ₹499+, else distance slab
         double distanceKm = distanceKmForOrder(order.getVendorId(), order.getAddressId());
         boolean isGrocery = isGroceryVendor(order.getVendorId());
-        double customerFee = feeFromSlab(distanceKm);
-        if (qualifiesForFree(discountedTotal, isGrocery)) customerFee = 0.0;
+        double customerFee = qualifiesForFree(discountedTotal, isGrocery) ? 0.0 : feeFromSlab(distanceKm);
         order.setDeliveryFee(customerFee);
 
         order.setFinalAmount(discountedTotal + customerFee);
@@ -419,6 +405,7 @@ public class OrderServiceImpl implements OrderService {
 
         return new OrderResponse(saved);
     }
+
 
 
 
@@ -789,12 +776,12 @@ public class OrderServiceImpl implements OrderService {
             case "OUT_FOR_DELIVERY" -> order.setStatus("OUT_FOR_DELIVERY");
             case "DELIVERED" -> {
                 order.setStatus("DELIVERED");
-               // ✅ mark the moment it became payout-eligible
-              order.setDeliveredAt(LocalDateTime.now());
-               // keep/ensure vendor settlement flag is UNPAID until payout runs
-               if (order.getVendorSettlementStatus() == null) {
-                   order.setVendorSettlementStatus(VendorSettlementStatus.UNPAID);
-               }
+                // ✅ mark the moment it became payout-eligible
+                order.setDeliveredAt(LocalDateTime.now());
+                // ensure vendor settlement flag is UNPAID until payout runs
+                if (order.getVendorSettlementStatus() == null) {
+                    order.setVendorSettlementStatus(VendorSettlementStatus.UNPAID);
+                }
             }
             default -> { /* no-op */ }
         }
@@ -822,7 +809,11 @@ public class OrderServiceImpl implements OrderService {
                 Long boyId = order.getDeliveryBoyId();
                 if (boyId == null) {
                     // Fallback to any item’s deliveryBoyId if order-level is missing
-                    boyId = items.stream().map(OrderItem::getDeliveryBoyId).filter(id -> id != null).findFirst().orElse(null);
+                    boyId = items.stream()
+                            .map(OrderItem::getDeliveryBoyId)
+                            .filter(id -> id != null)
+                            .findFirst()
+                            .orElse(null);
                 }
 
                 if (boyId == null) {
@@ -846,7 +837,6 @@ public class OrderServiceImpl implements OrderService {
         // Optional: notify user/vendor(s)
         // sendStatusUpdateNotifications(order, s);
     }
-
 
     private void sendStatusUpdateNotifications(Order order, String status) {
         UserDTO user = userClient.getCurrentUserById(systemJwtToken, order.getUserId());
@@ -872,7 +862,6 @@ public class OrderServiceImpl implements OrderService {
             "carocartteam@gmail.com", subject, "Order #" + order.getId() + " updated to " + status
         ));
     }
-
 
     @Override
     public Order getOrderEntity(Long orderId) {
@@ -1090,14 +1079,6 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.markOrdersPaid(ids, payout.getPayoutId(), VendorSettlementStatus.PAID);
 
         return payout;
-    }
- // put this anywhere inside OrderServiceImpl (e.g., near other helpers)
-    private static MessageDigest sha256Digest() {
-        try {
-            return MessageDigest.getInstance("SHA-256");
-        } catch (java.security.NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
     }
 
     private java.util.Optional<LocalDateTime> resolveLastPayoutToTime(Long vendorId) {
