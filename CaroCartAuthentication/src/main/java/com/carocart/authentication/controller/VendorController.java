@@ -173,22 +173,14 @@ public class VendorController {
             @RequestParam VendorType type,
             @RequestParam double lat,
             @RequestParam double lng,
-            @RequestParam(defaultValue = "10") double radiusKm
+            @RequestParam(defaultValue = "12") double radiusKm // default road radius
     ) {
-        List<Vendor> vendors = vendorService.findByTypeAndProximity(type, lat, lng, radiusKm);
-
-        List<VendorResponseDTO> dtos = vendors.stream()
-                .map(v -> {
-                    VendorResponseDTO dto = VendorService.toResponseDTO(v);
-                    double distance = VendorService.haversineDistanceKm(lat, lng, v.getLatitude(), v.getLongitude());
-                    int eta = vendorService.calculateETAForPublic(distance);
-                    dto.setEtaMinutes(eta);
-                    return dto;
-                })
-                .collect(Collectors.toList());
+        // 🔑 Use the driving-distance based service
+        List<VendorResponseDTO> dtos = vendorService.findByTypeAndProximityDriving(type, lat, lng, radiusKm);
 
         return ResponseEntity.ok(dtos);
     }
+
 
     @PostMapping("/by-ids")
     public ResponseEntity<List<VendorResponseDTO>> getVendorsByIds(@RequestBody List<Long> vendorIds) {

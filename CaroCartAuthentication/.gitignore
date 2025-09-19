@@ -4,7 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 .env.yaml
-
+sound-memory-470316-m4-firebase-adminsdk-fbsvc-61dda0f4de.json
 ### STS ###
 .apt_generated
 .classpath

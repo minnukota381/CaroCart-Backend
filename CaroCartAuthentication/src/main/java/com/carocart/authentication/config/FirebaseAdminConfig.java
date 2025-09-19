@@ -26,13 +26,13 @@ public class FirebaseAdminConfig {
                 );
             } else {
                 creds = GoogleCredentials.fromStream(
-                        new FileInputStream("src/main/resources/carocart-d4171-firebase-adminsdk-fbsvc-6bfc483193.json")
+                        new FileInputStream("src/main/resources/sound-memory-470316-m4-firebase-adminsdk-fbsvc-61dda0f4de.json")
                 );
             }
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(creds)
-                    .setStorageBucket("carocart-d4171.appspot.com") // ✅ correct suffix
+                    .setStorageBucket("sound-memory-470316-m4.appspot.com")
                     .build();
 
             FirebaseApp.initializeApp(options);

@@ -46,7 +46,10 @@ public class VendorResponseDTO {
     private String eveningClosingTime;
 
     // Extras
-    private Integer etaMinutes;
+    private Integer etaMinutes;   // will now be set from Distance Matrix "duration"
+    private Double drivingKm;     // ✅ NEW: road distance in km
+    private Integer drivingMinutes; // ✅ NEW: road travel time in minutes (optional if you keep etaMinutes)
+
     private Boolean acceptingOrders;
 
     // manual close info
@@ -65,6 +68,12 @@ public class VendorResponseDTO {
 
     public Integer getEtaMinutes() { return etaMinutes; }
     public void setEtaMinutes(Integer etaMinutes) { this.etaMinutes = etaMinutes; }
+
+    public Double getDrivingKm() { return drivingKm; }
+    public void setDrivingKm(Double drivingKm) { this.drivingKm = drivingKm; }
+
+    public Integer getDrivingMinutes() { return drivingMinutes; }
+    public void setDrivingMinutes(Integer drivingMinutes) { this.drivingMinutes = drivingMinutes; }
 
     public String getOpeningTime() { return openingTime; }
     public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }

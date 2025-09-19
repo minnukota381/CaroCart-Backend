@@ -1,5 +1,6 @@
 package com.carocart.authentication.service;
 
+import com.carocart.authentication.dto.DrivingInfo;
 import com.carocart.authentication.dto.VendorRegistrationDTO;
 import com.carocart.authentication.dto.VendorResponseDTO;
 import com.carocart.authentication.entity.Vendor;
@@ -7,27 +8,25 @@ import com.carocart.authentication.entity.VendorType;
 import com.carocart.authentication.repository.VendorRepository;
 import com.carocart.authentication.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.data.domain.PageRequest;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Service
 public class VendorService {
 
-    @Autowired
-    private VendorRepository vendorRepository;
-    @Autowired
-    private OtpEmailService otpEmailService;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private JwtUtil jwtUtil;
+    @Autowired private VendorRepository vendorRepository;
+    @Autowired private OtpEmailService otpEmailService;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtUtil jwtUtil;
+
+    // ✅ WebClient-based Distance Matrix (road distance)
+    @Autowired private DistanceMatrixService distanceMatrixService;
 
     private final Map<String, Vendor> pendingVendors = new ConcurrentHashMap<>();
 
@@ -142,10 +141,7 @@ public class VendorService {
         existing.setLastName(updated.getLastName());
         existing.setCompanyName(updated.getCompanyName());
         existing.setContactNumber(updated.getContactNumber());
-
-        // ✅ NEW
         existing.setAlternatePhone(updated.getAlternatePhone());
-
         existing.setGstNumber(updated.getGstNumber());
         existing.setVendorType(updated.getVendorType());
         existing.setAddressLine1(updated.getAddressLine1());
@@ -155,15 +151,10 @@ public class VendorService {
         existing.setPinCode(updated.getPinCode());
         existing.setLatitude(updated.getLatitude());
         existing.setLongitude(updated.getLongitude());
-
-        // Morning timings (existing)
         existing.setOpeningTime(updated.getOpeningTime());
         existing.setClosingTime(updated.getClosingTime());
-
-        // ✅ NEW evening (optional)
         existing.setEveningOpeningTime(updated.getEveningOpeningTime());
         existing.setEveningClosingTime(updated.getEveningClosingTime());
-
         return vendorRepository.save(existing);
     }
 
@@ -187,21 +178,45 @@ public class VendorService {
         vendorRepository.save(vendor);
     }
 
-    // ===== Nearby (Haversine) =====
-    public List<Vendor> findByTypeAndProximity(VendorType type, double lat, double lng, double radiusKm) {
-        List<Vendor> all = vendorRepository.findByVendorTypeAndIsApproved(type, true);
-        return all.stream()
-            .filter(v -> haversineDistanceKm(lat, lng, v.getLatitude(), v.getLongitude()) <= radiusKm)
-            .collect(Collectors.toList());
+    // ===== Nearby (DRIVING distance via Google Distance Matrix) =====
+    public List<VendorResponseDTO> findByTypeAndProximityDriving(
+            VendorType type, double lat, double lng, double radiusKm) {
+
+        // Candidates with valid coordinates
+        List<Vendor> candidates = vendorRepository.findByVendorTypeAndIsApproved(type, true)
+                .stream()
+                .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
+                .toList();
+
+        if (candidates.isEmpty()) return Collections.emptyList();
+
+        // Call Distance Matrix (batched) → vendorId -> DrivingInfo(km, minutes)
+        Map<Long, DrivingInfo> drivingMap = distanceMatrixService.drivingForVendors(lat, lng, candidates);
+
+        // Map to DTOs, attach driving info, and filter by road radius
+        return candidates.stream()
+                .map(v -> {
+                    VendorResponseDTO dto = toResponseDTO(v);
+                    DrivingInfo info = drivingMap.get(v.getId());
+                    if (info != null) {
+                        dto.setDrivingKm(info.getKm());
+                        dto.setEtaMinutes(info.getMinutes());     // reuse etaMinutes
+                        dto.setDrivingMinutes(info.getMinutes()); // optional extra field
+                    }
+                    return dto;
+                })
+                .filter(dto -> dto.getDrivingKm() != null && dto.getDrivingKm() <= radiusKm)
+                .toList();
     }
 
+    // (Kept for any other usages you might have)
     public static double haversineDistanceKm(double lat1, double lng1, double lat2, double lng2) {
         final int EARTH_RADIUS = 6371; // km
         double dLat = Math.toRadians(lat2 - lat1);
         double dLng = Math.toRadians(lng2 - lng1);
-        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                Math.sin(dLng/2) * Math.sin(dLng/2);
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng/2) * Math.sin(dLng/2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         return EARTH_RADIUS * c;
     }
@@ -214,10 +229,7 @@ public class VendorService {
         vendor.setCompanyName(dto.getCompanyName());
         vendor.setEmail(dto.getEmail());
         vendor.setContactNumber(dto.getContactNumber());
-
-        // ✅ NEW
         vendor.setAlternatePhone(dto.getAlternatePhone());
-
         vendor.setGstNumber(dto.getGstNumber());
         vendor.setVendorType(dto.getVendorType());
         vendor.setAddressLine1(dto.getAddressLine1());
@@ -228,15 +240,10 @@ public class VendorService {
         vendor.setLatitude(dto.getLatitude());
         vendor.setLongitude(dto.getLongitude());
         vendor.setRole("VENDOR");
-
-        // Morning timings (existing)
         vendor.setOpeningTime(dto.getOpeningTime());
         vendor.setClosingTime(dto.getClosingTime());
-
-        // ✅ NEW evening (optional)
         vendor.setEveningOpeningTime(dto.getEveningOpeningTime());
         vendor.setEveningClosingTime(dto.getEveningClosingTime());
-
         return vendor;
     }
 
@@ -249,10 +256,7 @@ public class VendorService {
         dto.setRole(vendor.getRole());
         dto.setCompanyName(vendor.getCompanyName());
         dto.setContactNumber(vendor.getContactNumber());
-
-        // ✅ NEW
         dto.setAlternatePhone(vendor.getAlternatePhone());
-
         dto.setGstNumber(vendor.getGstNumber());
         dto.setVendorType(vendor.getVendorType());
         dto.setAddressLine1(vendor.getAddressLine1());
@@ -265,23 +269,18 @@ public class VendorService {
         dto.setProfileImageUrl(vendor.getProfileImageUrl());
         dto.setApproved(vendor.isApproved());
         dto.setUpiId(vendor.getUpiId());
-
-        // Morning
         dto.setOpeningTime(vendor.getOpeningTime());
         dto.setClosingTime(vendor.getClosingTime());
-
-        // ✅ Evening
         dto.setEveningOpeningTime(vendor.getEveningOpeningTime());
         dto.setEveningClosingTime(vendor.getEveningClosingTime());
-
         dto.setAcceptingOrders(vendor.getAcceptingOrders());
-        dto.setEtaMinutes(null);
+        dto.setEtaMinutes(null); // will be set during nearby enrichment
         return dto;
     }
 
     public void updatePassword(String email, String newPassword) {
         Vendor v = vendorRepository.findByEmail(email)
-            .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
         v.setPassword(passwordEncoder.encode(newPassword));
         vendorRepository.save(v);
     }
