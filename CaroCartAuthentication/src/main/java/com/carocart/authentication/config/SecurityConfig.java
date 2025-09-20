@@ -64,6 +64,10 @@ public class SecurityConfig {
                     "/vendors/forgot-password", "/vendors/verify-otp", "/vendors/reset-password",
                     "/oauth2/**", "/login/oauth2/**",
                     "/users/phone/**",
+                    // ✅ Add these vendor slug endpoints as public
+                    "/vendors/resolve/**",
+                    "/vendors/by-slug/**",
+                    "/vendors/city/**",
                     "/vendors/{id}"
                 ).permitAll()
 

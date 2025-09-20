@@ -21,22 +21,17 @@ import java.util.stream.Collectors;
 @RequestMapping("/vendors")
 public class VendorController {
 
-    @Autowired
-    private VendorService vendorService;
-    @Autowired
-    private VendorRepository vendorRepository;
-    @Autowired
-    private JwtUtil jwtUtil;
-    @Autowired
-    private OtpEmailService otpEmailService;
+    @Autowired private VendorService vendorService;
+    @Autowired private VendorRepository vendorRepository;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private OtpEmailService otpEmailService;
 
     // ===== Signup with OTP =====
     @PostMapping("/signup/request-otp")
     public ResponseEntity<String> requestOtp(@Valid @RequestBody VendorRegistrationDTO dto) {
-        String response = vendorService.requestSignupOtp(dto); // may throw DuplicateResourceException elsewhere
+        String response = vendorService.requestSignupOtp(dto);
         return ResponseEntity.ok(response);
     }
-
 
     @PostMapping("/signup/verify-otp")
     public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
@@ -84,7 +79,8 @@ public class VendorController {
     @PutMapping("/me/profile-image-url")
     public ResponseEntity<String> updateVendorProfileImageUrl(
             @RequestHeader("Authorization") String token,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body
+    ) {
         String jwt = token.startsWith("Bearer ") ? token.substring(7) : token;
         String email = jwtUtil.extractUsername(jwt);
         String imageUrl = body.get("imageUrl");
@@ -158,30 +154,88 @@ public class VendorController {
         }
     }
 
-    // ===== Public getters =====
+    // ===== Public getters (by ID) =====
     @GetMapping("/{id}")
-    public ResponseEntity<VendorResponseDTO> getVendorById(@PathVariable Long id) {
+    public ResponseEntity<VendorResponseDTO> getVendorById(
+            @PathVariable Long id,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng
+    ) {
         Vendor vendor = vendorService.getVendorById(id);
         if (vendor == null || !vendor.isApproved()) {
             return ResponseEntity.status(404).body(null);
         }
-        return ResponseEntity.ok(VendorService.toResponseDTO(vendor));
+
+        VendorResponseDTO dto = VendorService.toResponseDTO(vendor);
+
+        // If caller provided location, reuse your existing Distance Matrix flow
+        if (lat != null && lng != null) {
+            var list = vendorService.findByTypeAndProximityDriving(
+                    vendor.getVendorType(), lat, lng, /* big radius */ 5000
+            );
+
+            list.stream()
+                .filter(x -> x.getId().equals(dto.getId()))
+                .findFirst()
+                .ifPresent(x -> {
+                    dto.setDrivingKm(x.getDrivingKm());
+                    dto.setDrivingMinutes(x.getDrivingMinutes());
+                    dto.setEtaMinutes(x.getEtaMinutes());
+                });
+        }
+
+        return ResponseEntity.ok(dto);
     }
 
+
+    // ===== Slug endpoints (UPDATED) =====
+
+    @GetMapping("/resolve/{vendorSlug:.+}")
+    public ResponseEntity<Map<String, Object>> resolveBySlug(@PathVariable("vendorSlug") String vendorSlug) {
+        Vendor v = vendorService.getVendorBySlug(vendorSlug);
+        if (v == null || !v.isApproved()) {
+            return ResponseEntity.status(404).body(null);
+        }
+        return ResponseEntity.ok(Map.of(
+                "id", v.getId(),
+                "slug", v.getSlug(),
+                "citySlug", v.getCitySlug(),
+                "companyName", v.getCompanyName()
+        ));
+    }
+
+    @GetMapping("/by-slug/{vendorSlug:.+}")
+    public ResponseEntity<VendorResponseDTO> getBySlug(@PathVariable("vendorSlug") String vendorSlug) {
+        Vendor v = vendorService.getVendorBySlug(vendorSlug);
+        if (v == null || !v.isApproved()) {
+            return ResponseEntity.status(404).body(null);
+        }
+        return ResponseEntity.ok(VendorService.toResponseDTO(v));
+    }
+
+    @GetMapping("/city/{citySlug:.+}/{vendorSlug:.+}")
+    public ResponseEntity<VendorResponseDTO> getByCityAndSlug(@PathVariable("citySlug") String citySlug,
+                                                              @PathVariable("vendorSlug") String vendorSlug) {
+        Vendor v = vendorService.getVendorByCityAndSlug(citySlug, vendorSlug);
+        if (v == null || !v.isApproved()) {
+            return ResponseEntity.status(404).body(null);
+        }
+        return ResponseEntity.ok(VendorService.toResponseDTO(v));
+    }
+
+    // ===== Nearby (driving distance) =====
     @GetMapping("/nearby")
     public ResponseEntity<List<VendorResponseDTO>> getNearbyVendors(
             @RequestParam VendorType type,
             @RequestParam double lat,
             @RequestParam double lng,
-            @RequestParam(defaultValue = "12") double radiusKm // default road radius
+            @RequestParam(defaultValue = "12") double radiusKm
     ) {
-        // 🔑 Use the driving-distance based service
-        List<VendorResponseDTO> dtos = vendorService.findByTypeAndProximityDriving(type, lat, lng, radiusKm);
-
+        var dtos = vendorService.findByTypeAndProximityDriving(type, lat, lng, radiusKm);
         return ResponseEntity.ok(dtos);
     }
 
-
+    // ===== Batch fetch by IDs =====
     @PostMapping("/by-ids")
     public ResponseEntity<List<VendorResponseDTO>> getVendorsByIds(@RequestBody List<Long> vendorIds) {
         if (vendorIds == null || vendorIds.isEmpty()) {
@@ -195,11 +249,12 @@ public class VendorController {
         return ResponseEntity.ok(dtos);
     }
 
-    // ===== Availability toggle (no DTO, matches your frontend call) =====
+    // ===== Availability toggle =====
     @PutMapping("/{id}/availability")
     public ResponseEntity<?> updateAvailability(
             @PathVariable Long id,
-            @RequestParam boolean acceptingOrders) {
+            @RequestParam boolean acceptingOrders
+    ) {
         try {
             VendorResponseDTO updatedVendor = vendorService.updateAvailability(id, acceptingOrders);
             return ResponseEntity.ok(updatedVendor);
@@ -208,8 +263,8 @@ public class VendorController {
                     .body(Map.of("error", ex.getMessage()));
         }
     }
-    
- // ===== Public search for restaurants =====
+
+    // ===== Public search for restaurants =====
     @GetMapping("/search")
     public ResponseEntity<List<VendorResponseDTO>> searchRestaurants(
             @RequestParam String q,
@@ -221,7 +276,8 @@ public class VendorController {
                 .toList();
         return ResponseEntity.ok(dtos);
     }
- // ADD inside VendorController
+
+    // ===== Public: lookup by email =====
     @GetMapping("/email/{email}")
     public ResponseEntity<VendorResponseDTO> getVendorByEmailPublic(@PathVariable String email) {
         var v = vendorService.getVendorByEmail(email);
@@ -230,5 +286,4 @@ public class VendorController {
         }
         return ResponseEntity.ok(VendorService.toResponseDTO(v));
     }
-
 }

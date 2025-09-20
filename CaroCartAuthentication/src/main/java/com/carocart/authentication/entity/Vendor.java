@@ -102,6 +102,20 @@ public class Vendor {
     // Availability Controls
     @Column(name = "accepting_orders", nullable = false)
     private Boolean acceptingOrders = Boolean.TRUE;
+    
+ // in Vendor.java (same file you shared)
+    @Column(nullable = false, unique = true, length = 140)
+    private String slug;
+
+    @Column(name = "city_slug", length = 100)
+    private String citySlug;
+
+    // getters/setters for slug, citySlug
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
+    public String getCitySlug() { return citySlug; }
+    public void setCitySlug(String citySlug) { this.citySlug = citySlug; }
+
 
     // === Lifecycle hooks ===
     @PrePersist

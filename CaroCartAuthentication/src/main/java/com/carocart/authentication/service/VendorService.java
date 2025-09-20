@@ -24,9 +24,10 @@ public class VendorService {
     @Autowired private OtpEmailService otpEmailService;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtUtil jwtUtil;
-
-    // ✅ WebClient-based Distance Matrix (road distance)
     @Autowired private DistanceMatrixService distanceMatrixService;
+
+    // ✅ NEW
+    @Autowired private VendorSlugService vendorSlugService;
 
     private final Map<String, Vendor> pendingVendors = new ConcurrentHashMap<>();
 
@@ -55,7 +56,13 @@ public class VendorService {
         }
         vendor.setPassword(passwordEncoder.encode(vendor.getPassword()));
         vendor.setApproved(false);
-        vendorRepository.save(vendor);
+
+        // Save once to get ID
+        Vendor saved = vendorRepository.save(vendor);
+
+        // ✅ Ensure slug + citySlug
+        vendorSlugService.ensureSlugs(saved);
+        vendorRepository.save(saved);
 
         otpEmailService.removeOtp(email);
         pendingVendors.remove(email);
@@ -82,6 +89,15 @@ public class VendorService {
                 vendor.getFirstName(),
                 vendor.getLastName()
         );
+    }
+
+    // ===== Slug-based fetchers =====
+    public Vendor getVendorBySlug(String slug) {
+        return vendorRepository.findBySlug(slug).orElse(null);
+    }
+
+    public Vendor getVendorByCityAndSlug(String citySlug, String slug) {
+        return vendorRepository.findByCitySlugAndSlug(citySlug, slug).orElse(null);
     }
 
     // ===== Admin approvals =====
@@ -155,7 +171,12 @@ public class VendorService {
         existing.setClosingTime(updated.getClosingTime());
         existing.setEveningOpeningTime(updated.getEveningOpeningTime());
         existing.setEveningClosingTime(updated.getEveningClosingTime());
-        return vendorRepository.save(existing);
+
+        Vendor saved = vendorRepository.save(existing);
+
+        // ✅ Backfill slugs if missing
+        vendorSlugService.ensureSlugs(saved);
+        return vendorRepository.save(saved);
     }
 
     public void uploadProfileImage(String email, MultipartFile file) throws IOException {
@@ -178,11 +199,10 @@ public class VendorService {
         vendorRepository.save(vendor);
     }
 
-    // ===== Nearby (DRIVING distance via Google Distance Matrix) =====
+    // ===== Nearby (road distance) =====
     public List<VendorResponseDTO> findByTypeAndProximityDriving(
             VendorType type, double lat, double lng, double radiusKm) {
 
-        // Candidates with valid coordinates
         List<Vendor> candidates = vendorRepository.findByVendorTypeAndIsApproved(type, true)
                 .stream()
                 .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
@@ -190,18 +210,16 @@ public class VendorService {
 
         if (candidates.isEmpty()) return Collections.emptyList();
 
-        // Call Distance Matrix (batched) → vendorId -> DrivingInfo(km, minutes)
         Map<Long, DrivingInfo> drivingMap = distanceMatrixService.drivingForVendors(lat, lng, candidates);
 
-        // Map to DTOs, attach driving info, and filter by road radius
         return candidates.stream()
                 .map(v -> {
                     VendorResponseDTO dto = toResponseDTO(v);
                     DrivingInfo info = drivingMap.get(v.getId());
                     if (info != null) {
                         dto.setDrivingKm(info.getKm());
-                        dto.setEtaMinutes(info.getMinutes());     // reuse etaMinutes
-                        dto.setDrivingMinutes(info.getMinutes()); // optional extra field
+                        dto.setEtaMinutes(info.getMinutes());
+                        dto.setDrivingMinutes(info.getMinutes());
                     }
                     return dto;
                 })
@@ -209,19 +227,7 @@ public class VendorService {
                 .toList();
     }
 
-    // (Kept for any other usages you might have)
-    public static double haversineDistanceKm(double lat1, double lng1, double lat2, double lng2) {
-        final int EARTH_RADIUS = 6371; // km
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLng = Math.toRadians(lng2 - lng1);
-        double a = Math.sin(dLat/2) * Math.sin(dLat/2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLng/2) * Math.sin(dLng/2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return EARTH_RADIUS * c;
-    }
-
-    // ===== Mapping =====
+    // ===== Utils =====
     public static Vendor fromRegistrationDTO(VendorRegistrationDTO dto) {
         Vendor vendor = new Vendor();
         vendor.setFirstName(dto.getFirstName());
@@ -274,7 +280,9 @@ public class VendorService {
         dto.setEveningOpeningTime(vendor.getEveningOpeningTime());
         dto.setEveningClosingTime(vendor.getEveningClosingTime());
         dto.setAcceptingOrders(vendor.getAcceptingOrders());
-        dto.setEtaMinutes(null); // will be set during nearby enrichment
+        dto.setSlug(vendor.getSlug());
+        dto.setCitySlug(vendor.getCitySlug());
+        dto.setEtaMinutes(null);
         return dto;
     }
 
@@ -307,4 +315,6 @@ public class VendorService {
         String q = (query == null) ? "" : query.trim();
         return vendorRepository.searchVendorsAnyType(q, PageRequest.of(0, limit));
     }
+    
+    
 }
