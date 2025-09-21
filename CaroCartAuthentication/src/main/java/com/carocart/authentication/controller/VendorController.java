@@ -188,6 +188,7 @@ public class VendorController {
     }
 
 
+
     // ===== Slug endpoints (UPDATED) =====
 
     @GetMapping("/resolve/{vendorSlug:.+}")
