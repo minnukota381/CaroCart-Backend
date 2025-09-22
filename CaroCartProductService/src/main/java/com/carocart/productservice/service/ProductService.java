@@ -51,5 +51,6 @@ public interface ProductService {
     	    int page, int size, String sortBy, String sortDir, int lowStockThreshold
     	);
 
+    long countProductsForCurrentVendor(String token);
 
 }
