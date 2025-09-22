@@ -8,9 +8,11 @@ import com.carocart.authentication.entity.VendorType;
 import com.carocart.authentication.repository.VendorRepository;
 import com.carocart.authentication.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -26,50 +28,67 @@ public class VendorService {
     @Autowired private JwtUtil jwtUtil;
     @Autowired private DistanceMatrixService distanceMatrixService;
 
-    // ✅ NEW
+    // Slug generator (create + update)
     @Autowired private VendorSlugService vendorSlugService;
 
     private final Map<String, Vendor> pendingVendors = new ConcurrentHashMap<>();
 
-    // ===== Signup with OTP =====
+    // =========================
+    // Signup (OTP Disabled)
+    // =========================
     public String requestSignupOtp(VendorRegistrationDTO dto) {
+        // ---- pre-insert duplicate checks (for nicer error messages) ----
         if (vendorRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Email already registered");
         }
-        Vendor vendor = fromRegistrationDTO(dto);
-        vendor.setPassword(dto.getPassword()); // Encode after OTP verification
-        pendingVendors.put(dto.getEmail(), vendor);
+        if (StringUtils.hasText(dto.getContactNumber()) &&
+                vendorRepository.existsByContactNumber(dto.getContactNumber())) {
+            throw new IllegalArgumentException("Contact number already registered");
+        }
+        if (StringUtils.hasText(dto.getGstNumber()) &&
+                vendorRepository.existsByGstNumber(dto.getGstNumber())) {
+            throw new IllegalArgumentException("GST number already registered");
+        }
+        if (StringUtils.hasText(dto.getCompanyName()) &&
+                vendorRepository.existsByCompanyName(dto.getCompanyName())) {
+            throw new IllegalArgumentException("Company name already registered");
+        }
 
+        // ---- create entity ----
+        Vendor vendor = fromRegistrationDTO(dto);
+        vendor.setPassword(passwordEncoder.encode(dto.getPassword()));
+        vendor.setApproved(false);
+
+        // ✅ generate citySlug + slug BEFORE first save
+        vendorSlugService.ensureSlugs(vendor);
+
+        try {
+            vendorRepository.save(vendor);
+        } catch (DataIntegrityViolationException ex) {
+            // safety net in case of any DB unique constraint violation
+            throw new IllegalArgumentException("Duplicate value on a unique field (email/contact/gst/company/slug)");
+        }
+
+        // ❌ OTP flow disabled but kept for future use
+        /*
+        pendingVendors.put(dto.getEmail(), vendor);
         String otp = otpEmailService.generateOtp();
         otpEmailService.storeOtp(dto.getEmail(), otp);
         otpEmailService.sendOtpEmail(dto.getEmail(), otp);
         return "OTP sent to your email";
-    }
+        */
 
-    public String verifySignupOtp(String email, String otp) {
-        if (!otpEmailService.validateOtp(email, otp)) {
-            throw new IllegalArgumentException("Invalid or expired OTP");
-        }
-        Vendor vendor = pendingVendors.get(email);
-        if (vendor == null) {
-            throw new IllegalStateException("No pending signup found for this email");
-        }
-        vendor.setPassword(passwordEncoder.encode(vendor.getPassword()));
-        vendor.setApproved(false);
-
-        // Save once to get ID
-        Vendor saved = vendorRepository.save(vendor);
-
-        // ✅ Ensure slug + citySlug
-        vendorSlugService.ensureSlugs(saved);
-        vendorRepository.save(saved);
-
-        otpEmailService.removeOtp(email);
-        pendingVendors.remove(email);
         return "Vendor registered successfully, pending admin approval";
     }
 
-    // ===== Login =====
+    public String verifySignupOtp(String email, String otp) {
+        // OTP disabled for now
+        throw new UnsupportedOperationException("OTP verification is disabled for now");
+    }
+
+    // =========================
+    // Login
+    // =========================
     public String loginVendor(String email, String password) {
         Optional<Vendor> vendorOpt = vendorRepository.findByEmail(email);
         if (vendorOpt.isEmpty()) throw new IllegalArgumentException("Invalid email or password");
@@ -91,7 +110,9 @@ public class VendorService {
         );
     }
 
-    // ===== Slug-based fetchers =====
+    // =========================
+    // Slug-based fetchers
+    // =========================
     public Vendor getVendorBySlug(String slug) {
         return vendorRepository.findBySlug(slug).orElse(null);
     }
@@ -100,7 +121,9 @@ public class VendorService {
         return vendorRepository.findByCitySlugAndSlug(citySlug, slug).orElse(null);
     }
 
-    // ===== Admin approvals =====
+    // =========================
+    // Admin approvals
+    // =========================
     public boolean approveVendor(Long vendorId) {
         return vendorRepository.findById(vendorId).map(v -> {
             v.setApproved(true);
@@ -118,7 +141,9 @@ public class VendorService {
         }).orElse(false);
     }
 
-    // ===== Profiles =====
+    // =========================
+    // Profiles
+    // =========================
     public boolean updateProfileImageUrl(String email, String imageUrl) {
         Vendor vendor = getVendorByEmail(email);
         if (vendor != null) {
@@ -153,6 +178,16 @@ public class VendorService {
 
     public Vendor updateVendorProfile(String email, VendorResponseDTO updated) {
         Vendor existing = getVendorByEmail(email);
+        if (existing == null) {
+            throw new IllegalArgumentException("Vendor not found");
+        }
+
+        // snapshot essential fields for change detection
+        Vendor before = new Vendor();
+        before.setCompanyName(existing.getCompanyName());
+        before.setCity(existing.getCity());
+
+        // apply updates
         existing.setFirstName(updated.getFirstName());
         existing.setLastName(updated.getLastName());
         existing.setCompanyName(updated.getCompanyName());
@@ -172,11 +207,10 @@ public class VendorService {
         existing.setEveningOpeningTime(updated.getEveningOpeningTime());
         existing.setEveningClosingTime(updated.getEveningClosingTime());
 
-        Vendor saved = vendorRepository.save(existing);
+        // ✅ recompute slugs if company/city changed (or if missing)
+        vendorSlugService.ensureSlugsOnUpdate(before, existing);
 
-        // ✅ Backfill slugs if missing
-        vendorSlugService.ensureSlugs(saved);
-        return vendorRepository.save(saved);
+        return vendorRepository.save(existing);
     }
 
     public void uploadProfileImage(String email, MultipartFile file) throws IOException {
@@ -192,6 +226,7 @@ public class VendorService {
 
     public void changePassword(String email, String currentPassword, String newPassword) {
         Vendor vendor = getVendorByEmail(email);
+        if (vendor == null) throw new IllegalArgumentException("Vendor not found");
         if (!passwordEncoder.matches(currentPassword, vendor.getPassword())) {
             throw new IllegalArgumentException("Current password is incorrect");
         }
@@ -199,7 +234,9 @@ public class VendorService {
         vendorRepository.save(vendor);
     }
 
-    // ===== Nearby (road distance) =====
+    // =========================
+    // Nearby (road distance)
+    // =========================
     public List<VendorResponseDTO> findByTypeAndProximityDriving(
             VendorType type, double lat, double lng, double radiusKm) {
 
@@ -227,7 +264,9 @@ public class VendorService {
                 .toList();
     }
 
-    // ===== Utils =====
+    // =========================
+    // Utils
+    // =========================
     public static Vendor fromRegistrationDTO(VendorRegistrationDTO dto) {
         Vendor vendor = new Vendor();
         vendor.setFirstName(dto.getFirstName());
@@ -302,7 +341,9 @@ public class VendorService {
         return vendorRepository.findAllById(ids);
     }
 
-    // ===== Availability toggle =====
+    // =========================
+    // Availability toggle
+    // =========================
     public VendorResponseDTO updateAvailability(Long vendorId, boolean acceptingOrders) {
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
@@ -315,6 +356,4 @@ public class VendorService {
         String q = (query == null) ? "" : query.trim();
         return vendorRepository.searchVendorsAnyType(q, PageRequest.of(0, limit));
     }
-    
-    
 }

@@ -28,10 +28,20 @@ public class VendorController {
 
     // ===== Signup with OTP =====
     @PostMapping("/signup/request-otp")
-    public ResponseEntity<String> requestOtp(@Valid @RequestBody VendorRegistrationDTO dto) {
-        String response = vendorService.requestSignupOtp(dto);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> requestOtp(@Valid @RequestBody VendorRegistrationDTO dto) {
+        try {
+            String response = vendorService.requestSignupOtp(dto);
+            return ResponseEntity.ok(Map.of("message", response));
+        } catch (IllegalArgumentException ex) {
+            // duplicates / bad input → 400 with clear message
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        } catch (Exception ex) {
+            // unexpected → 500 with a safer message
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Internal error"));
+        }
     }
+
 
     @PostMapping("/signup/verify-otp")
     public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {

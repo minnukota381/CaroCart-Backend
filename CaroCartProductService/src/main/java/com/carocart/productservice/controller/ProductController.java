@@ -251,6 +251,4 @@ public class ProductController {
         p.setBestseller(dto.getBestseller());
         return p;
     }
-    
-    
 }

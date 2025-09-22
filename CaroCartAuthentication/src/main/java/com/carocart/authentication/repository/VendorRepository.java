@@ -12,29 +12,37 @@ import java.util.Optional;
 
 public interface VendorRepository extends JpaRepository<Vendor, Long> {
 
-    // ===== Existing =====
+    // ===== Identity & duplicates =====
     Optional<Vendor> findByEmail(String email);
     boolean existsByEmail(String email);
+    boolean existsByContactNumber(String contactNumber);
+    boolean existsByGstNumber(String gstNumber);
+    boolean existsByCompanyName(String companyName);
 
+    // ===== Approval filters =====
     List<Vendor> findByIsApprovedFalse();
     List<Vendor> findByIsApprovedTrue();
     List<Vendor> findByVendorTypeAndIsApproved(VendorType vendorType, boolean isApproved);
 
-    // ===== New: Slug support =====
+    // ===== Slugs =====
     Optional<Vendor> findBySlug(String slug);
     boolean existsBySlug(String slug);
 
-    // Resolve a vendor uniquely by citySlug + vendorSlug (nice for pretty URLs)
-    Optional<Vendor> findByCitySlugAndSlug(String citySlug, String slug);
+    // When updating an existing vendor, check if another row already has the slug
+    boolean existsBySlugAndIdNot(String slug, Long id);
 
-    // Helpful resolvers that also ensure vendor is approved
+    // City-scoped pretty URL resolvers
+    Optional<Vendor> findByCitySlugAndSlug(String citySlug, String slug);
+    boolean existsByCitySlugAndSlug(String citySlug, String slug);
+
+    // Helpers that ensure vendor is approved
     Optional<Vendor> findBySlugAndIsApprovedTrue(String slug);
     Optional<Vendor> findByCitySlugAndSlugAndIsApprovedTrue(String citySlug, String slug);
 
-    // Optional: fetch approved vendors scoped to a city (use Pageable for limits)
+    // City-scoped lists (approved only)
     List<Vendor> findByCitySlugAndIsApprovedTrue(String citySlug, Pageable pageable);
 
-    // ===== Updated search to include slug & citySlug =====
+    // ===== Search (includes slug & citySlug) =====
     @Query("""
         SELECT v FROM Vendor v
         WHERE v.isApproved = true
