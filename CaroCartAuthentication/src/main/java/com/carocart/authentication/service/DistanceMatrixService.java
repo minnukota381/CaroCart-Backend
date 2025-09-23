@@ -10,7 +10,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
 @Service
 public class DistanceMatrixService {
 
@@ -19,7 +18,7 @@ public class DistanceMatrixService {
     @Value("${google.maps.apiKey}")
     private String apiKey;
 
-    // driving | two_wheeler | bicycling | walking (two_wheeler only in some regions)
+    // driving | two_wheeler | bicycling | walking
     @Value("${google.maps.mode:driving}")
     private String travelMode;
 
@@ -28,28 +27,27 @@ public class DistanceMatrixService {
     }
 
     /**
-     * Calls Google Distance Matrix to get driving distance & duration
-     * for a single origin against many vendor destinations (batched).
-     *
-     * @return Map of vendorId -> DrivingInfo(km, minutes)
+     * Calls Google Distance Matrix for one origin against many vendor destinations (batched).
+     * Returns vendorId -> DrivingInfo(km, minutes).
      */
     public Map<Long, DrivingInfo> drivingForVendors(double originLat, double originLng, List<Vendor> vendors) {
         Map<Long, DrivingInfo> out = new HashMap<>();
         if (vendors == null || vendors.isEmpty()) return out;
 
-        // Google classic DM API allows up to 25 destinations per request
         final int BATCH_SIZE = 25;
 
         for (int i = 0; i < vendors.size(); i += BATCH_SIZE) {
             List<Vendor> batch = vendors.subList(i, Math.min(i + BATCH_SIZE, vendors.size()));
 
-            // Build destinations string "lat,lng|lat,lng|..."
-            String destinations = batch.stream()
+            // ✅ Build a filtered list ONCE and reuse it for both query + mapping
+            List<Vendor> destVendors = batch.stream()
                     .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
+                    .toList();
+            if (destVendors.isEmpty()) continue;
+
+            String destinations = destVendors.stream()
                     .map(v -> v.getLatitude() + "," + v.getLongitude())
                     .collect(Collectors.joining("|"));
-
-            if (destinations.isBlank()) continue;
 
             DistanceMatrixResponse resp = webClient.get()
                     .uri(uriBuilder -> uriBuilder
@@ -64,7 +62,7 @@ public class DistanceMatrixService {
                     .onStatus(
                             HttpStatusCode::isError,
                             r -> r.bodyToMono(String.class)
-                                  .map(body -> new RuntimeException("Google Distance Matrix error: " + body))
+                                    .map(body -> new RuntimeException("Google Distance Matrix error: " + body))
                     )
                     .bodyToMono(DistanceMatrixResponse.class)
                     .block();
@@ -73,20 +71,41 @@ public class DistanceMatrixService {
             List<DistanceMatrixResponse.Element> elements = resp.rows.get(0).elements;
             if (elements == null || elements.isEmpty()) continue;
 
-            // Map elements back to vendors in order
-            for (int j = 0; j < batch.size() && j < elements.size(); j++) {
-                Vendor v = batch.get(j);
-                DistanceMatrixResponse.Element el = elements.get(j);
-                if (el == null || !"OK".equals(el.status) || el.distance == null || el.duration == null) continue;
+            int mapped = 0, skipped = 0;
 
-                long meters = el.distance.value;
-                long seconds = el.duration.value;
-                if (meters <= 0 || seconds <= 0) continue;
+            // ✅ Map back using the SAME destVendors list (keeps indices aligned)
+            for (int j = 0; j < destVendors.size() && j < elements.size(); j++) {
+                Vendor v = destVendors.get(j);
+                DistanceMatrixResponse.Element el = elements.get(j);
+
+                if (el == null || el.status == null || !"OK".equalsIgnoreCase(el.status)
+                        || el.distance == null || el.duration == null) {
+                    skipped++;
+                    continue;
+                }
+
+                long meters = el.distance.value;   // meters
+                long seconds = el.duration.value;  // seconds
+
+                // ✅ Only skip negatives (invalid). Zero is valid for identical coords.
+                if (meters < 0 || seconds < 0) {
+                    skipped++;
+                    continue;
+                }
 
                 double km = meters / 1000.0;
                 int minutes = (int) Math.ceil(seconds / 60.0);
+
+                // ✅ Clamp for UX (identical points often come as 0m/0s)
+                if (minutes < 1) minutes = 1;
+
                 out.put(v.getId(), new DrivingInfo(km, minutes));
+                mapped++;
             }
+
+            // (Optional) quick visibility while testing
+            // org.slf4j.LoggerFactory.getLogger(getClass())
+            //     .debug("DM batch {}: dests={}, mapped={}, skipped={}", i / BATCH_SIZE, destVendors.size(), mapped, skipped);
         }
 
         return out;

@@ -237,32 +237,76 @@ public class VendorService {
     // =========================
     // Nearby (road distance)
     // =========================
-    public List<VendorResponseDTO> findByTypeAndProximityDriving(
-            VendorType type, double lat, double lng, double radiusKm) {
+ // =========================
+ // Nearby (road distance)
+ // =========================
 
-        List<Vendor> candidates = vendorRepository.findByVendorTypeAndIsApproved(type, true)
-                .stream()
-                .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
-                .toList();
+ // New flexible method (already in your code)
+ public List<VendorResponseDTO> findByTypeAndProximityDriving(
+         VendorType type, double lat, double lng, double radiusKm, String sortKey) {
 
-        if (candidates.isEmpty()) return Collections.emptyList();
+     List<Vendor> candidates = vendorRepository.findByVendorTypeAndIsApproved(type, true)
+             .stream()
+             .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
+             .toList();
 
-        Map<Long, DrivingInfo> drivingMap = distanceMatrixService.drivingForVendors(lat, lng, candidates);
+     if (candidates.isEmpty()) return Collections.emptyList();
 
-        return candidates.stream()
-                .map(v -> {
-                    VendorResponseDTO dto = toResponseDTO(v);
-                    DrivingInfo info = drivingMap.get(v.getId());
-                    if (info != null) {
-                        dto.setDrivingKm(info.getKm());
-                        dto.setEtaMinutes(info.getMinutes());
-                        dto.setDrivingMinutes(info.getMinutes());
-                    }
-                    return dto;
-                })
-                .filter(dto -> dto.getDrivingKm() != null && dto.getDrivingKm() <= radiusKm)
-                .toList();
-    }
+     Map<Long, DrivingInfo> drivingMap = distanceMatrixService.drivingForVendors(lat, lng, candidates);
+
+     List<VendorResponseDTO> list = candidates.stream()
+             .map(v -> {
+                 VendorResponseDTO dto = toResponseDTO(v);
+                 DrivingInfo info = drivingMap.get(v.getId());
+                 if (info != null) {
+                     dto.setDrivingKm(info.getKm());
+                     dto.setEtaMinutes(info.getMinutes());
+                     dto.setDrivingMinutes(info.getMinutes());
+                 }
+                 return dto;
+             })
+             .filter(dto -> dto.getDrivingKm() != null && dto.getDrivingKm() <= radiusKm)
+             .toList();
+
+     Comparator<VendorResponseDTO> cmp;
+     switch (sortKey == null ? "distanceAsc" : sortKey) {
+         case "distanceDesc":
+             cmp = Comparator.comparing(
+                     (VendorResponseDTO d) -> d.getDrivingKm(),
+                     Comparator.nullsLast(Double::compareTo)
+             ).reversed();
+             break;
+         case "etaAsc":
+             cmp = Comparator.comparing(
+                     (VendorResponseDTO d) -> d.getEtaMinutes(),
+                     Comparator.nullsLast(Integer::compareTo)
+             );
+             break;
+         case "nameAsc":
+             cmp = Comparator.comparing(
+                     (VendorResponseDTO d) ->
+                             Optional.ofNullable(d.getCompanyName()).orElse(""),
+                     String.CASE_INSENSITIVE_ORDER
+             );
+             break;
+         case "distanceAsc":
+         default:
+             cmp = Comparator.comparing(
+                     (VendorResponseDTO d) -> d.getDrivingKm(),
+                     Comparator.nullsLast(Double::compareTo)
+             );
+     }
+
+     return list.stream().sorted(cmp).toList();
+ }
+
+ // ✅ Overload for backward compatibility
+ public List<VendorResponseDTO> findByTypeAndProximityDriving(
+         VendorType type, double lat, double lng, double radiusKm) {
+     return findByTypeAndProximityDriving(type, lat, lng, radiusKm, "distanceAsc");
+ }
+
+
 
     // =========================
     // Utils

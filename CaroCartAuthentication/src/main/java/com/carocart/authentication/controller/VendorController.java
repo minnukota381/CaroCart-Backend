@@ -235,16 +235,19 @@ public class VendorController {
     }
 
     // ===== Nearby (driving distance) =====
+ // ===== Nearby (driving distance) =====
     @GetMapping("/nearby")
     public ResponseEntity<List<VendorResponseDTO>> getNearbyVendors(
             @RequestParam VendorType type,
             @RequestParam double lat,
             @RequestParam double lng,
-            @RequestParam(defaultValue = "12") double radiusKm
+            @RequestParam(defaultValue = "12") double radiusKm,
+            @RequestParam(defaultValue = "distanceAsc") String sort
     ) {
-        var dtos = vendorService.findByTypeAndProximityDriving(type, lat, lng, radiusKm);
+        var dtos = vendorService.findByTypeAndProximityDriving(type, lat, lng, radiusKm, sort);
         return ResponseEntity.ok(dtos);
     }
+
 
     // ===== Batch fetch by IDs =====
     @PostMapping("/by-ids")
