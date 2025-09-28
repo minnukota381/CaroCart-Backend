@@ -252,5 +252,10 @@ public class ProductController {
         return p;
     }
     
-    
+ // ProductController.java
+    @GetMapping("/vendor/my-products/count")
+    public ResponseEntity<Long> getMyProductsCount(@RequestHeader("Authorization") String token) {
+        return ResponseEntity.ok(productService.countProductsForCurrentVendor(token));
+    }
+
 }

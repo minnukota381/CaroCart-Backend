@@ -26,15 +26,15 @@ public class FirebaseStorageUtil {
 	            ByteArrayInputStream credentialsStream = new ByteArrayInputStream(credentialsJson.getBytes(StandardCharsets.UTF_8));
 	            FirebaseOptions options = new FirebaseOptions.Builder()
 	                    .setCredentials(GoogleCredentials.fromStream(credentialsStream))
-	                    .setStorageBucket("carocart-d4171.firebasestorage.app")
+	                    .setStorageBucket("sound-memory-470316-m4.appspot.com")
 	                    .build();
 	            FirebaseApp.initializeApp(options);
 	        } else {
 	            // Fallback: File for local dev
-	            try (FileInputStream serviceAccount = new FileInputStream("src/main/resources/carocart-d4171-firebase-adminsdk-fbsvc-6bfc483193.json")) {
+	            try (FileInputStream serviceAccount = new FileInputStream("src/main/resources/sound-memory-470316-m4-firebase-adminsdk-fbsvc-61dda0f4de.json")) {
 	                FirebaseOptions options = new FirebaseOptions.Builder()
 	                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-	                        .setStorageBucket("carocart-d4171.firebasestorage.app")
+	                        .setStorageBucket("sound-memory-470316-m4.appspot.com")
 	                        .build();
 	                FirebaseApp.initializeApp(options);
 	            } catch (IOException e) {

@@ -46,12 +46,19 @@ public class VendorResponseDTO {
     private String eveningClosingTime;
 
     // Extras
-    private Integer etaMinutes;
+    private Integer etaMinutes;      // from Distance Matrix
+    private Double drivingKm;        // road distance
+    private Integer drivingMinutes;  // road travel time
+
     private Boolean acceptingOrders;
 
-    // manual close info
+    // Manual close info
     private String manualCloseReason;
     private String manualCloseUntil;
+
+    // ✅ NEW: Slug fields
+    private String slug;
+    private String citySlug;
 
     // ===== getters/setters =====
     public Boolean getAcceptingOrders() { return acceptingOrders; }
@@ -65,6 +72,12 @@ public class VendorResponseDTO {
 
     public Integer getEtaMinutes() { return etaMinutes; }
     public void setEtaMinutes(Integer etaMinutes) { this.etaMinutes = etaMinutes; }
+
+    public Double getDrivingKm() { return drivingKm; }
+    public void setDrivingKm(Double drivingKm) { this.drivingKm = drivingKm; }
+
+    public Integer getDrivingMinutes() { return drivingMinutes; }
+    public void setDrivingMinutes(Integer drivingMinutes) { this.drivingMinutes = drivingMinutes; }
 
     public String getOpeningTime() { return openingTime; }
     public void setOpeningTime(String openingTime) { this.openingTime = openingTime; }
@@ -137,4 +150,10 @@ public class VendorResponseDTO {
 
     public String getUpiId() { return upiId; }
     public void setUpiId(String upiId) { this.upiId = upiId; }
+
+    public String getSlug() { return slug; }
+    public void setSlug(String slug) { this.slug = slug; }
+
+    public String getCitySlug() { return citySlug; }
+    public void setCitySlug(String citySlug) { this.citySlug = citySlug; }
 }

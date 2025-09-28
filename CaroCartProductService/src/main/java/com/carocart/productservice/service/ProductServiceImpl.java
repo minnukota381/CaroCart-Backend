@@ -525,4 +525,14 @@ public class ProductServiceImpl implements ProductService {
         product.setStock(product.getStock() - quantity);
         productRepository.save(product);
     }
+    
+    
+    @Override
+    public long countProductsForCurrentVendor(String token) {
+        VendorResponseDTO vendor = tryGetVendor(token);
+        if (!isVendor(vendor)) {
+            throw new RuntimeException("Unauthorized: Only vendors can access this.");
+        }
+        return productRepository.countByAddedByRoleAndVendorId("VENDOR", vendor.getId());
+    }
 }

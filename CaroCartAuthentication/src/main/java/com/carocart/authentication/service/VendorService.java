@@ -1,5 +1,6 @@
 package com.carocart.authentication.service;
 
+import com.carocart.authentication.dto.DrivingInfo;
 import com.carocart.authentication.dto.VendorRegistrationDTO;
 import com.carocart.authentication.dto.VendorResponseDTO;
 import com.carocart.authentication.entity.Vendor;
@@ -7,63 +8,87 @@ import com.carocart.authentication.entity.VendorType;
 import com.carocart.authentication.repository.VendorRepository;
 import com.carocart.authentication.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.data.domain.PageRequest;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Service
 public class VendorService {
 
-    @Autowired
-    private VendorRepository vendorRepository;
-    @Autowired
-    private OtpEmailService otpEmailService;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private JwtUtil jwtUtil;
+    @Autowired private VendorRepository vendorRepository;
+    @Autowired private OtpEmailService otpEmailService;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtUtil jwtUtil;
+    @Autowired private DistanceMatrixService distanceMatrixService;
+
+    // Slug generator (create + update)
+    @Autowired private VendorSlugService vendorSlugService;
 
     private final Map<String, Vendor> pendingVendors = new ConcurrentHashMap<>();
 
-    // ===== Signup with OTP =====
+    // =========================
+    // Signup (OTP Disabled)
+    // =========================
     public String requestSignupOtp(VendorRegistrationDTO dto) {
+        // ---- pre-insert duplicate checks (for nicer error messages) ----
         if (vendorRepository.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Email already registered");
         }
-        Vendor vendor = fromRegistrationDTO(dto);
-        vendor.setPassword(dto.getPassword()); // Encode after OTP verification
-        pendingVendors.put(dto.getEmail(), vendor);
+        if (StringUtils.hasText(dto.getContactNumber()) &&
+                vendorRepository.existsByContactNumber(dto.getContactNumber())) {
+            throw new IllegalArgumentException("Contact number already registered");
+        }
+        if (StringUtils.hasText(dto.getGstNumber()) &&
+                vendorRepository.existsByGstNumber(dto.getGstNumber())) {
+            throw new IllegalArgumentException("GST number already registered");
+        }
+        if (StringUtils.hasText(dto.getCompanyName()) &&
+                vendorRepository.existsByCompanyName(dto.getCompanyName())) {
+            throw new IllegalArgumentException("Company name already registered");
+        }
 
+        // ---- create entity ----
+        Vendor vendor = fromRegistrationDTO(dto);
+        vendor.setPassword(passwordEncoder.encode(dto.getPassword()));
+        vendor.setApproved(false);
+
+        // ✅ generate citySlug + slug BEFORE first save
+        vendorSlugService.ensureSlugs(vendor);
+
+        try {
+            vendorRepository.save(vendor);
+        } catch (DataIntegrityViolationException ex) {
+            // safety net in case of any DB unique constraint violation
+            throw new IllegalArgumentException("Duplicate value on a unique field (email/contact/gst/company/slug)");
+        }
+
+        // ❌ OTP flow disabled but kept for future use
+        /*
+        pendingVendors.put(dto.getEmail(), vendor);
         String otp = otpEmailService.generateOtp();
         otpEmailService.storeOtp(dto.getEmail(), otp);
         otpEmailService.sendOtpEmail(dto.getEmail(), otp);
         return "OTP sent to your email";
-    }
+        */
 
-    public String verifySignupOtp(String email, String otp) {
-        if (!otpEmailService.validateOtp(email, otp)) {
-            throw new IllegalArgumentException("Invalid or expired OTP");
-        }
-        Vendor vendor = pendingVendors.get(email);
-        if (vendor == null) {
-            throw new IllegalStateException("No pending signup found for this email");
-        }
-        vendor.setPassword(passwordEncoder.encode(vendor.getPassword()));
-        vendor.setApproved(false);
-        vendorRepository.save(vendor);
-
-        otpEmailService.removeOtp(email);
-        pendingVendors.remove(email);
         return "Vendor registered successfully, pending admin approval";
     }
 
-    // ===== Login =====
+    public String verifySignupOtp(String email, String otp) {
+        // OTP disabled for now
+        throw new UnsupportedOperationException("OTP verification is disabled for now");
+    }
+
+    // =========================
+    // Login
+    // =========================
     public String loginVendor(String email, String password) {
         Optional<Vendor> vendorOpt = vendorRepository.findByEmail(email);
         if (vendorOpt.isEmpty()) throw new IllegalArgumentException("Invalid email or password");
@@ -85,7 +110,20 @@ public class VendorService {
         );
     }
 
-    // ===== Admin approvals =====
+    // =========================
+    // Slug-based fetchers
+    // =========================
+    public Vendor getVendorBySlug(String slug) {
+        return vendorRepository.findBySlug(slug).orElse(null);
+    }
+
+    public Vendor getVendorByCityAndSlug(String citySlug, String slug) {
+        return vendorRepository.findByCitySlugAndSlug(citySlug, slug).orElse(null);
+    }
+
+    // =========================
+    // Admin approvals
+    // =========================
     public boolean approveVendor(Long vendorId) {
         return vendorRepository.findById(vendorId).map(v -> {
             v.setApproved(true);
@@ -103,7 +141,9 @@ public class VendorService {
         }).orElse(false);
     }
 
-    // ===== Profiles =====
+    // =========================
+    // Profiles
+    // =========================
     public boolean updateProfileImageUrl(String email, String imageUrl) {
         Vendor vendor = getVendorByEmail(email);
         if (vendor != null) {
@@ -138,14 +178,21 @@ public class VendorService {
 
     public Vendor updateVendorProfile(String email, VendorResponseDTO updated) {
         Vendor existing = getVendorByEmail(email);
+        if (existing == null) {
+            throw new IllegalArgumentException("Vendor not found");
+        }
+
+        // snapshot essential fields for change detection
+        Vendor before = new Vendor();
+        before.setCompanyName(existing.getCompanyName());
+        before.setCity(existing.getCity());
+
+        // apply updates
         existing.setFirstName(updated.getFirstName());
         existing.setLastName(updated.getLastName());
         existing.setCompanyName(updated.getCompanyName());
         existing.setContactNumber(updated.getContactNumber());
-
-        // ✅ NEW
         existing.setAlternatePhone(updated.getAlternatePhone());
-
         existing.setGstNumber(updated.getGstNumber());
         existing.setVendorType(updated.getVendorType());
         existing.setAddressLine1(updated.getAddressLine1());
@@ -155,14 +202,13 @@ public class VendorService {
         existing.setPinCode(updated.getPinCode());
         existing.setLatitude(updated.getLatitude());
         existing.setLongitude(updated.getLongitude());
-
-        // Morning timings (existing)
         existing.setOpeningTime(updated.getOpeningTime());
         existing.setClosingTime(updated.getClosingTime());
-
-        // ✅ NEW evening (optional)
         existing.setEveningOpeningTime(updated.getEveningOpeningTime());
         existing.setEveningClosingTime(updated.getEveningClosingTime());
+
+        // ✅ recompute slugs if company/city changed (or if missing)
+        vendorSlugService.ensureSlugsOnUpdate(before, existing);
 
         return vendorRepository.save(existing);
     }
@@ -180,6 +226,7 @@ public class VendorService {
 
     public void changePassword(String email, String currentPassword, String newPassword) {
         Vendor vendor = getVendorByEmail(email);
+        if (vendor == null) throw new IllegalArgumentException("Vendor not found");
         if (!passwordEncoder.matches(currentPassword, vendor.getPassword())) {
             throw new IllegalArgumentException("Current password is incorrect");
         }
@@ -187,26 +234,83 @@ public class VendorService {
         vendorRepository.save(vendor);
     }
 
-    // ===== Nearby (Haversine) =====
-    public List<Vendor> findByTypeAndProximity(VendorType type, double lat, double lng, double radiusKm) {
-        List<Vendor> all = vendorRepository.findByVendorTypeAndIsApproved(type, true);
-        return all.stream()
-            .filter(v -> haversineDistanceKm(lat, lng, v.getLatitude(), v.getLongitude()) <= radiusKm)
-            .collect(Collectors.toList());
-    }
+    // =========================
+    // Nearby (road distance)
+    // =========================
+ // =========================
+ // Nearby (road distance)
+ // =========================
 
-    public static double haversineDistanceKm(double lat1, double lng1, double lat2, double lng2) {
-        final int EARTH_RADIUS = 6371; // km
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLng = Math.toRadians(lng2 - lng1);
-        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                Math.sin(dLng/2) * Math.sin(dLng/2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return EARTH_RADIUS * c;
-    }
+ // New flexible method (already in your code)
+ public List<VendorResponseDTO> findByTypeAndProximityDriving(
+         VendorType type, double lat, double lng, double radiusKm, String sortKey) {
 
-    // ===== Mapping =====
+     List<Vendor> candidates = vendorRepository.findByVendorTypeAndIsApproved(type, true)
+             .stream()
+             .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
+             .toList();
+
+     if (candidates.isEmpty()) return Collections.emptyList();
+
+     Map<Long, DrivingInfo> drivingMap = distanceMatrixService.drivingForVendors(lat, lng, candidates);
+
+     List<VendorResponseDTO> list = candidates.stream()
+             .map(v -> {
+                 VendorResponseDTO dto = toResponseDTO(v);
+                 DrivingInfo info = drivingMap.get(v.getId());
+                 if (info != null) {
+                     dto.setDrivingKm(info.getKm());
+                     dto.setEtaMinutes(info.getMinutes());
+                     dto.setDrivingMinutes(info.getMinutes());
+                 }
+                 return dto;
+             })
+             .filter(dto -> dto.getDrivingKm() != null && dto.getDrivingKm() <= radiusKm)
+             .toList();
+
+     Comparator<VendorResponseDTO> cmp;
+     switch (sortKey == null ? "distanceAsc" : sortKey) {
+         case "distanceDesc":
+             cmp = Comparator.comparing(
+                     (VendorResponseDTO d) -> d.getDrivingKm(),
+                     Comparator.nullsLast(Double::compareTo)
+             ).reversed();
+             break;
+         case "etaAsc":
+             cmp = Comparator.comparing(
+                     (VendorResponseDTO d) -> d.getEtaMinutes(),
+                     Comparator.nullsLast(Integer::compareTo)
+             );
+             break;
+         case "nameAsc":
+             cmp = Comparator.comparing(
+                     (VendorResponseDTO d) ->
+                             Optional.ofNullable(d.getCompanyName()).orElse(""),
+                     String.CASE_INSENSITIVE_ORDER
+             );
+             break;
+         case "distanceAsc":
+         default:
+             cmp = Comparator.comparing(
+                     (VendorResponseDTO d) -> d.getDrivingKm(),
+                     Comparator.nullsLast(Double::compareTo)
+             );
+     }
+
+     return list.stream().sorted(cmp).toList();
+ }
+
+ // ✅ Overload for backward compatibility
+ public List<VendorResponseDTO> findByTypeAndProximityDriving(
+         VendorType type, double lat, double lng, double radiusKm) {
+     return findByTypeAndProximityDriving(type, lat, lng, radiusKm, "distanceAsc");
+ }
+
+
+
+    // =========================
+    // Utils
+    // =========================
     public static Vendor fromRegistrationDTO(VendorRegistrationDTO dto) {
         Vendor vendor = new Vendor();
         vendor.setFirstName(dto.getFirstName());
@@ -214,10 +318,7 @@ public class VendorService {
         vendor.setCompanyName(dto.getCompanyName());
         vendor.setEmail(dto.getEmail());
         vendor.setContactNumber(dto.getContactNumber());
-
-        // ✅ NEW
         vendor.setAlternatePhone(dto.getAlternatePhone());
-
         vendor.setGstNumber(dto.getGstNumber());
         vendor.setVendorType(dto.getVendorType());
         vendor.setAddressLine1(dto.getAddressLine1());
@@ -228,15 +329,10 @@ public class VendorService {
         vendor.setLatitude(dto.getLatitude());
         vendor.setLongitude(dto.getLongitude());
         vendor.setRole("VENDOR");
-
-        // Morning timings (existing)
         vendor.setOpeningTime(dto.getOpeningTime());
         vendor.setClosingTime(dto.getClosingTime());
-
-        // ✅ NEW evening (optional)
         vendor.setEveningOpeningTime(dto.getEveningOpeningTime());
         vendor.setEveningClosingTime(dto.getEveningClosingTime());
-
         return vendor;
     }
 
@@ -249,10 +345,7 @@ public class VendorService {
         dto.setRole(vendor.getRole());
         dto.setCompanyName(vendor.getCompanyName());
         dto.setContactNumber(vendor.getContactNumber());
-
-        // ✅ NEW
         dto.setAlternatePhone(vendor.getAlternatePhone());
-
         dto.setGstNumber(vendor.getGstNumber());
         dto.setVendorType(vendor.getVendorType());
         dto.setAddressLine1(vendor.getAddressLine1());
@@ -265,23 +358,20 @@ public class VendorService {
         dto.setProfileImageUrl(vendor.getProfileImageUrl());
         dto.setApproved(vendor.isApproved());
         dto.setUpiId(vendor.getUpiId());
-
-        // Morning
         dto.setOpeningTime(vendor.getOpeningTime());
         dto.setClosingTime(vendor.getClosingTime());
-
-        // ✅ Evening
         dto.setEveningOpeningTime(vendor.getEveningOpeningTime());
         dto.setEveningClosingTime(vendor.getEveningClosingTime());
-
         dto.setAcceptingOrders(vendor.getAcceptingOrders());
+        dto.setSlug(vendor.getSlug());
+        dto.setCitySlug(vendor.getCitySlug());
         dto.setEtaMinutes(null);
         return dto;
     }
 
     public void updatePassword(String email, String newPassword) {
         Vendor v = vendorRepository.findByEmail(email)
-            .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
         v.setPassword(passwordEncoder.encode(newPassword));
         vendorRepository.save(v);
     }
@@ -295,7 +385,9 @@ public class VendorService {
         return vendorRepository.findAllById(ids);
     }
 
-    // ===== Availability toggle =====
+    // =========================
+    // Availability toggle
+    // =========================
     public VendorResponseDTO updateAvailability(Long vendorId, boolean acceptingOrders) {
         Vendor vendor = vendorRepository.findById(vendorId)
                 .orElseThrow(() -> new IllegalArgumentException("Vendor not found"));
