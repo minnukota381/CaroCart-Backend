@@ -47,26 +47,21 @@ public class ProductController {
         return ResponseEntity.ok(productService.addProduct(product, null, token));
     }
 
-    // --- Update Product ---
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Product> updateProduct(
-        @PathVariable Long id,
-        @RequestBody ProductRequestDTO productDTO,
-        @RequestHeader("Authorization") String token
+    public ResponseEntity<?> updateProduct(
+            @PathVariable Long id,
+            @RequestBody ProductRequestDTO productDTO,
+            @RequestHeader("Authorization") String token
     ) throws IOException {
-
         if (productDTO.getPrice() > productDTO.getMrp()) {
-            throw new IllegalArgumentException("Price must not exceed MRP");
+            return ResponseEntity.badRequest().body("Price must not exceed MRP");
         }
 
         SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
                 .orElseThrow(() -> new IllegalArgumentException("Subcategory not found"));
 
         Product updatedProduct = mapDtoToProduct(productDTO, subCategory);
-        Product updated = productService.updateProduct(id, updatedProduct, null, token);
-        if (updated == null) {
-            return ResponseEntity.notFound().build();
-        }
+        Product updated = productService.updateProduct(id, updatedProduct, token);
         return ResponseEntity.ok(updated);
     }
 
@@ -82,55 +77,78 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         Product product = productService.getProductById(id);
-        if (product == null) {
-            return ResponseEntity.notFound().build();
-        }
+        if (product == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(product);
     }
 
-    // --- Get Product DTO ---
+    // --- Get Product DTO by ID ---
     @GetMapping("/dto/{id}")
     public ResponseEntity<ProductDTO> getProductDTOById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductDTOById(id));
     }
 
-    // --- Get All Products ---
+    // --- Get All Products (paginated) ---
     @GetMapping("/all")
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<Page<Product>> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        Page<Product> productsPage = productService.getAllProducts(page, size, sortBy, sortDir);
+        return ResponseEntity.ok(productsPage);
     }
 
-    // --- Vendor's Products ---
+    // --- Vendor's Products (paginated) ---
     @GetMapping("/vendor/my-products")
-    public ResponseEntity<List<Product>> getVendorProducts(@RequestHeader("Authorization") String token) {
-        return ResponseEntity.ok(productService.getProductsByVendor(token));
+    public ResponseEntity<Page<Product>> getVendorProducts(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        Page<Product> productsPage = productService.getProductsByVendor(token, page, size, sortBy, sortDir);
+        return ResponseEntity.ok(productsPage);
     }
 
-    // --- Grouped by Category/Subcategory for a Vendor ---
+    // --- Vendor Grouped by Category/SubCategory ---
     @GetMapping("/vendor/{vendorId}/grouped")
     public ResponseEntity<?> getVendorProductsGroupedByCategoryAndSubCategory(@PathVariable Long vendorId) {
         return ResponseEntity.ok(productService.getProductsGroupedByCategoryAndSubCategory(vendorId));
     }
 
-    // --- By SubCategory ---
+    // --- Products by SubCategory (paginated) ---
     @GetMapping("/subcategory/{subCategoryId}")
-    public ResponseEntity<List<Product>> getProductsBySubCategory(@PathVariable Long subCategoryId) {
-        return ResponseEntity.ok(productService.getProductsBySubCategory(subCategoryId));
+    public ResponseEntity<Page<Product>> getProductsBySubCategory(
+            @PathVariable Long subCategoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        Page<Product> productsPage = productService.getProductsBySubCategory(subCategoryId, page, size, sortBy, sortDir);
+        return ResponseEntity.ok(productsPage);
     }
 
-    // --- By Category ---
+    // --- Products by Category (paginated) ---
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<List<Product>> getProductsByCategoryId(@PathVariable Long categoryId) {
-        return ResponseEntity.ok(productService.getProductsByCategoryId(categoryId));
+    public ResponseEntity<Page<Product>> getProductsByCategoryId(
+            @PathVariable Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        Page<Product> productsPage = productService.getProductsByCategoryId(categoryId, page, size, sortBy, sortDir);
+        return ResponseEntity.ok(productsPage);
     }
 
     // --- Slug Based ---
     @GetMapping("/slug/{slug}")
     public ResponseEntity<Product> getProductBySlug(@PathVariable String slug) {
         Product product = productService.getProductBySlug(slug);
-        if (product == null) {
-            return ResponseEntity.notFound().build();
-        }
+        if (product == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(product);
     }
 
@@ -140,32 +158,27 @@ public class ProductController {
         return ResponseEntity.ok("Slug generation completed");
     }
 
-    // --- Search & Filter ---
     @GetMapping("/search")
-    public ResponseEntity<List<Product>> searchAndFilterProducts(
+    public ResponseEntity<Page<Product>> searchAndFilterProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long subCategoryId,
-            @RequestParam(required = false) Double minPrice,
-            @RequestParam(required = false) Double maxPrice,
-            @RequestParam(required = false) Boolean inStock,
-            @RequestParam(required = false) Boolean discounted,
-            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
-            @RequestParam(required = false, defaultValue = "desc") String sortDir
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir
     ) {
-        List<Product> results = productService.searchAndFilterProducts(
-                keyword, categoryId, subCategoryId, minPrice, maxPrice,
-                inStock, discounted, sortBy, sortDir
+        Page<Product> results = productService.searchAndFilterProducts(
+                keyword, categoryId, subCategoryId, page, size, sortBy, sortDir
         );
         return ResponseEntity.ok(results);
     }
 
+
     // --- Unified Search ---
     @GetMapping("/unified-search")
     public ResponseEntity<SearchResultDTO> unifiedSearch(@RequestParam("query") String query) {
-        if (query == null || query.trim().isEmpty()) {
-            return ResponseEntity.badRequest().build();
-        }
+        if (query == null || query.trim().isEmpty()) return ResponseEntity.badRequest().build();
         SearchResultDTO result = productService.unifiedSearch(query.trim());
         return ResponseEntity.ok(result);
     }
@@ -179,49 +192,68 @@ public class ProductController {
     // --- Nearby ---
     @GetMapping("/nearby")
     public ResponseEntity<List<Product>> getProductsFromNearbyVendors(
-        @RequestParam String type,
-        @RequestParam double lat,
-        @RequestParam double lng,
-        @RequestParam(defaultValue = "10") double radiusKm,
-        @RequestParam(required = false) Long categoryId,
-        @RequestParam(required = false) Long subCategoryId
+            @RequestParam String type,
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam(defaultValue = "10") double radiusKm,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long subCategoryId
     ) {
         return ResponseEntity.ok(productService.getProductsFromNearbyVendors(type, lat, lng, radiusKm, categoryId, subCategoryId));
     }
 
+    // --- Admin Search ---
     @GetMapping("/admin")
     public ResponseEntity<Page<ProductAdminRowDTO>> searchProductsAdmin(
-        @RequestParam(required = false) String q,
-        @RequestParam(required = false) String vendorType,
-        @RequestParam(required = false) Long vendorId,
-        @RequestParam(required = false) Long categoryId,
-        @RequestParam(required = false) Long subCategoryId,
-        @RequestParam(defaultValue = "ALL") String availability,
-        @RequestParam(defaultValue = "ALL") String stockView,
-        @RequestParam(required = false) Double minPrice,
-        @RequestParam(required = false) Double maxPrice,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size,
-        @RequestParam(defaultValue = "updatedAt") String sortBy,
-        @RequestParam(defaultValue = "DESC") String sortDir,
-        @RequestParam(defaultValue = "10") int lowStockThreshold
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String vendorType,
+            @RequestParam(required = false) Long vendorId,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long subCategoryId,
+            @RequestParam(defaultValue = "ALL") String availability,
+            @RequestParam(defaultValue = "ALL") String stockView,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "updatedAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            @RequestParam(defaultValue = "10") int lowStockThreshold
     ) {
         return ResponseEntity.ok(
-            productService.searchProductsAdmin(
-                q, vendorType, vendorId, categoryId, subCategoryId,
-                availability, stockView, minPrice, maxPrice,
-                page, size, sortBy, sortDir, lowStockThreshold
-            )
+            productService.searchProductsAdmin(q, vendorType, vendorId, categoryId, subCategoryId,
+                    availability, stockView, minPrice, maxPrice,
+                    page, size, sortBy, sortDir, lowStockThreshold)
         );
     }
 
+    // --- Decrease Stock ---
     @PutMapping("/{id}/decrease-stock")
     public ResponseEntity<String> decreaseStock(@PathVariable Long id, @RequestParam int quantity) {
         productService.decreaseStock(id, quantity);
         return ResponseEntity.ok("Stock decreased successfully");
     }
 
-    // Utility to avoid duplicate mapping
+    // --- Count My Products ---
+    @GetMapping("/vendor/my-products/count")
+    public ResponseEntity<Long> getMyProductsCount(@RequestHeader("Authorization") String token) {
+        return ResponseEntity.ok(productService.countProductsForCurrentVendor(token));
+    }
+
+    // --- Bulk Upload CSV ---
+    @PostMapping(value = "/bulk-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> bulkUploadProducts(
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader("Authorization") String token
+    ) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "file is required"));
+        }
+        Map<String, Object> result = productService.bulkUploadCsv(file, token);
+        return ResponseEntity.ok(result);
+    }
+
+    // --- Utility ---
     private Product mapDtoToProduct(ProductRequestDTO dto, SubCategory subCategory) {
         Product p = new Product();
         p.setName(dto.getName());
@@ -235,9 +267,9 @@ public class ProductController {
         p.setIsAvailable(dto.getIsAvailable());
         p.setSubCategory(subCategory);
         p.setImageUrl(dto.getImageUrl());
-        p.setProductType(
-            com.carocart.productservice.entity.ProductType.valueOf(dto.getProductType().toUpperCase())
-        );
+        if (dto.getProductType() != null) {
+            p.setProductType(com.carocart.productservice.entity.ProductType.valueOf(dto.getProductType().toUpperCase()));
+        }
         p.setPackSize(dto.getPackSize());
         p.setManufacturer(dto.getManufacturer());
         p.setFssaiLicenseNo(dto.getFssaiLicenseNo());
@@ -253,24 +285,4 @@ public class ProductController {
         p.setBestseller(dto.getBestseller());
         return p;
     }
-    
- // ProductController.java
-    @GetMapping("/vendor/my-products/count")
-    public ResponseEntity<Long> getMyProductsCount(@RequestHeader("Authorization") String token) {
-        return ResponseEntity.ok(productService.countProductsForCurrentVendor(token));
-    }
-    
-    @PostMapping(value = "/bulk-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> bulkUploadProducts(
-            @RequestParam("file") MultipartFile file,
-            @RequestHeader("Authorization") String token
-    ) throws IOException {
-        if (file == null || file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "file is required"));
-        }
-        Map<String, Object> result = productService.bulkUploadCsv(file, token);
-        return ResponseEntity.ok(result);
-    }
-
-
 }

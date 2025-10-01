@@ -142,57 +142,37 @@ public class ProductServiceImpl implements ProductService {
 
 
     @Override
-    public Product updateProduct(Long id, Product updatedProduct, MultipartFile image, String token) throws IOException {
-        AdminResponseDTO admin = tryGetAdmin(token);
-        VendorResponseDTO vendor = tryGetVendor(token);
+    public Product updateProduct(Long id, Product product, String token) throws IOException {
+        Product existing = productRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Product not found with id: " + id));
 
-        return productRepository.findById(id).map(product -> {
-            boolean isOwner = isAdmin(admin) ||
-                    (isVendor(vendor) && "VENDOR".equals(product.getAddedByRole())
-                            && vendor.getId().equals(product.getVendorId()));
-            if (!isOwner) throw new RuntimeException("Unauthorized: Not allowed to update this product");
+        existing.setName(product.getName());
+        existing.setDescription(product.getDescription());
+        existing.setPrice(product.getPrice());
+        existing.setMrp(product.getMrp());
+        existing.setSubCategory(product.getSubCategory());
+        existing.setImageUrl(product.getImageUrl()); // Firebase URL
+        existing.setUnit(product.getUnit());
+        existing.setStock(product.getStock());
+        existing.setBrand(product.getBrand());
+        existing.setFoodCategory(product.getFoodCategory());
+        existing.setVeg(product.getVeg());
+        existing.setRestaurantName(product.getRestaurantName());
+        existing.setCustomizationOptions(product.getCustomizationOptions());
+        existing.setAddOns(product.getAddOns());
+        existing.setBestseller(product.getBestseller());
+        existing.setPackSize(product.getPackSize());
+        existing.setManufacturer(product.getManufacturer());
+        existing.setFssaiLicenseNo(product.getFssaiLicenseNo());
+        existing.setCountryOfOrigin(product.getCountryOfOrigin());
+        existing.setIngredients(product.getIngredients());
+        existing.setNutritionInfo(product.getNutritionInfo());
+        existing.setReturnPolicy(product.getReturnPolicy());
+        // update other fields as needed
 
-            product.setName(updatedProduct.getName());
-            product.setDescription(updatedProduct.getDescription());
-            product.setBrand(updatedProduct.getBrand());
-            product.setPrice(updatedProduct.getPrice());
-            product.setMrp(updatedProduct.getMrp());
-            product.setDiscount(updatedProduct.getDiscount());
-            product.setStock(updatedProduct.getStock());
-            product.setUnit(updatedProduct.getUnit());
-            product.setIsAvailable(updatedProduct.getIsAvailable());
-            product.setUpdatedAt(LocalDateTime.now());
-            product.setSubCategory(updatedProduct.getSubCategory());
-            product.setProductType(updatedProduct.getProductType());
-
-            // Set food/grocery-specific fields
-            product.setPackSize(updatedProduct.getPackSize());
-            product.setManufacturer(updatedProduct.getManufacturer());
-            product.setFssaiLicenseNo(updatedProduct.getFssaiLicenseNo());
-            product.setCountryOfOrigin(updatedProduct.getCountryOfOrigin());
-            product.setIngredients(updatedProduct.getIngredients());
-            product.setNutritionInfo(updatedProduct.getNutritionInfo());
-            product.setReturnPolicy(updatedProduct.getReturnPolicy());
-
-            product.setFoodCategory(updatedProduct.getFoodCategory());
-            product.setVeg(updatedProduct.getVeg());
-            product.setRestaurantName(updatedProduct.getRestaurantName());
-            product.setCustomizationOptions(updatedProduct.getCustomizationOptions());
-            product.setAddOns(updatedProduct.getAddOns());
-            product.setBestseller(updatedProduct.getBestseller());
-
-            if (image != null && !image.isEmpty()) {
-                try {
-                    String imageUrl = firebaseStorageUtil.uploadFile(image);
-                    product.setImageUrl(imageUrl);
-                } catch (IOException e) {
-                    throw new RuntimeException("Image upload failed", e);
-                }
-            }
-
-            return productRepository.save(product);
-        }).orElse(null);
+        return productRepository.save(existing);
     }
+
 
     @Override
     public void deleteProduct(Long id, String token) {
@@ -222,9 +202,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return productRepository.findAll(pageable);
     }
+
 
     @Override
     public Page<Product> getAllProducts(Pageable pageable) {
@@ -276,16 +259,26 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<Product> getProductsBySubCategory(Long subCategoryId) {
-        return productRepository.findBySubCategoryId(subCategoryId);
+    public Page<Product> getProductsBySubCategory(Long subCategoryId, int page, int size, String sortBy, String sortDir) {
+        Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return productRepository.findBySubCategoryId(subCategoryId, pageable);
     }
 
+
     @Override
-    public List<Product> getProductsByVendor(String token) {
+    public Page<Product> getProductsByVendor(String token, int page, int size, String sortBy, String sortDir) {
         VendorResponseDTO vendor = tryGetVendor(token);
         if (!isVendor(vendor)) throw new RuntimeException("Unauthorized: Only vendors can access this.");
-        return productRepository.findByAddedByRoleAndVendorId("VENDOR", vendor.getId());
+
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return productRepository.findByAddedByRoleAndVendorId("VENDOR", vendor.getId(), pageable);
     }
+
 
     @Override
     public List<Product> getProductsFromNearbyVendors(String type, double lat, double lng, double radiusKm,
@@ -321,18 +314,24 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public List<Product> getProductsByCategoryId(Long categoryId) {
-        return productRepository.findBySubCategory_Category_Id(categoryId);
+    public Page<Product> getProductsByCategoryId(Long categoryId, int page, int size, String sortBy, String sortDir) {
+        Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return productRepository.findBySubCategory_Category_Id(categoryId, pageable);
     }
 
     @Override
-    public List<Product> searchAndFilterProducts(String keyword, Long categoryId, Long subCategoryId,
-                                                 Double minPrice, Double maxPrice, Boolean inStock,
-                                                 Boolean discounted, String sortBy, String sortDir) {
+    public Page<Product> searchAndFilterProducts(String keyword, Long categoryId, Long subCategoryId,
+                                                int page, int size, String sortBy, String sortDir) {
         Specification<Product> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (keyword != null && !keyword.isEmpty()) {
-                predicates.add(cb.like(cb.lower(root.get("name")), "%" + keyword.toLowerCase() + "%"));
+                String likeKeyword = "%" + keyword.toLowerCase() + "%";
+                predicates.add(cb.or(
+                    cb.like(cb.lower(root.get("name")), likeKeyword),
+                    cb.like(cb.lower(root.get("description")), likeKeyword),
+                    cb.like(cb.lower(root.get("brand")), likeKeyword)
+                ));
             }
             if (categoryId != null) {
                 predicates.add(cb.equal(root.get("subCategory").get("category").get("id"), categoryId));
@@ -340,27 +339,14 @@ public class ProductServiceImpl implements ProductService {
             if (subCategoryId != null) {
                 predicates.add(cb.equal(root.get("subCategory").get("id"), subCategoryId));
             }
-            if (minPrice != null) {
-                predicates.add(cb.ge(root.get("price"), minPrice));
-            }
-            if (maxPrice != null) {
-                predicates.add(cb.le(root.get("price"), maxPrice));
-            }
-            if (Boolean.TRUE.equals(inStock)) {
-                predicates.add(cb.and(cb.greaterThan(root.get("stock"), 0), cb.isTrue(root.get("isAvailable"))));
-            }
-            if (Boolean.TRUE.equals(discounted)) {
-                predicates.add(cb.gt(root.get("discount"), 0));
-            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        Sort sort = sortDir.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-
-        return productRepository.findAll(spec, sort);
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return productRepository.findAll(spec, pageable);
     }
+
 
     @Override
     public long countAllProducts() {
