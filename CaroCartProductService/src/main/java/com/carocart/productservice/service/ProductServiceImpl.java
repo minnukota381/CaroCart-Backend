@@ -16,6 +16,10 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
 
 import com.carocart.productservice.dto.ProductAdminRowDTO;
 import com.carocart.productservice.entity.ProductType;
@@ -535,4 +539,173 @@ public class ProductServiceImpl implements ProductService {
         }
         return productRepository.countByAddedByRoleAndVendorId("VENDOR", vendor.getId());
     }
+    
+    
+    @Override
+    public Map<String, Object> bulkUploadCsv(MultipartFile file, String token) throws IOException {
+        AdminResponseDTO admin = tryGetAdmin(token);
+        VendorResponseDTO vendor = tryGetVendor(token);
+
+        boolean asAdmin = isAdmin(admin);
+        boolean asVendor = isVendor(vendor);
+
+        if (!asAdmin && !asVendor) {
+            throw new RuntimeException("Unauthorized: Only admin or vendor can bulk upload");
+        }
+
+        // If vendor, lock productType and vendor fields
+        String lockedVendorType = null; // "FOOD" or "GROCERY"
+        if (asVendor) {
+            if (vendor.getVendorType() == null || vendor.getVendorType().isBlank()) {
+                throw new IllegalArgumentException("Vendor type is missing on vendor profile");
+            }
+            lockedVendorType = vendor.getVendorType().toUpperCase();
+        }
+
+        int total = 0;
+        int success = 0;
+        List<Map<String, Object>> errors = new ArrayList<>();
+
+        try (CSVParser parser = CSVParser.parse(
+                file.getInputStream(),
+                java.nio.charset.StandardCharsets.UTF_8,
+                CSVFormat.DEFAULT
+                        .withFirstRecordAsHeader()
+                        .withTrim()
+                        .withIgnoreEmptyLines(true))) {
+
+            // Case-insensitive headers
+            Map<String, Integer> headerMap = parser.getHeaderMap();
+            // Required headers
+            List<String> required = List.of("subCategoryId", "name", "price", "mrp");
+            for (String r : required) {
+                if (!headerMap.keySet().stream().anyMatch(h -> h.equalsIgnoreCase(r))) {
+                    throw new IllegalArgumentException("Missing required header: " + r);
+                }
+            }
+
+            for (CSVRecord row : parser) {
+                total++;
+                try {
+                    // ---- Read fields (case-insensitive) ----
+                    String subCategoryIdStr = get(row, "subCategoryId");
+                    String name = get(row, "name");
+                    String description = get(row, "description");
+                    String priceStr = get(row, "price");
+                    String mrpStr = get(row, "mrp");
+                    String unit = get(row, "unit");
+                    String imageUrl = get(row, "imageUrl");
+                    String isAvailableStr = get(row, "isAvailable");
+                    String stockStr = get(row, "stock");
+                    String discountStr = get(row, "discount");
+                    String brand = get(row, "brand");
+                    String productTypeStr = get(row, "productType"); // optional for admin
+
+                    // ---- Validate & parse ----
+                    if (name == null || name.isBlank()) {
+                        throw new IllegalArgumentException("name is required");
+                    }
+                    Long subCategoryId = parseLong(subCategoryIdStr, "subCategoryId");
+                    Double price = parseDouble(priceStr, "price");
+                    Double mrp = parseDouble(mrpStr, "mrp");
+                    if (price > mrp) {
+                        throw new IllegalArgumentException("Price must not exceed MRP");
+                    }
+
+                    SubCategory subCategory = subCategoryRepository.findById(subCategoryId)
+                            .orElseThrow(() -> new IllegalArgumentException("Subcategory not found: " + subCategoryId));
+
+                    // Determine product type
+                    ProductType productType = null;
+                    if (asVendor) {
+                        productType = ProductType.valueOf(lockedVendorType); // lock to vendor type
+                    } else if (productTypeStr != null && !productTypeStr.isBlank()) {
+                        productType = ProductType.valueOf(productTypeStr.trim().toUpperCase());
+                    } else {
+                        // Optional: try to infer from subcategory/category naming—keeping simple:
+                        throw new IllegalArgumentException("productType required for admin rows (FOOD/GROCERY)");
+                    }
+
+                    Boolean isAvailable = parseBoolean(isAvailableStr, true); // default true
+                    Integer stock = parseInt(stockStr, 0);
+                    Double discount = parseDoubleOrNull(discountStr);
+
+                    // ---- Build Product and reuse addProduct() ----
+                    Product p = new Product();
+                    p.setName(name.trim());
+                    p.setDescription(nvl(description));
+                    p.setBrand(nvl(brand));
+                    p.setPrice(price);
+                    p.setMrp(mrp);
+                    p.setDiscount(discount != null ? discount : 0.0);
+                    p.setStock(stock);
+                    p.setUnit(nvl(unit));
+                    p.setIsAvailable(isAvailable);
+                    p.setSubCategory(subCategory);
+                    p.setImageUrl(nvl(imageUrl));
+                    p.setProductType(productType);
+                    // food/grocery-specifics can remain null by default
+
+                    // This method applies role checks, fills vendor fields, slug, timestamps, etc.
+                    addProduct(p, null, token);
+
+                    success++;
+                } catch (Exception rowEx) {
+                    Map<String, Object> err = new HashMap<>();
+                    err.put("row", row.getRecordNumber()); // 1-based excluding header
+                    err.put("error", rowEx.getMessage());
+                    errors.add(err);
+                }
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("rows", total);
+        result.put("success", success);
+        result.put("failed", total - success);
+        result.put("errors", errors);
+        return result;
+    }
+
+    // ---- small helpers (add anywhere in ProductServiceImpl) ----
+    private static String get(CSVRecord row, String key) {
+        // case-insensitive
+        for (String h : row.toMap().keySet()) {
+            if (h.equalsIgnoreCase(key)) return row.get(h);
+        }
+        return null;
+    }
+
+    private static String nvl(String s) { return s == null ? "" : s; }
+
+    private static Long parseLong(String s, String field) {
+        try { return Long.parseLong(s.trim()); }
+        catch (Exception e) { throw new IllegalArgumentException(field + " must be a number"); }
+    }
+
+    private static Integer parseInt(String s, int def) {
+        if (s == null || s.isBlank()) return def;
+        try { return Integer.parseInt(s.trim()); }
+        catch (Exception e) { return def; }
+    }
+
+    private static Double parseDouble(String s, String field) {
+        try { return Double.parseDouble(s.trim()); }
+        catch (Exception e) { throw new IllegalArgumentException(field + " must be a number"); }
+    }
+
+    private static Double parseDoubleOrNull(String s) {
+        if (s == null || s.isBlank()) return null;
+        try { return Double.parseDouble(s.trim()); }
+        catch (Exception e) { return null; }
+    }
+
+    private static Boolean parseBoolean(String s, boolean defVal) {
+        if (s == null || s.isBlank()) return defVal;
+        String t = s.trim().toLowerCase();
+        if (t.equals("true") || t.equals("1") || t.equals("yes")) return true;
+        if (t.equals("false") || t.equals("0") || t.equals("no")) return false;
+        return defVal;
+    }
+
 }

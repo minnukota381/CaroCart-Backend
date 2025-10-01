@@ -12,9 +12,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/products")
@@ -257,5 +259,18 @@ public class ProductController {
     public ResponseEntity<Long> getMyProductsCount(@RequestHeader("Authorization") String token) {
         return ResponseEntity.ok(productService.countProductsForCurrentVendor(token));
     }
+    
+    @PostMapping(value = "/bulk-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> bulkUploadProducts(
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader("Authorization") String token
+    ) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "file is required"));
+        }
+        Map<String, Object> result = productService.bulkUploadCsv(file, token);
+        return ResponseEntity.ok(result);
+    }
+
 
 }

@@ -52,5 +52,8 @@ public interface ProductService {
     	);
 
     long countProductsForCurrentVendor(String token);
+    
+    Map<String, Object> bulkUploadCsv(MultipartFile file, String token) throws IOException;
+
 
 }
