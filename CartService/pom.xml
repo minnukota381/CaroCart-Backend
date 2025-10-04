@@ -86,11 +86,6 @@
     <artifactId>mysql-socket-factory-connector-j-8</artifactId>
     <version>1.11.1</version>
 </dependency>
-<!-- Spring Security -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security</artifactId>
-</dependency>
 
     <dependency>
     <groupId>jakarta.validation</groupId>
