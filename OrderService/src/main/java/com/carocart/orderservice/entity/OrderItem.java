@@ -39,7 +39,7 @@ public class OrderItem {
     @Column(name = "vendor_email")
     private String vendorEmail;
     
-    @Column(name = "product_image_url")
+    @Column(name = "product_image_url", columnDefinition = "TEXT")
     private String productImageUrl;
     @Column(name = "discount_amount")
     private Double discountAmount = 0.0;
