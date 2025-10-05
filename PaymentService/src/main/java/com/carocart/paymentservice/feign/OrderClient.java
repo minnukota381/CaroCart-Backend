@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @FeignClient(
-    name = "CAROCARTORDER",                // Local (Eureka)
+    name = "ORDERSERVICE",                // Local (Eureka)
     url  = "${order.service.url:}",        // Prod (Cloud Run)
     path = "/orders",
     contextId = "paymentOrderClient",

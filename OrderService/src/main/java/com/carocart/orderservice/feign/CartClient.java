@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @FeignClient(
-    name = "CAROCARTCART",                // Local (Eureka)
+    name = "CARTSERVICE",                // Local (Eureka)
     url  = "${cart.service.url:}",        // Prod (Cloud Run)
     path = "/cart"
 )

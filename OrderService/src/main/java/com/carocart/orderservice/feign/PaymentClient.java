@@ -6,7 +6,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 @FeignClient(
-    name = "CAROCARTPAYMENT",                // Local (Eureka)
+    name = "PAYMENTSERVICE",                // Local (Eureka)
     url  = "${payment.service.url:}",        // Prod (Cloud Run)
     path = "/internal",
     contextId = "paymentClient"
